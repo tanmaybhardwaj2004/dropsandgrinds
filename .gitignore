@@ -1,0 +1,20 @@
+#ignore Binaries or compiled outputs
+bin/
+*.exe
+
+#Ignore Environment files
+.env
+.env.local
+
+#ignore OS files
+.DS_Store
+
+#ignore IDE folders
+.vscode/
+
+#ignore Test/Build artifacts
+*.test
+*.out
+
+#vendor
+vendor/
