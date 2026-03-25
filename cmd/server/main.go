@@ -1,8 +1,14 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"os"
+
+	"github.com/joho/godotenv"
+
+	"github.com/tanmaybhardwaj2004/dropsandgrinds/config"
 )
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
@@ -12,13 +18,25 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	godotenv.Load()
+
 	http.HandleFunc("/health", healthHandler) //connects /health to healthHandler function
 
-	log.Println("Server listening on port 8080")
+	dbURL := os.Getenv("DATABASE_URL")
 
-	err := http.ListenAndServe(":8080", nil)
+	conn, err := config.ConnectDB(dbURL)
 	if err != nil {
-		log.Fatal("Server failed to start", err) //fatal gives timestmp error code and msg and terminates in case of error(for starter failure)
-		//panic gives a long trace of error message making it easier to debug code. for unexpected states that should never happen
+		log.Fatal("Failed to connect to database:", err)
+	}
+
+	log.Println("Database connected successfully")
+
+	defer conn.Close(context.Background())
+
+	log.Println("Server listening on :8080")
+
+	err = http.ListenAndServe(":8080", nil)
+	if err != nil {
+		log.Fatal(err)
 	}
 }
