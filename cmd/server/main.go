@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/joho/godotenv"
 
@@ -22,9 +21,9 @@ func main() {
 
 	http.HandleFunc("/health", healthHandler) //connects /health to healthHandler function
 
-	dbURL := os.Getenv("DATABASE_URL")
+	cfg := config.LoadConfig()
 
-	conn, err := config.ConnectDB(dbURL)
+	conn, err := config.ConnectDB(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
@@ -33,9 +32,9 @@ func main() {
 
 	defer conn.Close(context.Background())
 
-	log.Println("Server listening on :8080")
+	log.Println("Server listening on :" + cfg.Port)
 
-	err = http.ListenAndServe(":8080", nil)
+	err = http.ListenAndServe(":"+cfg.Port, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
