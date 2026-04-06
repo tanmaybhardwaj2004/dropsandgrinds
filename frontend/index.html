@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DropsAndGrinds - Smart Game Deal Tracker</title>
+    <meta name="description" content="Track game deals across multiple platforms with India-specific pricing, multi-source review scores, and an intelligent bundle breaker.">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/index.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="logo">DropsAndGrinds</div>
+        <nav>
+            <ul>
+                <li><a href="#" class="active">Deals</a></li>
+                <li><a href="#">Library</a></li>
+                <li><a href="#">Bundle Breaker</a></li>
+                <li><a href="#">Dashboard</a></li>
+            </ul>
+        </nav>
+        <div class="actions">
+            <!-- Search Icon / Avatar placeholder -->
+            <button class="btn btn-primary">Login</button>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Hero Section / Live sale banner -->
+        <section class="banner">
+            <h2>Live: Steam Spring Sale 2026</h2>
+            <p>Ending March 26. 47 games on your wishlist are discounted!</p>
+        </section>
+
+        <!-- Filters -->
+        <section class="filters">
+            <input type="text" placeholder="Search games..." />
+            <select>
+                <option>All Platforms</option>
+                <option>PC</option>
+                <option>PlayStation</option>
+                <option>Xbox</option>
+            </select>
+        </section>
+
+        <!-- Deals Grid -->
+        <section class="deals-grid" id="deals-container">
+            <!-- JS will populate these cards -->
+        </section>
+    </main>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,556 @@
+================================================================================
+                        GAME PLATFORM — FULL STACK ROADMAP
+================================================================================
+
+THE PROJECT
+-----------
+A production-grade Game Platform — deals, library, recommendations, news.
+Built right, deployable, CV-worthy.
+Similar to: IsThereAnyDeal / GG.deals — but yours.
+
+
+================================================================================
+TECH STACK
+================================================================================
+
+Layer           Technology
+-----------     -------------------------------------------
+Backend         Go (Golang)
+Database        PostgreSQL (AWS RDS)
+Cache           Redis (AWS ElastiCache)
+Auth            JWT → OAuth (Google/Steam) later
+Frontend        HTML/CSS/JS → React/Next.js later
+Search          Meilisearch (Phase 12)
+Infrastructure  AWS EC2 + ALB + S3 + CloudFront
+DevOps          Docker + Docker Compose + GitHub Actions
+Data APIs       RAWG, Steam, IGDB
+
+
+================================================================================
+SYSTEM ARCHITECTURE
+================================================================================
+
+    Internet
+        ↓
+    CloudFront (CDN)
+        ↓
+    AWS ALB (Load Balancer)
+        ↓
+    EC2 — Go App (Docker)
+        ↓
+    RDS PostgreSQL + ElastiCache Redis
+
+
+================================================================================
+CI/CD PIPELINE (LIVE UPDATES)
+================================================================================
+
+    git push to main branch
+        ↓
+    GitHub Actions triggers automatically
+        ↓
+    Run tests
+        ↓
+    Build Docker image
+        ↓
+    Push image to AWS ECR
+        ↓
+    Watchtower on EC2 pulls new image
+        ↓
+    Zero downtime rolling restart
+        ↓
+    App is live with your changes
+
+
+================================================================================
+REDIRECT TO PLATFORM GAME PAGE
+================================================================================
+
+When a user clicks a game linked to Steam, Epic, GOG etc:
+
+FLOW:
+    User clicks "View on Steam" button
+        ↓
+    Frontend calls your backend API
+        GET /api/games/{id}/redirect?platform=steam
+        ↓
+    Backend looks up the URL for that game + platform
+    Backend logs the click (analytics)
+    Backend returns: { "url": "https://store.steampowered.com/app/..." }
+        ↓
+    Frontend receives the URL
+    Frontend does: window.location.href = url
+        ↓
+    User lands on the platform page
+
+WHY GO THROUGH BACKEND (not hardcode URL in frontend):
+    - Track which platforms users click most (analytics)
+    - Validate the URL still exists
+    - Rate limit abuse
+    - Change URLs without redeploying frontend
+    - Log data for "best time to buy" features later
+
+
+================================================================================
+SEPARATION OF LOGIC
+================================================================================
+
+MENTAL MODEL:
+    Browser (Frontend — HTML/CSS/JS)
+        ↕  HTTP/JSON API calls ONLY
+    Go Backend (Pure JSON API)
+        ↕  SQL queries ONLY
+    PostgreSQL / Redis (DB layer)
+
+RULES (never break these):
+    - Frontend NEVER touches the DB directly. Ever.
+    - Backend NEVER renders HTML. Ever.
+    - DB is NOT exposed outside Docker network. Ever.
+    - Frontend and backend only talk through defined API contracts.
+
+WHAT EACH LAYER IS RESPONSIBLE FOR:
+    Frontend:
+        - Rendering UI
+        - Calling backend APIs
+        - Handling user interactions
+        - Redirecting users
+
+    Backend:
+        - Business logic
+        - Auth validation
+        - DB queries
+        - Calling external APIs (RAWG, Steam, IGDB)
+        - Returning JSON responses
+
+    Database:
+        - Storing and retrieving data
+        - Nothing else
+        - Never directly reachable from frontend or internet
+
+
+================================================================================
+CONTAINERIZATION (DOCKER)
+================================================================================
+
+THREE CONTAINERS, ONE NETWORK:
+
+    docker-compose.yml
+    │
+    ├── frontend   (nginx serving static files)  → port 80 exposed to internet
+    ├── backend    (Go app)                       → port 8080 internal only
+    ├── postgres   (PostgreSQL DB)                → port 5432 internal only
+    └── redis      (Redis cache)                  → port 6379 internal only
+    │
+    └── all on: gameplatform_network
+
+PORT EXPOSURE RULES:
+    - ONLY frontend port 80 is open to the outside world
+    - Backend, PostgreSQL, Redis are internal only
+    - No one on the internet can directly hit your DB or backend
+
+HOW CONTAINERS TALK TO EACH OTHER:
+    Inside Docker network, use service name (not localhost):
+    - Backend connects to DB at:     postgres:5432
+    - Backend connects to Redis at:  redis:6379
+    - Frontend calls backend at:     http://backend:8080
+    (Docker resolves these names automatically inside the network)
+
+DOCKER COMPOSE STRUCTURE:
+    services:
+      frontend:
+        ports: ["80:80"]          ← only this is public
+        networks: [gameplatform_network]
+
+      backend:
+        expose: [8080]            ← internal only, NOT ports
+        networks: [gameplatform_network]
+        depends_on: [postgres, redis]
+
+      postgres:
+        expose: [5432]            ← internal only
+        networks: [gameplatform_network]
+
+      redis:
+        expose: [6379]            ← internal only
+        networks: [gameplatform_network]
+
+    networks:
+      gameplatform_network:
+
+
+================================================================================
+CI/CD — DETAILED BREAKDOWN
+================================================================================
+
+FULL ZERO DOWNTIME FLOW:
+
+    You: git push origin main
+            ↓
+    GitHub Actions starts automatically
+            ↓
+    ┌─────────────────────────────┐
+    │  Job 1: TEST (all branches) │
+    │  - go test ./...            │
+    │  - go vet ./...             │
+    │  - go build                 │
+    └─────────────────────────────┘
+            ↓ only if tests pass
+    ┌─────────────────────────────┐
+    │  Job 2: BUILD (main only)   │
+    │  - docker build             │
+    │  - tag image with git SHA   │
+    │  - push to AWS ECR          │
+    └─────────────────────────────┘
+            ↓
+    ┌──────────────────────────────────────────┐
+    │  Job 3: DEPLOY (zero downtime)           │
+    │                                          │
+    │  Old container: still serving traffic    │
+    │  New container: starts up                │
+    │  Health check: /health endpoint passes   │
+    │  Traffic: ALB switches to new container  │
+    │  Old container: drains, then stops       │
+    └──────────────────────────────────────────┘
+            ↓
+    App is live. No downtime. No dropped requests.
+
+ZERO DOWNTIME IS ACHIEVED BY:
+    1. Graceful shutdown in Go
+       - Go app listens for SIGTERM signal
+       - Finishes all in-flight requests before shutting down
+       - New container is healthy before old one dies
+
+    2. Health check endpoint (/health)
+       - Load balancer (ALB) pings this before routing traffic
+       - Only sends traffic once new container responds healthy
+
+    3. Watchtower (on EC2, simple setup)
+       - Runs as a Docker container
+       - Watches for new images in ECR
+       - Automatically pulls and restarts your app
+
+FILE THAT CONTROLS EVERYTHING:
+    .github/workflows/deploy.yml
+    (One file in your repo. GitHub reads it automatically.)
+
+THREE JOBS IN THAT FILE:
+    - test     → runs on every push to any branch
+    - build    → runs only on push to main
+    - deploy   → runs after build succeeds
+
+
+================================================================================
+24/7 HOSTING — KEEPING BACKEND ALIVE WITHOUT YOUR PC
+================================================================================
+
+YOUR PC = where you write code and push to GitHub only.
+EC2 = where your app actually runs, 24/7, always on.
+
+MENTAL MODEL:
+    Your PC (off at night)
+        ↓ git push
+    GitHub
+        ↓ GitHub Actions (CI/CD)
+    AWS ECR (image registry)
+        ↓ Watchtower pulls new image
+    EC2 Instance (running 24/7, always on)
+        ↓
+    Users can access your app anytime
+
+EC2 KEEPS RUNNING BECAUSE:
+    - It is a virtual machine on AWS data centers, not your hardware
+    - Your PC being off has zero effect on it
+    - Docker containers restart automatically if they crash (restart: always)
+    - AWS manages the physical hardware
+
+
+================================================================================
+AWS IAM — SECURITY DONE RIGHT
+================================================================================
+
+IAM = Identity and Access Management
+It controls WHO can do WHAT on your AWS account.
+
+THE WRONG WAY (never do this):
+    - Use root AWS account for everything
+    - Store AWS access keys in your code
+    - Give everything full admin permissions
+
+THE RIGHT WAY:
+
+    Root AWS Account
+        ↓ (only used once — to create IAM users. Never used again.)
+        ↓
+    ┌─────────────────────────────────────────────────────┐
+    │ IAM User: "dev-user"                                │
+    │ Used by: You (personal CLI access, local dev)       │
+    │ Permissions: only what you need for development     │
+    └─────────────────────────────────────────────────────┘
+        ↓
+    ┌─────────────────────────────────────────────────────┐
+    │ IAM Role: "ec2-app-role"                            │
+    │ Attached to: EC2 instance                           │
+    │ Permissions: pull from ECR only. Nothing else.      │
+    └─────────────────────────────────────────────────────┘
+        ↓
+    ┌─────────────────────────────────────────────────────┐
+    │ IAM Role: "github-actions-role"                     │
+    │ Used by: GitHub Actions pipeline                    │
+    │ Permissions: push to ECR + SSH to EC2 only          │
+    └─────────────────────────────────────────────────────┘
+
+WHY SEPARATE ROLES:
+    - If EC2 is compromised, attacker can only pull images — nothing else
+    - If GitHub Actions is compromised, attacker can push images + SSH — that's it
+    - Principle of Least Privilege: each identity gets minimum permissions needed
+    - This is exactly what interviewers ask about
+
+PRINCIPLE OF LEAST PRIVILEGE:
+    Every user, role, and service gets ONLY the permissions it needs.
+    Nothing more. This limits damage if anything is ever compromised.
+
+CV BULLET THIS EARNS YOU:
+    "Implemented AWS IAM with least-privilege roles for EC2, CI/CD pipeline,
+     and developer access — separating concerns and limiting blast radius"
+
+WHEN YOU SET THIS UP: Phase 10 (before deployment)
+
+
+================================================================================
+UPDATED CV BULLETS (FULL LIST)
+================================================================================
+
+- Designed and built a fault-tolerant REST API in Go with PostgreSQL and Redis
+- Implemented Redis-based rate limiting and DB connection pooling
+- Built zero-downtime CI/CD pipeline using GitHub Actions, Docker, and Watchtower
+- Deployed on AWS EC2 with ALB, RDS, ElastiCache, and CloudFront CDN
+- Integrated RAWG, Steam, and IGDB APIs with caching and pagination
+- Implemented JWT authentication with stateless design for horizontal scalability
+- Designed price history and deal evaluation engine with rule-based predictions
+- Structured application using clean repository/service/handler pattern in Go
+- Containerized all services (frontend, backend, DB) with Docker Compose
+  using isolated networks and zero public DB exposure
+- Implemented AWS IAM least-privilege roles for EC2, CI/CD, and developer access
+- Built platform redirect system with click tracking and analytics logging
+
+
+================================================================================
+DEVELOPMENT ROADMAP
+================================================================================
+
+Phase 0 — Environment Setup
+    - Install Go
+    - Install VS Code
+    - Install Git
+    - Install Docker Desktop
+    - Verify all tools work
+    Tools: go.dev/dl | code.visualstudio.com | git-scm.com | docker.com
+
+Phase 1 — Project Structure + Core Backend
+    - Folder structure
+    - DB connection (PostgreSQL via Docker)
+    - Basic routing
+    - /health endpoint (load balancer uses this)
+    Key concepts: REST API design, pgx driver, net/http
+
+Phase 2 — User Authentication
+    - Register + Login APIs
+    - Password hashing
+    - JWT token generation + validation
+    - Auth middleware
+    Key concepts: bcrypt, JWT, stateless auth
+
+Phase 3 — Game System
+    - Game listings
+    - Game details
+    - Store, price, platform, genre
+    - Pagination on all list endpoints
+    Key concepts: DB schema design, foreign keys, pagination
+
+Phase 4 — Deals Engine
+    - Price history tracking
+    - Current price + lowest price ever
+    - Deal evaluation logic
+    Key concepts: Data modeling, time-series data
+
+Phase 5 — Smart Features
+    - Best time to buy logic
+    - Price trend analysis
+    - Rule-based predictions
+    Key concepts: Business logic layer, services pattern
+
+Phase 6 — User System
+    - Wishlist
+    - Game library (playing / completed / dropped)
+    Key concepts: User-game relations, state management
+
+Phase 7 — Rate Limiting + Reliability
+    - Redis-based rate limiter middleware
+    - Graceful shutdown (no dropped requests)
+    - Structured logging
+    Key concepts: Redis, OS signals, slog/zap
+
+Phase 8 — News Integration
+    - Fetch gaming news from APIs
+    - Store and link to games
+    - Cron jobs for periodic fetching
+    Key concepts: External API integration, scheduled jobs
+
+Phase 9 — Performance
+    - Redis caching layer
+    - DB query optimization
+    - Index tuning
+    - Pagination audit across all endpoints
+    Key concepts: Cache patterns (cache-aside), DB indexes
+
+Phase 10 — Deployment (Manual First)
+    - Dockerize the full app
+    - Deploy manually to AWS EC2
+    - Understand every step before automating
+    Key concepts: Docker, SSH, EC2, environment variables
+
+Phase 11 — CI/CD Pipeline
+    - GitHub Actions workflow
+    - Auto build + push Docker image on git push
+    - Watchtower on EC2 for zero-downtime restarts
+    Key concepts: CI/CD, GitHub Actions, Watchtower
+
+Phase 12 — Production AWS Infrastructure
+    - AWS ALB (Load Balancer)
+    - Move DB to RDS
+    - Move Redis to ElastiCache
+    - CloudFront CDN
+    Key concepts: Managed services, fault tolerance, scaling
+
+Phase 13 — Scale + Polish
+    - Meilisearch for game search
+    - Analytics
+    - UI improvements
+    - OAuth (Google/Steam login)
+    Key concepts: Search engines, observability
+
+
+================================================================================
+FOLDER STRUCTURE
+================================================================================
+
+/cmd
+    /server              ← main.go lives here
+/internal
+    /handlers            ← HTTP request handlers
+    /services            ← business logic
+    /models              ← data structures / types
+    /repositories        ← all DB queries live here
+    /middleware          ← auth, rate limiting, logging
+/pkg
+    /utils               ← shared helper functions
+/config                  ← env config loading
+/docker                  ← Dockerfiles
+/.github
+    /workflows           ← GitHub Actions CI/CD pipeline
+/migrations              ← SQL migration files
+
+
+================================================================================
+PRODUCTION FEATURES YOU ARE BUILDING
+================================================================================
+
+Feature                 Why It Matters
+-------------------     --------------------------------------------------
+/health endpoint        Load balancer checks this to route traffic
+Rate limiting           Prevents abuse and server overload
+Graceful shutdown       No dropped requests during deployments
+DB connection pooling   Handles many concurrent users efficiently
+Redis caching           Reduces DB load, faster responses
+Structured logging      Debug production issues properly
+Pagination everywhere   Never load a full DB table in one query
+Stateless JWT auth      Enables horizontal scaling (run N copies of app)
+Docker                  Same behavior on laptop, CI, and production
+CI/CD pipeline          Push code → live in minutes, zero downtime
+
+
+================================================================================
+AWS FREE TIER (FIRST 12 MONTHS)
+================================================================================
+
+Service                 Free Tier               After Free Tier
+-------------------     -------------------     -------------------
+EC2 t2.micro            750 hrs/month free      ~$8/month
+RDS PostgreSQL          750 hrs/month free      ~$15/month
+S3                      5GB free                ~$1/month
+CloudFront              1TB transfer free       ~$0 for low traffic
+ECR                     500MB free              minimal cost
+ALB                     Not free                ~$16/month
+
+Note: ALB can be skipped early on. Add it when you need true fault tolerance.
+
+
+================================================================================
+FREE HOSTING ALTERNATIVE (ZERO BUDGET)
+================================================================================
+
+If you need to host before AWS Free Tier or after it expires:
+
+Your Stack Component    Free Alternative
+-------------------     -------------------
+AWS EC2                 Fly.io (free tier)
+PostgreSQL (RDS)        Supabase (free tier, real PostgreSQL)
+Redis (ElastiCache)     Upstash (free tier Redis)
+AWS S3                  Cloudflare R2 (free tier)
+CloudFront CDN          Cloudflare (free forever)
+AWS ECR                 Docker Hub (free tier)
+
+Migrate to AWS when ready for production/CV showcase.
+
+
+================================================================================
+KEY CONCEPTS TO LEARN (IN ORDER)
+================================================================================
+
+1.  REST API design
+2.  DB schema design
+3.  Authentication (JWT)
+4.  Middleware pattern
+5.  Caching strategies
+6.  Rate limiting
+7.  External API integration
+8.  Docker + containerization
+9.  Docker networking + Compose
+10. System design principles
+11. Separation of concerns (frontend/backend/DB)
+12. CI/CD pipelines
+13. Cloud deployment (AWS EC2)
+14. AWS IAM + least privilege
+15. Observability + logging
+
+
+================================================================================
+YOUR RULE
+================================================================================
+
+No copy-pasting.
+Figure it out yourself.
+Use Claude for direction and debugging only.
+
+
+================================================================================
+CURRENT STATUS
+================================================================================
+
+OS:        Windows now → switching to CachyOS (Arch Linux) when pendrive arrives
+Editor:    VS Code
+Start:     Phase 0 — install tools, verify everything works
+
+NEXT IMMEDIATE STEPS:
+1. Install Go        → go.dev/dl
+2. Install VS Code   → code.visualstudio.com
+3. Install Git       → git-scm.com
+4. Install Docker Desktop → docker.com
+5. Open terminal, verify each one (hint: same command pattern for all of them)
+6. Come back and start Phase 1
+
+
+================================================================================
+                              START SMALL. BUILD RIGHT.
+                        login + games + wishlist → then expand
+================================================================================

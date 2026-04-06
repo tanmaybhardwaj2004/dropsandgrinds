@@ -1,0 +1,28 @@
+package models
+
+type RegisterRequest struct {
+	Email            string `json:"email" binding:"required,email" example:"player@example.com"`
+	Password         string `json:"password" binding:"required,min=8" example:"strongpassword123"`
+	SteamID          string `json:"steam_id" example:"76561198000000000"`
+	ConsentAnalytics bool   `json:"consent_analytics" example:"true"`
+	ConsentAlerts    bool   `json:"consent_alerts" example:"true"`
+}
+
+type LoginRequest struct {
+	Email    string `json:"email" binding:"required,email" example:"player@example.com"`
+	Password string `json:"password" binding:"required" example:"strongpassword123"`
+}
+
+type TokenResponse struct {
+	AccessToken  string `json:"access_token" example:"eyJhbGciOiJIUzI1NiIsInR5c...""`
+	RefreshToken string `json:"refresh_token" example:"eyJhbGciOiJIUzI1NiIs...""`
+	UserID       int    `json:"user_id" example:"1"`
+}
+
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required" example:"eyJhbGciOiJIUzI1NiIs...""`
+}
+
+type APIError struct {
+	Error string `json:"error" example:"Invalid credentials"`
+}
