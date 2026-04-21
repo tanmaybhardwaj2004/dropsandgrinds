@@ -1,0 +1,264 @@
+/* Game Detail Hero Layout */
+.game-hero {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    margin-top: 32px;
+    margin-bottom: 48px;
+    background-color: var(--surface-color);
+    border-radius: 12px;
+    border: 1px solid #30363d;
+    padding: 32px;
+}
+
+.hero-cover {
+    width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.6);
+}
+
+.hero-details {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.title-row h1 {
+    font-size: 2.2rem;
+    color: var(--primary-color);
+}
+
+.btn-wishlist {
+    background-color: transparent;
+    border: 1px solid var(--danger);
+    color: var(--danger);
+}
+
+.btn-wishlist.active {
+    background-color: var(--danger);
+    color: white;
+}
+
+.tags {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.tag {
+    background-color: #21262d;
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.description {
+    font-size: 1.05rem;
+    margin-bottom: 32px;
+    line-height: 1.7;
+    color: #c9d1d9;
+}
+
+.hero-pricing {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    background: rgba(22, 27, 34, 0.5);
+    padding: 16px 24px;
+    border-radius: 8px;
+    border-left: 4px solid var(--success);
+}
+
+.current-price {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.original-price {
+    font-size: 1.25rem;
+    color: var(--text-muted);
+    text-decoration: line-through;
+}
+
+.discount-badge {
+    background-color: var(--success);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-weight: 700;
+}
+
+/* Metrics Grid - Phase 4 */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-bottom: 64px;
+}
+
+.metric-card {
+    background-color: var(--surface-color);
+    border-radius: 12px;
+    border: 1px solid #30363d;
+    padding: 32px;
+}
+
+.metric-card h3 {
+    font-size: 1.25rem;
+    margin-bottom: 4px;
+}
+
+.metric-sub {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 24px;
+}
+
+/* Arbitrage Receipt */
+.receipt {
+    background-color: #0d1117;
+    border: 1px dashed #30363d;
+    padding: 24px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    font-family: monospace;
+    font-size: 1.1rem;
+}
+
+.receipt-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.tax-value {
+    color: var(--danger);
+}
+
+.receipt-divider {
+    border-top: 1px dashed #555;
+    margin: 16px 0;
+}
+
+.total-row {
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.highlight-green {
+    color: var(--success);
+    font-weight: 700;
+}
+
+.mt-3 {
+    margin-top: 24px;
+}
+
+.arbitrage-verdict {
+    padding: 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.arbitrage-verdict.green {
+    background-color: rgba(35, 134, 54, 0.15);
+    border: 1px solid var(--success);
+    color: var(--success);
+}
+
+/* Predictive Timeline */
+.timeline {
+    position: relative;
+    padding-left: 24px;
+    margin-bottom: 32px;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background-color: #30363d;
+}
+
+.time-node {
+    position: relative;
+    margin-bottom: 32px;
+}
+
+.time-node:last-child {
+    margin-bottom: 0;
+}
+
+.node-circle {
+    position: absolute;
+    left: -24px;
+    top: 4px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background-color: #30363d;
+    border: 2px solid var(--surface-color);
+    z-index: 10;
+}
+
+.time-node.active .node-circle {
+    background-color: var(--primary-color);
+    box-shadow: 0 0 10px rgba(88, 166, 255, 0.5);
+}
+
+.time-node.past .node-circle {
+    background-color: var(--success);
+}
+
+.node-content h4 {
+    font-size: 1.1rem;
+    margin-bottom: 4px;
+}
+
+.node-cost {
+    display: block;
+    color: var(--text-muted);
+}
+
+.current-node-cost {
+    color: var(--primary-color);
+}
+
+.confidence {
+    display: inline-block;
+    background-color: rgba(218, 54, 51, 0.15);
+    color: #ff7b72;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    margin-top: 8px;
+}
+
+.timeline-verdict {
+    background-color: rgba(218, 54, 51, 0.15);
+    border: 1px solid var(--danger);
+    color: #ff7b72;
+    padding: 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .game-hero, .metrics-grid {
+        grid-template-columns: 1fr;
+    }
+}

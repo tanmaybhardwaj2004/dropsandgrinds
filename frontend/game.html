@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Details - DropsAndGrinds</title>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="logo"><a href="index.html">DropsAndGrinds</a></div>
+        <nav>
+            <ul>
+                <li><a href="index.html">Deals</a></li>
+                <li><a href="#" class="active">Discover</a></li>
+                <li><a href="#">Bundle Breaker</a></li>
+                <li><a href="#">Dashboard</a></li>
+            </ul>
+        </nav>
+        <div class="actions">
+            <button class="btn btn-primary" onclick="window.location.href='login.html'">Login</button>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Hero Section -->
+        <section class="game-hero">
+            <img src="https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1091500/header.jpg" alt="Game Cover" class="hero-cover" id="game-cover">
+            
+            <div class="hero-details">
+                <div class="title-row">
+                    <h1 id="game-title">Cyberpunk 2077</h1>
+                    <button class="btn btn-wishlist" id="wishlist-btn">♥ Add to Wishlist</button>
+                </div>
+                <div class="tags">
+                    <span class="tag">RPG</span>
+                    <span class="tag">Sci-Fi</span>
+                    <span class="tag">Open World</span>
+                </div>
+                
+                <p class="description">Cyberpunk 2077 is an open-world, action-adventure RPG set in the dark future of Night City — a megalopolis obsessed with power, glamour, and body modification.</p>
+                
+                <!-- Main Pricing Callout -->
+                <div class="hero-pricing">
+                    <span class="current-price" id="main-price">₹1,499</span>
+                    <span class="original-price" id="original-price">₹2,999</span>
+                    <span class="discount-badge" id="discount-badge">-50%</span>
+                    <span class="store-badge" id="store-badge">Steam</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Advanced Metrics Grid (Phase 4 Features) -->
+        <section class="metrics-grid">
+            
+            <!-- Geo Arbitrage Breakdown -->
+            <div class="metric-card arbitrage-card">
+                <h3>🌍 India Arbitrage Engine</h3>
+                <p class="metric-sub">Calculated vs current Global Base Cost ($29.99 USD)</p>
+                
+                <div class="receipt">
+                    <div class="receipt-row">
+                        <span>Base USD → INR Conv.</span>
+                        <span>₹2,492.00</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span>Statutory Digital Tax (18% GST)</span>
+                        <span class="tax-value">+ ₹448.56</span>
+                    </div>
+                    <div class="receipt-divider"></div>
+                    <div class="receipt-row total-row">
+                        <span>True Global Value</span>
+                        <span>₹2,940.56</span>
+                    </div>
+                    <div class="receipt-row highlight-row mt-3">
+                        <span>Current Store Price (India Subsidy)</span>
+                        <span class="highlight-green" id="arbitrage-cost">₹1,499.00</span>
+                    </div>
+                </div>
+                
+                <div class="arbitrage-verdict green" id="arbitrage-verdict">
+                    VERDICT: High Arbitrage Potential (Savings vs Global: 49%)
+                </div>
+            </div>
+
+            <!-- Predictive Timeline -->
+            <div class="metric-card timeline-card">
+                <h3>⏳ Best Time to Buy</h3>
+                <p class="metric-sub">Algorithm based on historic sales and publisher cycles.</p>
+
+                <div class="timeline">
+                    <!-- Past Drop -->
+                    <div class="time-node past">
+                        <div class="node-circle"></div>
+                        <div class="node-content">
+                            <h4>Winter Sale 2025</h4>
+                            <span class="node-cost">₹1,499</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Current Drop -->
+                    <div class="time-node active">
+                        <div class="node-circle"></div>
+                        <div class="node-content">
+                            <h4>Current (Spring Sale)</h4>
+                            <span class="node-cost current-node-cost">₹1,499</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Future Prediction -->
+                    <div class="time-node future">
+                        <div class="node-circle"></div>
+                        <div class="node-content">
+                            <h4>Expected Summer Drop</h4>
+                            <span class="node-cost">Predicted: ₹999</span>
+                            <span class="confidence">87% Confidence</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="timeline-verdict" id="timeline-verdict">
+                    WAIT: Historical metrics predict a steeper drop within 90 days.
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <script src="js/game.js"></script>
+</body>
+</html>

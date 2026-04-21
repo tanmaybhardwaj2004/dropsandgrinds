@@ -33,21 +33,43 @@
             <p>Ending March 26. 47 games on your wishlist are discounted!</p>
         </section>
 
-        <!-- Filters -->
-        <section class="filters">
-            <input type="text" placeholder="Search games..." />
-            <select>
-                <option>All Platforms</option>
-                <option>PC</option>
-                <option>PlayStation</option>
-                <option>Xbox</option>
-            </select>
-        </section>
+        <div class="layout-wrapper">
+            <!-- Glassmorphism Sidebar Filters -->
+            <aside class="sidebar">
+                <h3>Discover Filters</h3>
+                
+                <div class="filter-group">
+                    <input type="text" id="search-input" placeholder="Search games..." class="search-box">
+                </div>
 
-        <!-- Deals Grid -->
-        <section class="deals-grid" id="deals-container">
-            <!-- JS will populate these cards -->
-        </section>
+                <div class="filter-group" id="store-filters">
+                    <label>Store Integrations</label>
+                    <div class="filter-item">
+                        <input type="checkbox" id="store-steam" value="Steam" checked>
+                        <label for="store-steam">Steam</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="store-epic" value="Epic Games" checked>
+                        <label for="store-epic">Epic Games</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="store-gog" value="GOG" checked>
+                        <label for="store-gog">GOG</label>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <label for="price-slider">Max Price (₹)</label>
+                    <input type="range" id="price-slider" title="Max Price Slider" min="0" max="5000" value="5000" class="full-width">
+                    <div class="price-display-text" id="price-display">₹5000</div>
+                </div>
+            </aside>
+
+            <!-- Deals Grid (Masonry) -->
+            <section class="deals-grid" id="deals-container">
+                <!-- JS will populate these cards -->
+            </section>
+        </div>
     </main>
 
     <script src="js/app.js"></script>

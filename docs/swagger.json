@@ -52,6 +52,9 @@
         "/api/auth/logout": {
             "post": {
                 "description": "Invalidates the current refresh token in backend storage (Redis)",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -59,11 +62,34 @@
                     "auth"
                 ],
                 "summary": "Log out",
+                "parameters": [
+                    {
+                        "description": "Refresh Token",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.LogoutRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Logged out",
                         "schema": {
                             "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
                         }
                     }
                 }
@@ -161,6 +187,540 @@
                 }
             }
         },
+        "/api/deals": {
+            "get": {
+                "description": "Returns paginated current active deals",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "deals"
+                ],
+                "summary": "List deals",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Page size",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Page offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.DealListResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/games": {
+            "get": {
+                "description": "Returns a paginated deal grid with optional search and platform filtering",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "games"
+                ],
+                "summary": "List games",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search query",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Platform filter",
+                        "name": "platform",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Page size",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Page offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.GameListResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/games/{id}": {
+            "get": {
+                "description": "Returns a single game record by its ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "games"
+                ],
+                "summary": "Get game",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Game ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Game"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/games/{id}/buy-advice": {
+            "get": {
+                "description": "Returns intelligent buy-now or wait recommendation based on 90-day price history",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "prices"
+                ],
+                "summary": "Get buy timing advice",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Game ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.BuyAdviceResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/me": {
+            "get": {
+                "description": "Returns the current authenticated user ID from the JWT token",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Current user",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/prices/{game_id}/history": {
+            "get": {
+                "description": "Returns historical INR prices for a game ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "prices"
+                ],
+                "summary": "Price history",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Game ID",
+                        "name": "game_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 30,
+                        "description": "History points",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.PriceHistoryResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/wishlist": {
+            "get": {
+                "description": "POST: Add game to wishlist | GET: List authenticated user's wishlist",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "wishlist"
+                ],
+                "summary": "Create or list wishlist items",
+                "parameters": [
+                    {
+                        "description": "Create request (POST only)",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/models.WishlistCreateRequest"
+                        }
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Page size",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Page offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.WishlistListResponse"
+                        }
+                    },
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.WishlistItem"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "POST: Add game to wishlist | GET: List authenticated user's wishlist",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "wishlist"
+                ],
+                "summary": "Create or list wishlist items",
+                "parameters": [
+                    {
+                        "description": "Create request (POST only)",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/models.WishlistCreateRequest"
+                        }
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Page size",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Page offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.WishlistListResponse"
+                        }
+                    },
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.WishlistItem"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/wishlist/{id}": {
+            "delete": {
+                "description": "PATCH: Update target price for wishlist item | DELETE: Remove item from wishlist",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "wishlist"
+                ],
+                "summary": "Update or remove wishlist item",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Wishlist item ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update request (PATCH only)",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/models.WishlistUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.WishlistItem"
+                        }
+                    },
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "PATCH: Update target price for wishlist item | DELETE: Remove item from wishlist",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "wishlist"
+                ],
+                "summary": "Update or remove wishlist item",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Wishlist item ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update request (PATCH only)",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/models.WishlistUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.WishlistItem"
+                        }
+                    },
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    }
+                }
+            }
+        },
         "/health": {
             "get": {
                 "description": "Check if the server is running",
@@ -180,6 +740,35 @@
                     }
                 }
             }
+        },
+        "/health/deps": {
+            "get": {
+                "description": "Check database connectivity and other core dependencies",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "Dependency Health Check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -189,6 +778,187 @@
                 "error": {
                     "type": "string",
                     "example": "Invalid credentials"
+                }
+            }
+        },
+        "models.BuyAdviceResponse": {
+            "type": "object",
+            "properties": {
+                "average_price_inr": {
+                    "type": "integer",
+                    "example": 1699
+                },
+                "confidence_percent": {
+                    "type": "integer",
+                    "example": 78
+                },
+                "current_price_inr": {
+                    "type": "integer",
+                    "example": 1499
+                },
+                "game_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "lowest_price_inr": {
+                    "type": "integer",
+                    "example": 999
+                },
+                "reason": {
+                    "type": "string",
+                    "example": "Current price is well above historical low."
+                },
+                "recommendation": {
+                    "type": "string",
+                    "example": "wait"
+                }
+            }
+        },
+        "models.Deal": {
+            "type": "object",
+            "properties": {
+                "cached_at": {
+                    "type": "string",
+                    "example": "2026-04-21T09:30:00Z"
+                },
+                "cover_url": {
+                    "type": "string",
+                    "example": "https://example.com/cover.jpg"
+                },
+                "deal_status": {
+                    "type": "string",
+                    "example": "good"
+                },
+                "discount_percent": {
+                    "type": "integer",
+                    "example": 50
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "is_all_time_low": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "lowest_price_inr": {
+                    "type": "integer",
+                    "example": 999
+                },
+                "original_inr": {
+                    "type": "integer",
+                    "example": 2999
+                },
+                "platform": {
+                    "type": "string",
+                    "example": "Steam"
+                },
+                "potential_savings_inr": {
+                    "type": "integer",
+                    "example": 500
+                },
+                "price_inr": {
+                    "type": "integer",
+                    "example": 1499
+                },
+                "review_score": {
+                    "type": "integer",
+                    "example": 86
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Cyberpunk 2077"
+                }
+            }
+        },
+        "models.DealListResponse": {
+            "type": "object",
+            "properties": {
+                "deals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Deal"
+                    }
+                },
+                "limit": {
+                    "type": "integer",
+                    "example": 20
+                },
+                "offset": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 8
+                }
+            }
+        },
+        "models.Game": {
+            "type": "object",
+            "properties": {
+                "cover_url": {
+                    "type": "string",
+                    "example": "https://example.com/cover.jpg"
+                },
+                "discount_percent": {
+                    "type": "integer",
+                    "example": 50
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "is_all_time_low": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "lowest_price_inr": {
+                    "type": "integer",
+                    "example": 999
+                },
+                "original_inr": {
+                    "type": "integer",
+                    "example": 2999
+                },
+                "platform": {
+                    "type": "string",
+                    "example": "Steam"
+                },
+                "price_inr": {
+                    "type": "integer",
+                    "example": 1499
+                },
+                "review_score": {
+                    "type": "integer",
+                    "example": 86
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Cyberpunk 2077"
+                }
+            }
+        },
+        "models.GameListResponse": {
+            "type": "object",
+            "properties": {
+                "games": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Game"
+                    }
+                },
+                "limit": {
+                    "type": "integer",
+                    "example": 20
+                },
+                "offset": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 8
                 }
             }
         },
@@ -209,6 +979,46 @@
                 }
             }
         },
+        "models.LogoutRequest": {
+            "type": "object",
+            "required": [
+                "refresh_token"
+            ],
+            "properties": {
+                "refresh_token": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIs..."
+                }
+            }
+        },
+        "models.PriceHistoryPoint": {
+            "type": "object",
+            "properties": {
+                "fetched_at": {
+                    "type": "string",
+                    "example": "2026-04-21T09:30:00Z"
+                },
+                "price_inr": {
+                    "type": "integer",
+                    "example": 1499
+                }
+            }
+        },
+        "models.PriceHistoryResponse": {
+            "type": "object",
+            "properties": {
+                "game_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "history": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.PriceHistoryPoint"
+                    }
+                }
+            }
+        },
         "models.RefreshRequest": {
             "type": "object",
             "required": [
@@ -225,7 +1035,8 @@
             "type": "object",
             "required": [
                 "email",
-                "password"
+                "password",
+                "username"
             ],
             "properties": {
                 "consent_alerts": {
@@ -248,6 +1059,12 @@
                 "steam_id": {
                     "type": "string",
                     "example": "76561198000000000"
+                },
+                "username": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 3,
+                    "example": "epicgamer"
                 }
             }
         },
@@ -265,6 +1082,93 @@
                 "user_id": {
                     "type": "integer",
                     "example": 1
+                }
+            }
+        },
+        "models.WishlistCreateRequest": {
+            "type": "object",
+            "properties": {
+                "game_id": {
+                    "type": "integer"
+                },
+                "target_price_inr": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.WishlistItem": {
+            "type": "object",
+            "properties": {
+                "cover_url": {
+                    "type": "string",
+                    "example": "https://example.com/cover.jpg"
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-04-21T09:30:00Z"
+                },
+                "current_price_inr": {
+                    "type": "integer",
+                    "example": 1499
+                },
+                "game_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "platform": {
+                    "type": "string",
+                    "example": "Steam"
+                },
+                "target_price_inr": {
+                    "type": "integer",
+                    "example": 999
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Cyberpunk 2077"
+                },
+                "triggered": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "user_id": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "models.WishlistListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.WishlistItem"
+                    }
+                },
+                "limit": {
+                    "type": "integer",
+                    "example": 20
+                },
+                "offset": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 2
+                }
+            }
+        },
+        "models.WishlistUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "target_price_inr": {
+                    "type": "integer"
                 }
             }
         }

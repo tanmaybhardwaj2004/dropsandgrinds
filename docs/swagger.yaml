@@ -6,6 +6,137 @@ definitions:
         example: Invalid credentials
         type: string
     type: object
+  models.BuyAdviceResponse:
+    properties:
+      average_price_inr:
+        example: 1699
+        type: integer
+      confidence_percent:
+        example: 78
+        type: integer
+      current_price_inr:
+        example: 1499
+        type: integer
+      game_id:
+        example: 1
+        type: integer
+      lowest_price_inr:
+        example: 999
+        type: integer
+      reason:
+        example: Current price is well above historical low.
+        type: string
+      recommendation:
+        example: wait
+        type: string
+    type: object
+  models.Deal:
+    properties:
+      cached_at:
+        example: "2026-04-21T09:30:00Z"
+        type: string
+      cover_url:
+        example: https://example.com/cover.jpg
+        type: string
+      deal_status:
+        example: good
+        type: string
+      discount_percent:
+        example: 50
+        type: integer
+      id:
+        example: 1
+        type: integer
+      is_all_time_low:
+        example: false
+        type: boolean
+      lowest_price_inr:
+        example: 999
+        type: integer
+      original_inr:
+        example: 2999
+        type: integer
+      platform:
+        example: Steam
+        type: string
+      potential_savings_inr:
+        example: 500
+        type: integer
+      price_inr:
+        example: 1499
+        type: integer
+      review_score:
+        example: 86
+        type: integer
+      title:
+        example: Cyberpunk 2077
+        type: string
+    type: object
+  models.DealListResponse:
+    properties:
+      deals:
+        items:
+          $ref: '#/definitions/models.Deal'
+        type: array
+      limit:
+        example: 20
+        type: integer
+      offset:
+        example: 0
+        type: integer
+      total:
+        example: 8
+        type: integer
+    type: object
+  models.Game:
+    properties:
+      cover_url:
+        example: https://example.com/cover.jpg
+        type: string
+      discount_percent:
+        example: 50
+        type: integer
+      id:
+        example: 1
+        type: integer
+      is_all_time_low:
+        example: false
+        type: boolean
+      lowest_price_inr:
+        example: 999
+        type: integer
+      original_inr:
+        example: 2999
+        type: integer
+      platform:
+        example: Steam
+        type: string
+      price_inr:
+        example: 1499
+        type: integer
+      review_score:
+        example: 86
+        type: integer
+      title:
+        example: Cyberpunk 2077
+        type: string
+    type: object
+  models.GameListResponse:
+    properties:
+      games:
+        items:
+          $ref: '#/definitions/models.Game'
+        type: array
+      limit:
+        example: 20
+        type: integer
+      offset:
+        example: 0
+        type: integer
+      total:
+        example: 8
+        type: integer
+    type: object
   models.LoginRequest:
     properties:
       email:
@@ -17,6 +148,33 @@ definitions:
     required:
     - email
     - password
+    type: object
+  models.LogoutRequest:
+    properties:
+      refresh_token:
+        example: eyJhbGciOiJIUzI1NiIs...
+        type: string
+    required:
+    - refresh_token
+    type: object
+  models.PriceHistoryPoint:
+    properties:
+      fetched_at:
+        example: "2026-04-21T09:30:00Z"
+        type: string
+      price_inr:
+        example: 1499
+        type: integer
+    type: object
+  models.PriceHistoryResponse:
+    properties:
+      game_id:
+        example: 1
+        type: integer
+      history:
+        items:
+          $ref: '#/definitions/models.PriceHistoryPoint'
+        type: array
     type: object
   models.RefreshRequest:
     properties:
@@ -44,9 +202,15 @@ definitions:
       steam_id:
         example: "76561198000000000"
         type: string
+      username:
+        example: epicgamer
+        maxLength: 50
+        minLength: 3
+        type: string
     required:
     - email
     - password
+    - username
     type: object
   models.TokenResponse:
     properties:
@@ -58,6 +222,67 @@ definitions:
         type: string
       user_id:
         example: 1
+        type: integer
+    type: object
+  models.WishlistCreateRequest:
+    properties:
+      game_id:
+        type: integer
+      target_price_inr:
+        type: integer
+    type: object
+  models.WishlistItem:
+    properties:
+      cover_url:
+        example: https://example.com/cover.jpg
+        type: string
+      created_at:
+        example: "2026-04-21T09:30:00Z"
+        type: string
+      current_price_inr:
+        example: 1499
+        type: integer
+      game_id:
+        example: 1
+        type: integer
+      id:
+        example: 1
+        type: integer
+      platform:
+        example: Steam
+        type: string
+      target_price_inr:
+        example: 999
+        type: integer
+      title:
+        example: Cyberpunk 2077
+        type: string
+      triggered:
+        example: false
+        type: boolean
+      user_id:
+        example: 1
+        type: integer
+    type: object
+  models.WishlistListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/models.WishlistItem'
+        type: array
+      limit:
+        example: 20
+        type: integer
+      offset:
+        example: 0
+        type: integer
+      total:
+        example: 2
+        type: integer
+    type: object
+  models.WishlistUpdateRequest:
+    properties:
+      target_price_inr:
         type: integer
     type: object
 host: localhost:8080
@@ -95,7 +320,16 @@ paths:
       - auth
   /api/auth/logout:
     post:
+      consumes:
+      - application/json
       description: Invalidates the current refresh token in backend storage (Redis)
+      parameters:
+      - description: Refresh Token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.LogoutRequest'
       produces:
       - application/json
       responses:
@@ -103,6 +337,14 @@ paths:
           description: Logged out
           schema:
             type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
       summary: Log out
       tags:
       - auth
@@ -167,6 +409,365 @@ paths:
       summary: Register a new user
       tags:
       - auth
+  /api/deals:
+    get:
+      description: Returns paginated current active deals
+      parameters:
+      - default: 20
+        description: Page size
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Page offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.DealListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: List deals
+      tags:
+      - deals
+  /api/games:
+    get:
+      description: Returns a paginated deal grid with optional search and platform
+        filtering
+      parameters:
+      - description: Search query
+        in: query
+        name: q
+        type: string
+      - description: Platform filter
+        in: query
+        name: platform
+        type: string
+      - default: 20
+        description: Page size
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Page offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.GameListResponse'
+      summary: List games
+      tags:
+      - games
+  /api/games/{id}:
+    get:
+      description: Returns a single game record by its ID
+      parameters:
+      - description: Game ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Game'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: Get game
+      tags:
+      - games
+  /api/games/{id}/buy-advice:
+    get:
+      description: Returns intelligent buy-now or wait recommendation based on 90-day
+        price history
+      parameters:
+      - description: Game ID
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.BuyAdviceResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: Get buy timing advice
+      tags:
+      - prices
+  /api/me:
+    get:
+      description: Returns the current authenticated user ID from the JWT token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: Current user
+      tags:
+      - auth
+  /api/prices/{game_id}/history:
+    get:
+      description: Returns historical INR prices for a game ID
+      parameters:
+      - description: Game ID
+        in: path
+        name: game_id
+        required: true
+        type: integer
+      - default: 30
+        description: History points
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.PriceHistoryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: Price history
+      tags:
+      - prices
+  /api/wishlist:
+    get:
+      consumes:
+      - application/json
+      description: 'POST: Add game to wishlist | GET: List authenticated user''s wishlist'
+      parameters:
+      - description: Create request (POST only)
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/models.WishlistCreateRequest'
+      - default: 20
+        description: Page size
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Page offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.WishlistListResponse'
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.WishlistItem'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: Create or list wishlist items
+      tags:
+      - wishlist
+    post:
+      consumes:
+      - application/json
+      description: 'POST: Add game to wishlist | GET: List authenticated user''s wishlist'
+      parameters:
+      - description: Create request (POST only)
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/models.WishlistCreateRequest'
+      - default: 20
+        description: Page size
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Page offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.WishlistListResponse'
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.WishlistItem'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: Create or list wishlist items
+      tags:
+      - wishlist
+  /api/wishlist/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 'PATCH: Update target price for wishlist item | DELETE: Remove
+        item from wishlist'
+      parameters:
+      - description: Wishlist item ID
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Update request (PATCH only)
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/models.WishlistUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.WishlistItem'
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: Update or remove wishlist item
+      tags:
+      - wishlist
+    patch:
+      consumes:
+      - application/json
+      description: 'PATCH: Update target price for wishlist item | DELETE: Remove
+        item from wishlist'
+      parameters:
+      - description: Wishlist item ID
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Update request (PATCH only)
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/models.WishlistUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.WishlistItem'
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: Update or remove wishlist item
+      tags:
+      - wishlist
   /health:
     get:
       description: Check if the server is running
@@ -178,6 +779,25 @@ paths:
           schema:
             type: string
       summary: Health Check
+      tags:
+      - system
+  /health/deps:
+    get:
+      description: Check database connectivity and other core dependencies
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: Dependency Health Check
       tags:
       - system
 swagger: "2.0"

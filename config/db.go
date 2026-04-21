@@ -3,14 +3,14 @@ package config
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func ConnectDB(conString string) (*pgx.Conn, error) {
-	conn, err := pgx.Connect(context.Background(), conString)
+func ConnectDB(conString string) (*pgxpool.Pool, error) {
+	pool, err := pgxpool.New(context.Background(), conString)
 	if err != nil {
 		return nil, err
 	}
-	return conn, nil
+	return pool, nil
 
 }

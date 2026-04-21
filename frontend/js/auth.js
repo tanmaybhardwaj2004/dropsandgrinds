@@ -76,6 +76,7 @@ async function handleRegister(e) {
     e.preventDefault();
     hideError();
 
+    const username = document.getElementById('username').value;
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     const steamId = document.getElementById('steamId').value;
@@ -91,6 +92,7 @@ async function handleRegister(e) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                username,
                 email,
                 password,
                 steam_id: steamId || undefined,

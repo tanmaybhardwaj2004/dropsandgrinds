@@ -3,16 +3,23 @@ package config
 import (
 	"log"
 	"os"
+	"strconv"
 )
 
 type Config struct {
-	DatabaseURL string
-	Port        string
+	DatabaseURL           string
+	Port                  string
+	JWTSecret             string
+	AccessTokenTTLMinutes int
+	RefreshTokenTTLHours  int
 }
 
 func LoadConfig() Config {
 	dbURL := os.Getenv("DATABASE_URL")
 	port := os.Getenv("PORT")
+	jwtSecret := os.Getenv("JWT_SECRET")
+	accessTokenTTLMinutes := parseEnvInt("ACCESS_TOKEN_TTL_MINUTES", 15)
+	refreshTokenTTLHours := parseEnvInt("REFRESH_TOKEN_TTL_HOURS", 168)
 
 	if dbURL == "" {
 		log.Fatal("DATABASE_URL is not set")
@@ -20,9 +27,28 @@ func LoadConfig() Config {
 	if port == "" {
 		log.Fatal("PORT is not set")
 	}
+	if jwtSecret == "" {
+		log.Fatal("JWT_SECRET is not set")
+	}
 
 	return Config{
-		DatabaseURL: dbURL,
-		Port:        port,
+		DatabaseURL:           dbURL,
+		Port:                  port,
+		JWTSecret:             jwtSecret,
+		AccessTokenTTLMinutes: accessTokenTTLMinutes,
+		RefreshTokenTTLHours:  refreshTokenTTLHours,
 	}
+}
+
+func parseEnvInt(key string, fallback int) int {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		log.Printf("invalid %s value %q, using fallback %d", key, value, fallback)
+		return fallback
+	}
+	return parsed
 }

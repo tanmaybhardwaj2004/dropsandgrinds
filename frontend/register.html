@@ -11,7 +11,7 @@
 </head>
 <body>
     <header class="app-header">
-        <div class="logo"><a href="index.html" style="color: inherit; text-decoration: none;">DropsAndGrinds</a></div>
+        <div class="logo"><a href="index.html">DropsAndGrinds</a></div>
     </header>
 
     <main class="container auth-container">
@@ -22,6 +22,10 @@
             <div id="auth-error" class="alert error hidden"></div>
 
             <form id="register-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required minlength="3" placeholder="GamerTag99">
+                </div>
                 <div class="form-group">
                     <label for="email">Email</label>
                     <input type="email" id="email" name="email" required placeholder="player@example.com">
