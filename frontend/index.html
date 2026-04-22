@@ -22,7 +22,7 @@
         </nav>
         <div class="actions">
             <!-- Search Icon / Avatar placeholder -->
-            <button class="btn btn-primary">Login</button>
+            <button class="btn btn-primary" id="auth-btn" onclick="window.location.href='login.html'">Login</button>
         </div>
     </header>
 
@@ -63,6 +63,11 @@
                     <input type="range" id="price-slider" title="Max Price Slider" min="0" max="5000" value="5000" class="full-width">
                     <div class="price-display-text" id="price-display">₹5000</div>
                 </div>
+
+                <div class="filter-group">
+                    <label>My Wishlist</label>
+                    <div id="wishlist-preview" class="wishlist-preview">Log in to view your wishlist.</div>
+                </div>
             </aside>
 
             <!-- Deals Grid (Masonry) -->
@@ -72,6 +77,7 @@
         </div>
     </main>
 
+    <script src="js/auth.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

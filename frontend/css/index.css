@@ -184,6 +184,28 @@ nav a:hover, nav a.active {
   font-size: 0.85rem;
 }
 
+.wishlist-preview {
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.wishlist-preview ul {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.wishlist-preview li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 /* Pinterest-style Deal Grid */
 .deals-grid {
   column-count: 3;
@@ -207,6 +229,7 @@ nav a:hover, nav a.active {
   border-radius: 12px;
   border: 1px solid #30363d;
   overflow: hidden;
+  cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   break-inside: avoid; /* Prevents card from breaking across columns */
   margin-bottom: 24px;

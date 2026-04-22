@@ -7,7 +7,12 @@ let authState = {
     isAuthenticated: false
 };
 
+// Expose state for cross-script reads in same page context.
+window.authState = authState;
+
 document.addEventListener('DOMContentLoaded', () => {
+    hydrateAuthState();
+
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');
 
@@ -126,7 +131,32 @@ function setAuthTokens(access, refresh, userId) {
     authState.refreshToken = refresh;
     authState.userId = userId;
     authState.isAuthenticated = true;
+    window.authState = authState;
+
+    // Keep tokens for tab/session navigation between static HTML pages.
+    sessionStorage.setItem('dropsandgrinds_access_token', access);
+    sessionStorage.setItem('dropsandgrinds_refresh_token', refresh);
+    sessionStorage.setItem('dropsandgrinds_user_id', String(userId));
+    sessionStorage.setItem('dropsandgrinds_is_authenticated', 'true');
+
     console.log("Tokens stored securely in memory.");
+}
+
+function hydrateAuthState() {
+    const access = sessionStorage.getItem('dropsandgrinds_access_token');
+    const refresh = sessionStorage.getItem('dropsandgrinds_refresh_token');
+    const userID = sessionStorage.getItem('dropsandgrinds_user_id');
+    const isAuthenticated = sessionStorage.getItem('dropsandgrinds_is_authenticated') === 'true';
+
+    if (!access || !refresh || !userID || !isAuthenticated) {
+        return;
+    }
+
+    authState.accessToken = access;
+    authState.refreshToken = refresh;
+    authState.userId = Number(userID);
+    authState.isAuthenticated = true;
+    window.authState = authState;
 }
 
 // Auto-refresh mechanism (if an active session exists in memory)
@@ -160,5 +190,12 @@ function handleLogout() {
         userId: null,
         isAuthenticated: false
     };
+    window.authState = authState;
+
+    sessionStorage.removeItem('dropsandgrinds_access_token');
+    sessionStorage.removeItem('dropsandgrinds_refresh_token');
+    sessionStorage.removeItem('dropsandgrinds_user_id');
+    sessionStorage.removeItem('dropsandgrinds_is_authenticated');
+
     window.location.href = 'login.html';
 }

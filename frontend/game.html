@@ -21,7 +21,7 @@
             </ul>
         </nav>
         <div class="actions">
-            <button class="btn btn-primary" onclick="window.location.href='login.html'">Login</button>
+            <button class="btn btn-primary" id="auth-btn" onclick="window.location.href='login.html'">Login</button>
         </div>
     </header>
 
@@ -33,7 +33,10 @@
             <div class="hero-details">
                 <div class="title-row">
                     <h1 id="game-title">Cyberpunk 2077</h1>
-                    <button class="btn btn-wishlist" id="wishlist-btn">♥ Add to Wishlist</button>
+                    <div class="wishlist-actions">
+                        <input type="number" id="target-price-input" class="target-price-input" min="1" step="1" value="999" title="Target Price in INR" placeholder="Target ₹">
+                        <button class="btn btn-wishlist" id="wishlist-btn">♥ Add to Wishlist</button>
+                    </div>
                 </div>
                 <div class="tags">
                     <span class="tag">RPG</span>
@@ -129,6 +132,7 @@
         </section>
     </main>
 
+    <script src="js/auth.js"></script>
     <script src="js/game.js"></script>
 </body>
 </html>

@@ -1,29 +1,15 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log("DropsAndGrinds App Loaded");
-    
-    // Check backend health
-    fetch('/health')
-        .then(res => res.text())
-        .then(data => console.log("Backend Status:", data))
-        .catch(err => console.error("Backend not reachable:", err));
-        
     initApp();
 });
 
-// Hardcoded Mock Dataset (Normally fetched from /api/games)
-const mockDeals = [
-    { id: 1, title: "Cyberpunk 2077", cover: "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1091500/header.jpg", store: "Steam", price: 1499, original: 2999, discount: 50, score: 86, isGSTAdded: true },
-    { id: 2, title: "Elden Ring", cover: "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1245620/header.jpg", store: "Steam", price: 2399, original: 3999, discount: 40, score: 96, isGSTAdded: true },
-    { id: 3, title: "Alan Wake", cover: "https://cdn2.unrealengine.com/egs-alanwakeRemastered-remedyentertainment-s2-1200x1600-b6f4e150f584.jpg", store: "Epic Games", price: 450, original: 1500, discount: 70, score: 83, isGSTAdded: false },
-    { id: 4, title: "The Witcher 3", cover: "https://images.gog-statics.com/1445585698466185bb212ae17d45e5df5a36371c10787a740703e2c340d12e8b_glx_logo_284x400.png", store: "GOG", price: 299, original: 999, discount: 70, score: 93, isGSTAdded: false },
-    { id: 5, title: "Red Dead Redemption 2", cover: "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1174180/header.jpg", store: "Steam", price: 999, original: 3199, discount: 69, score: 97, isGSTAdded: true },
-    { id: 6, title: "Hades", cover: "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1145360/header.jpg", store: "Epic Games", price: 549, original: 1099, discount: 50, score: 93, isGSTAdded: false },
-    { id: 7, title: "Stardew Valley", cover: "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/413150/header.jpg", store: "Steam", price: 384, original: 479, discount: 20, score: 89, isGSTAdded: true },
-    { id: 8, title: "Control", cover: "https://images.gog-statics.com/97adbbdcdab1889814c8d5c4142f2edab2838bed820d885b546bed1d5a711422_glx_logo_284x400.png", store: "GOG", price: 899, original: 2999, discount: 70, score: 85, isGSTAdded: false },
-];
+let allDeals = [];
 
-function initApp() {
-    renderDeals(mockDeals);
+async function initApp() {
+    initAuthButton();
+    await checkHealth();
+    await loadDeals();
+    await loadWishlistPreview();
 
     // Attach Event Listeners to Filters
     const filters = ['store-steam', 'store-epic', 'store-gog'];
@@ -42,6 +28,122 @@ function initApp() {
     searchInput.addEventListener('input', updateFilters);
 }
 
+function initAuthButton() {
+    const btn = document.getElementById('auth-btn');
+    if (!btn) return;
+
+    const token = getAccessToken();
+    if (!token) {
+        btn.textContent = 'Login';
+        btn.onclick = () => {
+            window.location.href = 'login.html';
+        };
+        return;
+    }
+
+    btn.textContent = 'Logout';
+    btn.onclick = () => {
+        sessionStorage.removeItem('dropsandgrinds_access_token');
+        sessionStorage.removeItem('dropsandgrinds_refresh_token');
+        sessionStorage.removeItem('dropsandgrinds_user_id');
+        sessionStorage.removeItem('dropsandgrinds_is_authenticated');
+        window.location.href = 'login.html';
+    };
+}
+
+function getAccessToken() {
+    if (window.authState?.accessToken) {
+        return window.authState.accessToken;
+    }
+    return sessionStorage.getItem('dropsandgrinds_access_token');
+}
+
+async function loadWishlistPreview() {
+    const host = document.getElementById('wishlist-preview');
+    if (!host) return;
+
+    const token = getAccessToken();
+    if (!token) {
+        host.textContent = 'Log in to view your wishlist.';
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/wishlist?limit=5&offset=0', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        if (response.status === 401) {
+            host.textContent = 'Session expired. Please log in again.';
+            return;
+        }
+
+        const payload = await response.json();
+        if (!response.ok) {
+            throw new Error(payload.error || 'Failed to load wishlist');
+        }
+
+        const items = payload.items || [];
+        if (items.length === 0) {
+            host.textContent = 'No games in wishlist yet.';
+            return;
+        }
+
+        host.innerHTML = `<ul>${items
+            .map((item) => `<li><span>${item.title}</span><span>₹${item.target_price_inr}</span></li>`)
+            .join('')}</ul>`;
+    } catch (error) {
+        host.textContent = 'Could not load wishlist.';
+        console.error(error);
+    }
+}
+
+async function checkHealth() {
+    try {
+        const response = await fetch('/health');
+        if (!response.ok) {
+            console.warn('Health check returned non-200 status');
+        }
+    } catch (err) {
+        console.error('Backend not reachable:', err);
+    }
+}
+
+async function loadDeals() {
+    const container = document.getElementById('deals-container');
+    container.innerHTML = '<p style="color: var(--text-muted); grid-column: 1/-1;">Loading live deals...</p>';
+
+    try {
+        const response = await fetch('/api/deals?limit=100&offset=0');
+        const payload = await response.json();
+        if (!response.ok) {
+            throw new Error(payload.error || 'Failed to fetch deals');
+        }
+
+        allDeals = (payload.deals || []).map((deal) => ({
+            id: deal.id,
+            title: deal.title,
+            cover: deal.cover_url || '',
+            store: deal.platform || 'Store',
+            price: deal.price_inr || 0,
+            lowestPrice: deal.lowest_price_inr || 0,
+            original: deal.original_inr || 0,
+            discount: deal.discount_percent || 0,
+            score: deal.review_score || 0,
+            status: deal.deal_status || '',
+            savings: deal.potential_savings_inr || 0,
+            isGSTAdded: true
+        }));
+
+        renderDeals(allDeals);
+    } catch (error) {
+        container.innerHTML = '<p style="color: #ff7b72; grid-column: 1/-1;">Failed to load deals from API. Please try again.</p>';
+        console.error(error);
+    }
+}
+
 function updateFilters() {
     const steamChecked = document.getElementById('store-steam').checked;
     const epicChecked = document.getElementById('store-epic').checked;
@@ -49,7 +151,7 @@ function updateFilters() {
     const maxPrice = parseInt(document.getElementById('price-slider').value);
     const searchTerm = document.getElementById('search-input').value.toLowerCase();
 
-    const filtered = mockDeals.filter(deal => {
+    const filtered = allDeals.filter(deal => {
         // Store filter
         if (deal.store === "Steam" && !steamChecked) return false;
         if (deal.store === "Epic Games" && !epicChecked) return false;
@@ -79,6 +181,9 @@ function renderDeals(dealsArray) {
     dealsArray.forEach(deal => {
         const card = document.createElement('div');
         card.className = 'deal-card';
+        card.addEventListener('click', () => {
+            window.location.href = `game.html?id=${deal.id}`;
+        });
         
         card.innerHTML = `
             <img src="${deal.cover}" class="deal-cover" alt="${deal.title} cover">
@@ -94,6 +199,10 @@ function renderDeals(dealsArray) {
                         <span style="text-decoration: line-through; color: var(--text-muted); font-size: 0.8rem; display: block;">₹${deal.original}</span>
                         <span class="price">₹${deal.price}</span>
                     </div>
+                </div>
+                <div class="meta-row" style="margin-top: 10px;">
+                    <span>Best: ₹${deal.lowestPrice}</span>
+                    <span>${deal.status ? deal.status.toUpperCase() : 'DEAL'}</span>
                 </div>
             </div>
         `;
