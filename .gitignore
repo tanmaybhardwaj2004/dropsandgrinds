@@ -14,7 +14,11 @@ bin/
 
 #ignore Test/Build artifacts
 *.test
-*.out
 
 #vendor
 vendor/
+
+# Specific documents to ignore
+Patent Format.pdf
+patent_format_text.txt
+Patent.docx
