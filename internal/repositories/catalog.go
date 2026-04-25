@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/models"
@@ -255,4 +256,110 @@ func (r *CatalogRepository) GetPriceHistory(ctx context.Context, gameID int64, l
 	}
 
 	return history, nil
+}
+
+// InsertPrice adds a new price entry for a game
+func (r *CatalogRepository) InsertPrice(ctx context.Context, gameID int64, priceINR int, store string) error {
+	query := `
+		INSERT INTO prices (game_id, price_inr, store, fetched_at)
+		VALUES ($1, $2, $3, NOW())
+	`
+	_, err := r.db.Exec(ctx, query, gameID, priceINR, store)
+	return err
+}
+
+// UpdateDeal updates or creates a deal entry for a game
+func (r *CatalogRepository) UpdateDeal(ctx context.Context, gameID int64, originalINR, discountPercent int) error {
+	query := `
+		INSERT INTO deals (game_id, original_inr, discount_percent, is_active, cached_at)
+		VALUES ($1, $2, $3, TRUE, NOW())
+		ON CONFLICT (game_id) DO UPDATE SET
+			original_inr = EXCLUDED.original_inr,
+			discount_percent = EXCLUDED.discount_percent,
+			is_active = TRUE,
+			cached_at = NOW()
+	`
+	_, err := r.db.Exec(ctx, query, gameID, originalINR, discountPercent)
+	return err
+}
+
+// GetAllGameIDs returns all game IDs for price refresh
+func (r *CatalogRepository) GetAllGameIDs(ctx context.Context) ([]int64, error) {
+	query := `SELECT id FROM games`
+	rows, err := r.db.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+
+	return ids, rows.Err()
+}
+
+// GetIndiaArbitrage calculates India vs Global pricing with GST
+func (r *CatalogRepository) GetIndiaArbitrage(ctx context.Context, gameID int64) (models.IndiaArbitrage, error) {
+	// Get current price from database
+	query := `
+		SELECT COALESCE(p.price_inr, 0) AS current_price
+		FROM games g
+		LEFT JOIN LATERAL (
+			SELECT price_inr
+			FROM prices p
+			WHERE p.game_id = g.id
+			ORDER BY p.fetched_at DESC
+			LIMIT 1
+		) p ON TRUE
+		WHERE g.id = $1
+	`
+
+	var currentPrice int
+	err := r.db.QueryRow(ctx, query, gameID).Scan(&currentPrice)
+	if err != nil {
+		return models.IndiaArbitrage{}, err
+	}
+
+	// For MVP: use current price as India price, simulate global price
+	// In production: fetch actual Steam India and Global prices from API
+	steamIndiaPrice := currentPrice
+	steamGlobalPrice := currentPrice * 8 // Simulate global price in USD
+	usdToINR := 83.0
+	steamGlobalINR := int(float64(steamGlobalPrice) * usdToINR)
+	gstRate := 0.18
+	gstAmount := int(float64(steamGlobalINR) * gstRate)
+	totalWithGST := steamGlobalINR + gstAmount
+
+	// Determine cheapest region
+	cheapestRegion := "India"
+	if steamIndiaPrice > totalWithGST {
+		cheapestRegion = "Global"
+	}
+
+	// Generate verdict
+	verdict := ""
+	if cheapestRegion == "India" {
+		savings := totalWithGST - steamIndiaPrice
+		verdict = fmt.Sprintf("Buy from India - saves ₹%d", savings)
+	} else {
+		savings := steamIndiaPrice - totalWithGST
+		verdict = fmt.Sprintf("Buy from Global - saves ₹%d", savings)
+	}
+
+	return models.IndiaArbitrage{
+		GameID:           gameID,
+		SteamIndiaPrice:  steamIndiaPrice,
+		SteamGlobalPrice: steamGlobalPrice,
+		SteamGlobalINR:   steamGlobalINR,
+		GSTAmount:        gstAmount,
+		TotalWithGST:     totalWithGST,
+		CheapestRegion:   cheapestRegion,
+		Verdict:          verdict,
+	}, nil
 }

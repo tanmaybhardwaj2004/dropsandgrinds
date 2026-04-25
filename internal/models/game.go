@@ -43,3 +43,14 @@ type PriceHistoryResponse struct {
 	GameID  int64               `json:"game_id" example:"1"`
 	History []PriceHistoryPoint `json:"history"`
 }
+
+type IndiaArbitrage struct {
+	GameID           int64  `json:"game_id" example:"1"`
+	SteamIndiaPrice  int    `json:"steam_india_price" example:"1499"`
+	SteamGlobalPrice int    `json:"steam_global_price" example:"1499"`
+	SteamGlobalINR   int    `json:"steam_global_inr" example:"12500"`
+	GSTAmount        int    `json:"gst_amount" example:"225"`
+	TotalWithGST     int    `json:"total_with_gst" example:"12725"`
+	CheapestRegion   string `json:"cheapest_region" example:"India"`
+	Verdict          string `json:"verdict" example:"Buy from India - saves ₹11225"`
+}

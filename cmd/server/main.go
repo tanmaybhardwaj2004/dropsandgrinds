@@ -17,6 +17,7 @@ import (
 	_ "github.com/tanmaybhardwaj2004/dropsandgrinds/docs"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/handlers"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/repositories"
+	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/scheduler"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/services"
 )
 
@@ -36,6 +37,13 @@ func main() {
 	}
 	defer conn.Close()
 	handlers.SetDBPool(conn)
+
+	redisClient, err := config.NewRedisClient(cfg.RedisURL)
+	if err != nil {
+		log.Fatal("Failed to connect to Redis:", err)
+	}
+	defer redisClient.Close()
+
 	catalogRepo := repositories.NewCatalogRepository(conn)
 	gamesService := services.NewGamesService(catalogRepo)
 	handlers.SetGamesService(gamesService)
@@ -55,7 +63,18 @@ func main() {
 
 	log.Println("Database connected successfully")
 
-	wrappedHandler := newHTTPHandler(logger, cfg)
+	// Initialize and start scheduler
+	sched := scheduler.New(logger)
+	sched.AddJob(scheduler.Job{
+		Name:     "price-refresh",
+		Interval: 15 * time.Minute,
+		Run:      scheduler.PriceRefreshJob(catalogRepo, logger),
+	})
+
+	sched.Start(context.Background())
+	defer sched.Stop()
+
+	wrappedHandler := newHTTPHandler(logger, cfg, redisClient)
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           wrappedHandler,

@@ -8,6 +8,7 @@ import (
 
 type Config struct {
 	DatabaseURL           string
+	RedisURL              string
 	Port                  string
 	JWTSecret             string
 	AccessTokenTTLMinutes int
@@ -16,6 +17,7 @@ type Config struct {
 
 func LoadConfig() Config {
 	dbURL := os.Getenv("DATABASE_URL")
+	redisURL := os.Getenv("REDIS_URL")
 	port := os.Getenv("PORT")
 	jwtSecret := os.Getenv("JWT_SECRET")
 	accessTokenTTLMinutes := parseEnvInt("ACCESS_TOKEN_TTL_MINUTES", 15)
@@ -30,9 +32,14 @@ func LoadConfig() Config {
 	if jwtSecret == "" {
 		log.Fatal("JWT_SECRET is not set")
 	}
+	if redisURL == "" {
+		redisURL = "localhost:6379"
+		log.Printf("REDIS_URL not set, using default: %s", redisURL)
+	}
 
 	return Config{
 		DatabaseURL:           dbURL,
+		RedisURL:              redisURL,
 		Port:                  port,
 		JWTSecret:             jwtSecret,
 		AccessTokenTTLMinutes: accessTokenTTLMinutes,

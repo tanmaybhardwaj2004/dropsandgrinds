@@ -14,6 +14,7 @@ bin/
 
 #ignore Test/Build artifacts
 *.test
+*.out
 
 #vendor
 vendor/
@@ -22,3 +23,7 @@ vendor/
 Patent Format.pdf
 patent_format_text.txt
 Patent.docx
+
+# AI agent configs
+.agents/
+.windsurfrules

@@ -13,6 +13,7 @@ type CatalogStore interface {
 	GetGameByID(ctx context.Context, id int64) (models.Game, bool, error)
 	ListDeals(ctx context.Context, limit, offset int) ([]models.Deal, int, error)
 	GetPriceHistory(ctx context.Context, gameID int64, limit int) ([]models.PriceHistoryPoint, error)
+	GetIndiaArbitrage(ctx context.Context, gameID int64) (models.IndiaArbitrage, error)
 }
 
 type GameFilter struct {
@@ -135,6 +136,19 @@ func (s *GamesService) GetPriceHistory(ctx context.Context, gameID int64, limit 
 	}
 
 	return models.PriceHistoryResponse{GameID: gameID, History: history}, nil
+}
+
+func (s *GamesService) GetIndiaArbitrage(ctx context.Context, gameID int64) (models.IndiaArbitrage, error) {
+	if gameID <= 0 {
+		return models.IndiaArbitrage{}, &ServiceError{StatusCode: 400, Message: "Invalid game id"}
+	}
+
+	arbitrage, err := s.repo.GetIndiaArbitrage(ctx, gameID)
+	if err != nil {
+		return models.IndiaArbitrage{}, &ServiceError{StatusCode: 500, Message: "Failed to fetch India arbitrage data"}
+	}
+
+	return arbitrage, nil
 }
 
 func (s *GamesService) GetBuyAdvice(ctx context.Context, gameID int64) (models.BuyAdviceResponse, error) {

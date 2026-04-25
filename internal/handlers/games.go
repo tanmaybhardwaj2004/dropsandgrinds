@@ -188,3 +188,46 @@ func PriceHistoryHandler(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, response)
 }
+
+// IndiaArbitrageHandler returns India vs Global pricing comparison with GST.
+// @Summary      India arbitrage
+// @Description  Compares Steam India price vs Global price with GST breakdown
+// @Tags         prices
+// @Produce      json
+// @Param        game_id  path  int  true  "Game ID"
+// @Success      200      {object}  models.IndiaArbitrage
+// @Failure      400      {object}  models.APIError
+// @Failure      500      {object}  models.APIError
+// @Router       /api/prices/{game_id}/india [get]
+func IndiaArbitrageHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, models.APIError{Error: "Method not allowed"})
+		return
+	}
+	if gamesService == nil {
+		writeJSON(w, http.StatusInternalServerError, models.APIError{Error: "Games service not initialized"})
+		return
+	}
+
+	const prefix = "/api/prices/"
+	const suffix = "/india"
+	if !strings.HasPrefix(r.URL.Path, prefix) || !strings.HasSuffix(r.URL.Path, suffix) {
+		writeJSON(w, http.StatusBadRequest, models.APIError{Error: "Invalid prices path"})
+		return
+	}
+
+	middle := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, prefix), suffix)
+	gameID, err := strconv.ParseInt(strings.Trim(middle, "/"), 10, 64)
+	if err != nil || gameID <= 0 {
+		writeJSON(w, http.StatusBadRequest, models.APIError{Error: "Invalid game id"})
+		return
+	}
+
+	response, err := gamesService.GetIndiaArbitrage(r.Context(), gameID)
+	if err != nil {
+		writeServiceError(w, err, "Failed to fetch India arbitrage data")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, response)
+}

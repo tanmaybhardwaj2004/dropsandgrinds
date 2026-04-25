@@ -1,30 +1,20 @@
 package middleware
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/models"
 )
 
-type rateEntry struct {
-	windowStart time.Time
-	count       int
-}
-
-type rateStore struct {
-	mu      sync.Mutex
-	entries map[string]*rateEntry
-}
-
-var globalRateStore = &rateStore{entries: make(map[string]*rateEntry)}
-
-// RateLimit applies a simple per-IP request ceiling over a fixed window.
-func RateLimit(next http.Handler, maxRequests int, window time.Duration) http.Handler {
+// RateLimit applies a Redis-based per-IP request ceiling over a fixed window.
+func RateLimit(redisClient *redis.Client, maxRequests int, window time.Duration) func(http.Handler) http.Handler {
 	if maxRequests <= 0 {
 		maxRequests = 60
 	}
@@ -32,38 +22,42 @@ func RateLimit(next http.Handler, maxRequests int, window time.Duration) http.Ha
 		window = time.Minute
 	}
 
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		clientIP := resolveClientIP(r)
-		if clientIP == "" {
-			clientIP = "unknown"
-		}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			clientIP := resolveClientIP(r)
+			if clientIP == "" {
+				clientIP = "unknown"
+			}
 
-		if !allowRequest(clientIP, maxRequests, window) {
-			writeRateLimitError(w)
-			return
-		}
+			ctx := context.Background()
+			key := fmt.Sprintf("ratelimit:%s", clientIP)
 
-		next.ServeHTTP(w, r)
-	})
-}
+			// Get current count
+			count, err := redisClient.Get(ctx, key).Int()
+			if err != nil && err != redis.Nil {
+				// If Redis fails, allow request (fail open)
+				next.ServeHTTP(w, r)
+				return
+			}
 
-func allowRequest(ip string, maxRequests int, window time.Duration) bool {
-	now := time.Now().UTC()
-	globalRateStore.mu.Lock()
-	defer globalRateStore.mu.Unlock()
+			// Check if limit exceeded
+			if count >= maxRequests {
+				writeRateLimitError(w)
+				return
+			}
 
-	entry, ok := globalRateStore.entries[ip]
-	if !ok || now.Sub(entry.windowStart) >= window {
-		globalRateStore.entries[ip] = &rateEntry{windowStart: now, count: 1}
-		return true
+			// Increment counter with expiration
+			if count == 0 {
+				// First request in window, set with expiration
+				redisClient.Set(ctx, key, 1, window)
+			} else {
+				// Increment existing
+				redisClient.Incr(ctx, key)
+			}
+
+			next.ServeHTTP(w, r)
+		})
 	}
-
-	if entry.count >= maxRequests {
-		return false
-	}
-
-	entry.count++
-	return true
 }
 
 func resolveClientIP(r *http.Request) string {

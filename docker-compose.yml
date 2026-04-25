@@ -13,5 +13,56 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  redis:
+    image: redis:7-alpine
+    
+    ports:
+      - "6379:6379"
+    
+    volumes:
+      - redisdata:/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      REDIS_URL: redis:6379
+      PORT: 8080
+      JWT_SECRET: ${JWT_SECRET}
+      ACCESS_TOKEN_TTL_MINUTES: 15
+      REFRESH_TOKEN_TTL_HOURS: 168
+    
+    depends_on:
+      - postgres
+      - redis
+    
+    expose:
+      - "8080"
+    
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./docker/frontend
+      dockerfile: Dockerfile
+    
+    ports:
+      - "80:80"
+    
+    depends_on:
+      - backend
+    
+    networks:
+      - app-network
+
 volumes:
   pgdata:
+  redisdata:
+
+networks:
+  app-network:
+    driver: bridge
