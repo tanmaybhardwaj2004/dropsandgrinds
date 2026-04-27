@@ -8,16 +8,17 @@
     <!-- Google Fonts: Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/consent.css">
 </head>
 <body>
     <header class="app-header">
         <div class="logo">DropsAndGrinds</div>
         <nav>
             <ul>
-                <li><a href="#" class="active">Deals</a></li>
-                <li><a href="#">Library</a></li>
-                <li><a href="#">Bundle Breaker</a></li>
-                <li><a href="#">Dashboard</a></li>
+                <li><a href="index.html" class="active">Deals</a></li>
+                <li><a href="library.html">Library</a></li>
+                <li><a href="wishlist.html">Wishlist</a></li>
+                <li><a href="savings.html">Savings</a></li>
             </ul>
         </nav>
         <div class="actions">
@@ -28,9 +29,21 @@
 
     <main class="container">
         <!-- Hero Section / Live sale banner -->
-        <section class="banner">
-            <h2>Live: Steam Spring Sale 2026</h2>
-            <p>Ending March 26. 47 games on your wishlist are discounted!</p>
+        <section id="live-sale-banner" class="banner" style="display: none;">
+            <h2 id="sale-banner-title">Loading...</h2>
+            <p id="sale-banner-message">Loading sale information...</p>
+        </section>
+
+        <!-- Deals For You Section (Phase 4) -->
+        <section id="deals-for-you-section" style="display: none;">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Deals For You</h2>
+                    <p class="section-subtitle">Personalized based on your wishlist and preferences</p>
+                </div>
+                <a href="#" class="view-all-btn">View All →</a>
+            </div>
+            <div id="deals-for-you-container"></div>
         </section>
 
         <div class="layout-wrapper">
@@ -65,6 +78,13 @@
                 </div>
 
                 <div class="filter-group">
+                    <div class="filter-item">
+                        <input type="checkbox" id="hide-owned" value="hide-owned">
+                        <label for="hide-owned">Hide owned games</label>
+                    </div>
+                </div>
+
+                <div class="filter-group">
                     <label>My Wishlist</label>
                     <div id="wishlist-preview" class="wishlist-preview">Log in to view your wishlist.</div>
                 </div>
@@ -78,6 +98,7 @@
     </main>
 
     <script src="js/auth.js"></script>
+    <script src="js/consent.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

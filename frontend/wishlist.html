@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wishlist - DropsAndGrinds</title>
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/wishlist.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1 class="logo">DropsAndGrinds</h1>
+            <nav class="nav">
+                <a href="index.html" class="nav-link">Deals</a>
+                <a href="library.html" class="nav-link">Library</a>
+                <a href="wishlist.html" class="nav-link active">Wishlist</a>
+            </nav>
+            <div class="auth-buttons">
+                <button id="login-btn" class="btn btn-primary">Login</button>
+                <button id="logout-btn" class="btn btn-secondary" style="display: none;">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="wishlist-section">
+            <h2 class="section-title">My Wishlist</h2>
+            <p class="section-subtitle">Track games you want to buy and get alerted when prices drop</p>
+
+            <div id="wishlist-container" class="wishlist-grid">
+                <!-- Wishlist items will be populated here -->
+            </div>
+
+            <div id="empty-state" class="empty-state" style="display: none;">
+                <div class="empty-icon">📋</div>
+                <h3>Your wishlist is empty</h3>
+                <p>Browse deals and add games to your wishlist to track prices.</p>
+                <a href="index.html" class="btn btn-primary">Browse Deals</a>
+            </div>
+
+            <div id="loading-state" class="loading-state" style="display: none;">
+                <div class="skeleton-card"><div class="skeleton-cover"></div><div class="skeleton-info"><div class="skeleton-line"></div></div></div>
+                <div class="skeleton-card"><div class="skeleton-cover"></div><div class="skeleton-info"><div class="skeleton-line"></div></div></div>
+                <div class="skeleton-card"><div class="skeleton-cover"></div><div class="skeleton-info"><div class="skeleton-line"></div></div></div>
+            </div>
+
+            <div id="error-state" class="error-state" style="display: none;">
+                <div class="error-icon">⚠️</div>
+                <h3>Failed to load wishlist</h3>
+                <p>There was an error loading your wishlist. Please try again.</p>
+                <button class="btn btn-primary" onclick="loadWishlist()">Retry</button>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/auth.js"></script>
+    <script src="js/wishlist.js"></script>
+</body>
+</html>

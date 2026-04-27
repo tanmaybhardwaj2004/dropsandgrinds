@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bundle Breaker - DropsAndGrinds</title>
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/bundle.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1 class="logo">DropsAndGrinds</h1>
+            <nav class="nav">
+                <a href="index.html" class="nav-link">Deals</a>
+                <a href="library.html" class="nav-link">Library</a>
+                <a href="wishlist.html" class="nav-link">Wishlist</a>
+                <a href="savings.html" class="nav-link">Savings</a>
+                <a href="bundle.html" class="nav-link active">Bundle Breaker</a>
+            </nav>
+            <div class="auth-buttons">
+                <button id="login-btn" class="btn btn-primary">Login</button>
+                <button id="logout-btn" class="btn btn-secondary" style="display: none;">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="bundle-section">
+            <h2 class="section-title">Bundle Breaker</h2>
+            <p class="section-subtitle">Paste a bundle URL to see if it's worth buying</p>
+
+            <div class="bundle-input-card">
+                <form id="bundle-form" class="bundle-form">
+                    <div class="form-group">
+                        <label for="bundle-url">Bundle URL</label>
+                        <input type="url" id="bundle-url" name="url" required placeholder="https://www.humblebundle.com/..." class="url-input">
+                        <small class="form-hint">Supports Humble Bundle, Fanatical, and Steam bundles</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="bundle-price">Bundle Price (₹)</label>
+                        <input type="number" id="bundle-price" name="bundle_price_inr" required min="0" step="0.01" placeholder="Enter bundle price">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Analyze Bundle</button>
+                </form>
+            </div>
+
+            <div id="loading-state" class="loading-state" style="display: none;">
+                <div class="spinner"></div>
+                <p>Analyzing bundle...</p>
+            </div>
+
+            <div id="error-state" class="error-state" style="display: none;">
+                <div class="error-icon">⚠️</div>
+                <h3>Analysis Failed</h3>
+                <p id="error-message">There was an error analyzing the bundle.</p>
+                <button class="btn btn-primary" onclick="document.getElementById('bundle-form').reset()">Try Again</button>
+            </div>
+
+            <div id="results-container" class="results-container" style="display: none;">
+                <div id="verdict-banner" class="verdict-banner"></div>
+
+                <div class="bundle-summary">
+                    <div class="summary-item">
+                        <div class="summary-label">Bundle Name</div>
+                        <div class="summary-value" id="bundle-name">-</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Bundle Price</div>
+                        <div class="summary-value" id="bundle-price-display">₹0</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Individual Sum</div>
+                        <div class="summary-value" id="individual-sum">₹0</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Savings</div>
+                        <div class="summary-value savings-value" id="savings">₹0</div>
+                    </div>
+                </div>
+
+                <div class="games-table-container">
+                    <h3>Games in Bundle</h3>
+                    <table class="games-table">
+                        <thead>
+                            <tr>
+                                <th>Game Title</th>
+                                <th>Current Price</th>
+                                <th>Bundle Share</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="games-table-body">
+                            <!-- Games will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/auth.js"></script>
+    <script src="js/bundle.js"></script>
+</body>
+</html>

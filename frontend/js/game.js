@@ -3,6 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initGamePage();
 });
 
+let priceChart = null;
+
 async function initGamePage() {
     const gameID = getGameIDFromURL();
     if (!gameID) {
@@ -11,8 +13,163 @@ async function initGamePage() {
     }
 
     initAuthButton();
-    await Promise.all([loadGameDetails(gameID), loadBuyAdvice(gameID)]);
+    await Promise.all([
+        loadGameDetails(gameID), 
+        loadBuyAdvice(gameID),
+        loadPriceHistory(gameID),
+        loadReviewScores(gameID)
+    ]);
     initWishlistButton(gameID);
+}
+
+async function loadPriceHistory(gameID) {
+    try {
+        const response = await fetch(`/api/prices/${gameID}/history?limit=30`);
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to load price history');
+        }
+
+        renderPriceChart(data.prices || []);
+    } catch (error) {
+        console.error('Failed to load price history:', error);
+        document.getElementById('price-chart-container').innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);">
+                Price history unavailable
+            </div>
+        `;
+    }
+}
+
+function renderPriceChart(prices) {
+    const ctx = document.getElementById('priceChart');
+    if (!ctx) return;
+
+    const labels = prices.map(p => new Date(p.fetched_at).toLocaleDateString());
+    const dataPoints = prices.map(p => p.price_inr);
+
+    // Destroy existing chart if present
+    if (priceChart) {
+        priceChart.destroy();
+    }
+
+    priceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Price (₹)',
+                data: dataPoints,
+                borderColor: '#58a6ff',
+                backgroundColor: 'rgba(88, 166, 255, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4,
+                pointBackgroundColor: '#58a6ff',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#161b22',
+                    titleColor: '#c9d1d9',
+                    bodyColor: '#c9d1d9',
+                    borderColor: '#30363d',
+                    borderWidth: 1,
+                    callbacks: {
+                        label: (context) => `₹${context.parsed.y}`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: '#21262d' },
+                    ticks: { color: '#8b949e', maxTicksLimit: 6 }
+                },
+                y: {
+                    grid: { color: '#21262d' },
+                    ticks: { 
+                        color: '#8b949e',
+                        callback: (value) => `₹${value}`
+                    }
+                }
+            }
+        }
+    });
+}
+
+async function loadReviewScores(gameID) {
+    try {
+        const response = await fetch(`/api/games/${gameID}/reviews`);
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to load review scores');
+        }
+
+        renderReviewScores(data);
+    } catch (error) {
+        console.error('Failed to load review scores:', error);
+        document.getElementById('review-aggregate').innerHTML = `
+            <div style="color:var(--text-muted);padding:32px;">Review scores unavailable</div>
+        `;
+    }
+}
+
+function getScoreColor(score) {
+    if (score >= 85) return 'green';
+    if (score >= 70) return 'amber';
+    if (score >= 50) return 'orange';
+    return 'red';
+}
+
+function renderReviewScores(data) {
+    const scoreRing = document.getElementById('review-score-ring');
+    const scoreEl = document.getElementById('review-score');
+    const labelEl = document.getElementById('review-label');
+    const countEl = document.getElementById('review-source-count');
+    const sourcesContainer = document.getElementById('review-sources');
+
+    if (!data.score || data.score === 0) {
+        scoreRing.className = 'score-ring gray';
+        scoreEl.textContent = '--';
+        labelEl.textContent = 'No reviews yet';
+        countEl.textContent = '';
+        sourcesContainer.innerHTML = '';
+        return;
+    }
+
+    const color = getScoreColor(data.score);
+    scoreRing.className = `score-ring ${color}`;
+    scoreEl.textContent = data.score;
+    labelEl.textContent = data.label || 'Mixed';
+    countEl.textContent = `Based on ${data.source_count || 0} review sources`;
+
+    if (data.sources && data.sources.length > 0) {
+        sourcesContainer.innerHTML = data.sources.map(source => {
+            const sourceColor = getScoreColor(source.score);
+            return `
+                <div class="source-item">
+                    <span class="source-name">${capitalizeFirst(source.source)}</span>
+                    <div class="source-score">
+                        <div class="source-bar">
+                            <div class="source-bar-fill ${sourceColor}" style="width: ${source.score}%"></div>
+                        </div>
+                        <span class="source-value">${source.score}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+}
+
+function capitalizeFirst(str) {
+    return str.replace(/\b\w/g, l => l.toUpperCase());
 }
 
 function getGameIDFromURL() {

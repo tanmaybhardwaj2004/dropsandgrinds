@@ -9,18 +9,20 @@ import (
 )
 
 type CatalogStore interface {
-	ListGames(ctx context.Context, query, platform string, limit, offset int) ([]models.Game, int, error)
+	ListGames(ctx context.Context, query, platform string, limit, offset int, excludeOwned bool, userID int64) ([]models.Game, int, error)
 	GetGameByID(ctx context.Context, id int64) (models.Game, bool, error)
 	ListDeals(ctx context.Context, limit, offset int) ([]models.Deal, int, error)
-	GetPriceHistory(ctx context.Context, gameID int64, limit int) ([]models.PriceHistoryPoint, error)
+	GetPriceHistory(ctx context.Context, gameID int64, limit, offset int) ([]models.PriceHistoryPoint, error)
 	GetIndiaArbitrage(ctx context.Context, gameID int64) (models.IndiaArbitrage, error)
 }
 
 type GameFilter struct {
-	Query    string
-	Platform string
-	Limit    int
-	Offset   int
+	Query        string
+	Platform     string
+	Limit        int
+	Offset       int
+	ExcludeOwned bool
+	UserID       int64
 }
 
 type GamesService struct {
@@ -47,7 +49,7 @@ func (s *GamesService) ListGames(ctx context.Context, filter GameFilter) (models
 	query := strings.ToLower(strings.TrimSpace(filter.Query))
 	platform := strings.ToLower(strings.TrimSpace(filter.Platform))
 
-	games, total, err := s.repo.ListGames(ctx, query, platform, limit, offset)
+	games, total, err := s.repo.ListGames(ctx, query, platform, limit, offset, filter.ExcludeOwned, filter.UserID)
 	if err != nil {
 		return models.GameListResponse{}, &ServiceError{StatusCode: 500, Message: "Failed to list games"}
 	}
@@ -119,7 +121,7 @@ func evaluateDeal(deal models.Deal) (string, int) {
 	return "poor", savings
 }
 
-func (s *GamesService) GetPriceHistory(ctx context.Context, gameID int64, limit int) (models.PriceHistoryResponse, error) {
+func (s *GamesService) GetPriceHistory(ctx context.Context, gameID int64, limit, offset int) (models.PriceHistoryResponse, error) {
 	if gameID <= 0 {
 		return models.PriceHistoryResponse{}, &ServiceError{StatusCode: 400, Message: "Invalid game id"}
 	}
@@ -130,7 +132,7 @@ func (s *GamesService) GetPriceHistory(ctx context.Context, gameID int64, limit 
 		limit = 365
 	}
 
-	history, err := s.repo.GetPriceHistory(ctx, gameID, limit)
+	history, err := s.repo.GetPriceHistory(ctx, gameID, limit, offset)
 	if err != nil {
 		return models.PriceHistoryResponse{}, &ServiceError{StatusCode: 500, Message: "Failed to fetch price history"}
 	}
@@ -156,7 +158,7 @@ func (s *GamesService) GetBuyAdvice(ctx context.Context, gameID int64) (models.B
 		return models.BuyAdviceResponse{}, &ServiceError{StatusCode: 400, Message: "Invalid game id"}
 	}
 
-	history, err := s.repo.GetPriceHistory(ctx, gameID, 90)
+	history, err := s.repo.GetPriceHistory(ctx, gameID, 90, 0)
 	if err != nil {
 		return models.BuyAdviceResponse{}, &ServiceError{StatusCode: 500, Message: "Failed to fetch price history"}
 	}

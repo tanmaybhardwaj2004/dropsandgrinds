@@ -5,27 +5,71 @@ document.addEventListener('DOMContentLoaded', () => {
 
 let allDeals = [];
 
+async function loadActiveSales() {
+    try {
+        const response = await fetch('/api/sales/active');
+        const sales = await response.json();
+
+        if (!response.ok) {
+            throw new Error('Failed to load active sales');
+        }
+
+        const banner = document.getElementById('live-sale-banner');
+        const title = document.getElementById('sale-banner-title');
+        const message = document.getElementById('sale-banner-message');
+
+        if (sales && sales.length > 0) {
+            // Show the first active sale
+            const sale = sales[0];
+            const endDate = new Date(sale.end_date);
+            const daysRemaining = Math.ceil((endDate - new Date()) / (1000 * 60 * 60 * 24));
+            
+            title.textContent = `🔴 LIVE: ${sale.name}`;
+            message.textContent = `Ending in ${daysRemaining} days. Don't miss out on great deals!`;
+            banner.style.display = 'block';
+        } else {
+            // Hide banner if no active sales
+            banner.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Failed to load active sales:', error);
+        // Hide banner on error
+        const banner = document.getElementById('live-sale-banner');
+        if (banner) banner.style.display = 'none';
+    }
+}
+
 async function initApp() {
     initAuthButton();
     await checkHealth();
+    await loadActiveSales();
     await loadDeals();
     await loadWishlistPreview();
+    await loadDealsForYou();
 
     // Attach Event Listeners to Filters
     const filters = ['store-steam', 'store-epic', 'store-gog'];
     filters.forEach(id => {
-        document.getElementById(id).addEventListener('change', updateFilters);
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', updateFilters);
     });
 
     const priceSlider = document.getElementById('price-slider');
     const priceDisplay = document.getElementById('price-display');
-    priceSlider.addEventListener('input', (e) => {
-        priceDisplay.textContent = `₹${e.target.value}`;
-        updateFilters();
-    });
+    if (priceSlider) {
+        priceSlider.addEventListener('input', (e) => {
+            priceDisplay.textContent = `₹${e.target.value}`;
+            updateFilters();
+        });
+    }
     
     const searchInput = document.getElementById('search-input');
-    searchInput.addEventListener('input', updateFilters);
+    if (searchInput) searchInput.addEventListener('input', updateFilters);
+
+    const hideOwnedCheckbox = document.getElementById('hide-owned');
+    if (hideOwnedCheckbox) {
+        hideOwnedCheckbox.addEventListener('change', loadDeals);
+    }
 }
 
 function initAuthButton() {
@@ -111,12 +155,65 @@ async function checkHealth() {
     }
 }
 
+function renderSkeletons(count = 6) {
+    const container = document.getElementById('deals-container');
+    container.innerHTML = '';
+    for (let i = 0; i < count; i++) {
+        const skeleton = document.createElement('div');
+        skeleton.className = 'skeleton-card';
+        skeleton.innerHTML = `
+            <div class="skeleton-cover"></div>
+            <div class="skeleton-info">
+                <div class="skeleton-line short"></div>
+                <div class="skeleton-line medium"></div>
+                <div class="skeleton-line"></div>
+            </div>
+        `;
+        container.appendChild(skeleton);
+    }
+}
+
+function renderEmptyState(message = 'No deals found matching your criteria.') {
+    return `
+        <div class="state-container state-empty">
+            <div class="state-icon">📭</div>
+            <div class="state-title">No Deals Found</div>
+            <div class="state-message">${message}</div>
+        </div>
+    `;
+}
+
+function renderErrorState(message = 'Failed to load deals.', onRetry) {
+    return `
+        <div class="state-container state-error">
+            <div class="state-icon">⚠️</div>
+            <div class="state-title">Oops!</div>
+            <div class="state-message">${message}</div>
+            <button class="retry-btn" onclick="${onRetry}()">Try Again</button>
+        </div>
+    `;
+}
+
+function getScoreColorClass(score) {
+    if (score >= 85) return 'green';
+    if (score >= 70) return 'amber';
+    if (score >= 50) return 'orange';
+    return 'red';
+}
+
 async function loadDeals() {
     const container = document.getElementById('deals-container');
-    container.innerHTML = '<p style="color: var(--text-muted); grid-column: 1/-1;">Loading live deals...</p>';
+    renderSkeletons();
 
     try {
-        const response = await fetch('/api/deals?limit=100&offset=0');
+        const hideOwned = document.getElementById('hide-owned')?.checked || false;
+        let url = '/api/deals?limit=100&offset=0';
+        
+        if (hideOwned) {
+            url += '&exclude_owned=true';
+        }
+
+        const response = await fetch(url);
         const payload = await response.json();
         if (!response.ok) {
             throw new Error(payload.error || 'Failed to fetch deals');
@@ -139,9 +236,89 @@ async function loadDeals() {
 
         renderDeals(allDeals);
     } catch (error) {
-        container.innerHTML = '<p style="color: #ff7b72; grid-column: 1/-1;">Failed to load deals from API. Please try again.</p>';
+        container.innerHTML = renderErrorState('Failed to load deals from API. Please try again.', 'loadDeals');
         console.error(error);
     }
+}
+
+async function loadDealsForYou() {
+    const token = getAccessToken();
+    const section = document.getElementById('deals-for-you-section');
+    
+    if (!token || !section) return; // Don't show section if not logged in
+    
+    section.style.display = 'block';
+
+    const container = document.getElementById('deals-for-you-container');
+    if (!container) return;
+
+    // Show loading skeletons
+    container.innerHTML = '<div class="deals-for-you-grid">' + 
+        Array(4).fill(`<div class="skeleton-card"><div class="skeleton-cover" style="height:180px"></div><div class="skeleton-info"><div class="skeleton-line short"></div></div></div>`).join('') + 
+        '</div>';
+
+    try {
+        const response = await fetch('/api/deals/for-you?limit=4&offset=0', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        if (response.status === 401) {
+            container.innerHTML = '';
+            return;
+        }
+
+        const payload = await response.json();
+        if (!response.ok) {
+            throw new Error(payload.error || 'Failed to fetch personalized deals');
+        }
+
+        const deals = (payload.deals || []).map((deal) => ({
+            id: deal.id,
+            title: deal.title,
+            cover: deal.cover_url || '',
+            store: deal.platform || 'Store',
+            price: deal.price_inr || 0,
+            original: deal.original_inr || 0,
+            discount: deal.discount_percent || 0,
+            score: deal.review_score || 0,
+            reason: deal.personalized_reason || 'Recommended for you'
+        }));
+
+        renderDealsForYou(deals);
+    } catch (error) {
+        container.innerHTML = '';
+        console.error('Failed to load deals for you:', error);
+    }
+}
+
+function renderDealsForYou(deals) {
+    const container = document.getElementById('deals-for-you-container');
+    if (!container) return;
+
+    if (deals.length === 0) {
+        container.innerHTML = `
+            <div class="state-container" style="padding: 32px;">
+                <div class="state-message">Add games to your wishlist to get personalized recommendations!</div>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = '<div class="deals-for-you-grid">' + deals.map(deal => `
+        <div class="deal-card-small" onclick="window.location.href='game.html?id=${deal.id}'">
+            <img src="${deal.cover}" class="deal-cover" alt="${deal.title} cover">
+            <div class="deal-info">
+                <span class="personalized-badge">${deal.reason}</span>
+                <div class="deal-title">${deal.title}</div>
+                <div class="deal-price-row" style="margin-top:8px;">
+                    <span class="discount">-${deal.discount}%</span>
+                    <span class="price">₹${deal.price}</span>
+                </div>
+            </div>
+        </div>
+    `).join('') + '</div>';
 }
 
 function updateFilters() {
@@ -150,6 +327,7 @@ function updateFilters() {
     const gogChecked = document.getElementById('store-gog').checked;
     const maxPrice = parseInt(document.getElementById('price-slider').value);
     const searchTerm = document.getElementById('search-input').value.toLowerCase();
+    const hideOwned = document.getElementById('hide-owned')?.checked || false;
 
     const filtered = allDeals.filter(deal => {
         // Store filter
@@ -174,16 +352,16 @@ function renderDeals(dealsArray) {
     container.innerHTML = ''; // clear grid
 
     if(dealsArray.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-muted); grid-column: 1/-1;">No deals found matching criteria.</p>';
+        container.innerHTML = renderEmptyState();
         return;
     }
 
     dealsArray.forEach(deal => {
         const card = document.createElement('div');
         card.className = 'deal-card';
-        card.addEventListener('click', () => {
-            window.location.href = `game.html?id=${deal.id}`;
-        });
+        
+        const scoreColor = getScoreColorClass(deal.score);
+        const savingsAmount = deal.original - deal.price;
         
         card.innerHTML = `
             <img src="${deal.cover}" class="deal-cover" alt="${deal.title} cover">
@@ -204,6 +382,15 @@ function renderDeals(dealsArray) {
                     <span>Best: ₹${deal.lowestPrice}</span>
                     <span>${deal.status ? deal.status.toUpperCase() : 'DEAL'}</span>
                 </div>
+            </div>
+            <div class="deal-overlay">
+                <div class="overlay-title">${deal.title}</div>
+                <div class="overlay-score">
+                    <div class="score-circle ${scoreColor}">${deal.score}</div>
+                    <span>Review Score</span>
+                </div>
+                <div class="overlay-savings">Save ₹${savingsAmount}</div>
+                <a href="game.html?id=${deal.id}" class="overlay-btn">View Deal</a>
             </div>
         `;
         container.appendChild(card);

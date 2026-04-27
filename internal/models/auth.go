@@ -31,3 +31,12 @@ type LogoutRequest struct {
 type APIError struct {
 	Error string `json:"error" example:"Invalid credentials"`
 }
+
+type LibraryImportRequest struct {
+	SteamID string `json:"steam_id" binding:"required" example:"76561198000000000"`
+}
+
+type LibraryListResponse struct {
+	GameIDs []int64 `json:"game_ids" example:"[1,2,3,4,5]"`
+	Count   int     `json:"count" example:"5"`
+}

@@ -1,0 +1,210 @@
+.buy-timing-section {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+
+.section-title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text-main);
+}
+
+.section-subtitle {
+    color: var(--text-muted);
+    margin-bottom: 32px;
+}
+
+.game-search-card {
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 32px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+}
+
+.form-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-main);
+}
+
+.game-id-input {
+    padding: 12px 16px;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    background-color: #0d1117;
+    color: var(--text-main);
+    font-size: 0.95rem;
+    transition: border-color 0.2s ease;
+}
+
+.game-id-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.loading-state {
+    text-align: center;
+    padding: 48px 32px;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 16px;
+    border: 3px solid #30363d;
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.recommendation-card {
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 32px;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.recommendation-banner {
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.recommendation-banner.buy_now {
+    background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
+    color: #fff;
+}
+
+.recommendation-banner.wait_soon {
+    background: linear-gradient(135deg, #d29922 0%, #e3b341 100%);
+    color: #000;
+}
+
+.recommendation-banner.wait_next {
+    background: linear-gradient(135deg, #da3633 0%, #f85149 100%);
+    color: #fff;
+}
+
+.recommendation-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.detail-item {
+    background-color: #21262d;
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.detail-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.detail-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.sales-calendar-section {
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 24px;
+}
+
+.sales-calendar-section h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text-main);
+}
+
+.sales-calendar {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.sale-card {
+    background-color: #21262d;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.sale-card.active {
+    border-color: #238636;
+    background: linear-gradient(135deg, #21262d 0%, #1f2428 100%);
+}
+
+.sale-card.active::before {
+    content: '🔴 LIVE';
+    display: inline-block;
+    background-color: #238636;
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.sale-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 8px;
+}
+
+.sale-platform {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.sale-dates {
+    font-size: 0.85rem;
+    color: var(--text-main);
+}
+
+@media (max-width: 600px) {
+    .game-search-card {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .recommendation-details {
+        grid-template-columns: 1fr;
+    }
+}

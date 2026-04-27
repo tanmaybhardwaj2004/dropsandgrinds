@@ -2,29 +2,61 @@ package repositories
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/models"
 )
 
+const (
+	dealCacheTTL = 5 * time.Minute
+)
+
 type CatalogRepository struct {
-	db *pgxpool.Pool
+	db    *pgxpool.Pool
+	redis *redis.Client
 }
 
-func NewCatalogRepository(db *pgxpool.Pool) *CatalogRepository {
-	return &CatalogRepository{db: db}
+func NewCatalogRepository(db *pgxpool.Pool, redis *redis.Client) *CatalogRepository {
+	return &CatalogRepository{db: db, redis: redis}
 }
 
-func (r *CatalogRepository) ListGames(ctx context.Context, query, platform string, limit, offset int) ([]models.Game, int, error) {
+func (r *CatalogRepository) ListGames(ctx context.Context, query, platform string, limit, offset int, excludeOwned bool, userID int64) ([]models.Game, int, error) {
+	// Try cache first if Redis is available (skip cache for personalized queries)
+	cacheKey := ""
+	if r.redis != nil && !excludeOwned {
+		cacheKey = fmt.Sprintf("games:%s:%s:%d:%d", query, platform, limit, offset)
+		cached, err := r.redis.Get(ctx, cacheKey).Result()
+		if err == nil {
+			var cachedResult struct {
+				Games []models.Game `json:"games"`
+				Total int           `json:"total"`
+			}
+			if err := json.Unmarshal([]byte(cached), &cachedResult); err == nil {
+				return cachedResult.Games, cachedResult.Total, nil
+			}
+		}
+	}
+
 	countQuery := `
 		SELECT COUNT(*)
 		FROM games g
 		WHERE ($1 = '' OR LOWER(g.title) LIKE '%' || LOWER($1) || '%')
 		  AND ($2 = '' OR LOWER(g.platform) = LOWER($2))
 	`
+
+	// Add exclude_owned filter
+	countArgs := []interface{}{query, platform}
+	if excludeOwned && userID > 0 {
+		countQuery += ` AND g.id NOT IN (SELECT game_id FROM user_steam_library WHERE user_id = $3 AND game_id IS NOT NULL)`
+		countArgs = append(countArgs, userID)
+	}
+
 	var total int
-	if err := r.db.QueryRow(ctx, countQuery, query, platform).Scan(&total); err != nil {
+	if err := r.db.QueryRow(ctx, countQuery, countArgs...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
@@ -62,11 +94,19 @@ func (r *CatalogRepository) ListGames(ctx context.Context, query, platform strin
 		) d ON TRUE
 		WHERE ($1 = '' OR LOWER(g.title) LIKE '%' || LOWER($1) || '%')
 		  AND ($2 = '' OR LOWER(g.platform) = LOWER($2))
-		ORDER BY COALESCE(d.discount_percent, 0) DESC, g.title ASC
-		LIMIT $3 OFFSET $4
 	`
 
-	rows, err := r.db.Query(ctx, dataQuery, query, platform, limit, offset)
+	// Add exclude_owned filter to data query
+	dataArgs := []interface{}{query, platform}
+	if excludeOwned && userID > 0 {
+		dataQuery += ` AND g.id NOT IN (SELECT game_id FROM user_steam_library WHERE user_id = $3 AND game_id IS NOT NULL)`
+		dataArgs = append(dataArgs, userID)
+	}
+
+	dataQuery += ` ORDER BY COALESCE(d.discount_percent, 0) DESC, g.title ASC LIMIT $` + fmt.Sprintf("%d", len(dataArgs)+1) + ` OFFSET $` + fmt.Sprintf("%d", len(dataArgs)+2)
+	dataArgs = append(dataArgs, limit, offset)
+
+	rows, err := r.db.Query(ctx, dataQuery, dataArgs...)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -96,10 +136,37 @@ func (r *CatalogRepository) ListGames(ctx context.Context, query, platform strin
 		return nil, 0, err
 	}
 
+	// Cache the result if Redis is available
+	if r.redis != nil {
+		cacheKey := fmt.Sprintf("games:%s:%s:%d:%d", query, platform, limit, offset)
+		cacheResult := struct {
+			Games []models.Game `json:"games"`
+			Total int           `json:"total"`
+		}{
+			Games: games,
+			Total: total,
+		}
+		if data, err := json.Marshal(cacheResult); err == nil {
+			r.redis.Set(ctx, cacheKey, data, dealCacheTTL)
+		}
+	}
+
 	return games, total, nil
 }
 
 func (r *CatalogRepository) GetGameByID(ctx context.Context, id int64) (models.Game, bool, error) {
+	// Try cache first if Redis is available
+	if r.redis != nil {
+		cacheKey := fmt.Sprintf("game:%d", id)
+		cached, err := r.redis.Get(ctx, cacheKey).Result()
+		if err == nil {
+			var game models.Game
+			if err := json.Unmarshal([]byte(cached), &game); err == nil {
+				return game, true, nil
+			}
+		}
+	}
+
 	query := `
 		SELECT
 			g.id,
@@ -152,10 +219,33 @@ func (r *CatalogRepository) GetGameByID(ctx context.Context, id int64) (models.G
 		return models.Game{}, false, nil
 	}
 
+	// Cache the result if Redis is available
+	if r.redis != nil {
+		cacheKey := fmt.Sprintf("game:%d", id)
+		if data, err := json.Marshal(g); err == nil {
+			r.redis.Set(ctx, cacheKey, data, dealCacheTTL)
+		}
+	}
+
 	return g, true, nil
 }
 
 func (r *CatalogRepository) ListDeals(ctx context.Context, limit, offset int) ([]models.Deal, int, error) {
+	// Try cache first if Redis is available
+	if r.redis != nil {
+		cacheKey := fmt.Sprintf("deals:%d:%d", limit, offset)
+		cached, err := r.redis.Get(ctx, cacheKey).Result()
+		if err == nil {
+			var cachedResult struct {
+				Deals []models.Deal `json:"deals"`
+				Total int           `json:"total"`
+			}
+			if err := json.Unmarshal([]byte(cached), &cachedResult); err == nil {
+				return cachedResult.Deals, cachedResult.Total, nil
+			}
+		}
+	}
+
 	countQuery := `SELECT COUNT(*) FROM deals d WHERE d.is_active = TRUE`
 	var total int
 	if err := r.db.QueryRow(ctx, countQuery).Scan(&total); err != nil {
@@ -225,18 +315,33 @@ func (r *CatalogRepository) ListDeals(ctx context.Context, limit, offset int) ([
 		return nil, 0, err
 	}
 
+	// Cache the result if Redis is available
+	if r.redis != nil {
+		cacheKey := fmt.Sprintf("deals:%d:%d", limit, offset)
+		cacheResult := struct {
+			Deals []models.Deal `json:"deals"`
+			Total int           `json:"total"`
+		}{
+			Deals: deals,
+			Total: total,
+		}
+		if data, err := json.Marshal(cacheResult); err == nil {
+			r.redis.Set(ctx, cacheKey, data, dealCacheTTL)
+		}
+	}
+
 	return deals, total, nil
 }
 
-func (r *CatalogRepository) GetPriceHistory(ctx context.Context, gameID int64, limit int) ([]models.PriceHistoryPoint, error) {
+func (r *CatalogRepository) GetPriceHistory(ctx context.Context, gameID int64, limit, offset int) ([]models.PriceHistoryPoint, error) {
 	query := `
 		SELECT price_inr, fetched_at::text
 		FROM prices
 		WHERE game_id = $1
 		ORDER BY fetched_at DESC
-		LIMIT $2
+		LIMIT $2 OFFSET $3
 	`
-	rows, err := r.db.Query(ctx, query, gameID, limit)
+	rows, err := r.db.Query(ctx, query, gameID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -285,8 +390,7 @@ func (r *CatalogRepository) UpdateDeal(ctx context.Context, gameID int64, origin
 
 // GetAllGameIDs returns all game IDs for price refresh
 func (r *CatalogRepository) GetAllGameIDs(ctx context.Context) ([]int64, error) {
-	query := `SELECT id FROM games`
-	rows, err := r.db.Query(ctx, query)
+	rows, err := r.db.Query(ctx, "SELECT id FROM games")
 	if err != nil {
 		return nil, err
 	}
@@ -300,8 +404,17 @@ func (r *CatalogRepository) GetAllGameIDs(ctx context.Context) ([]int64, error) 
 		}
 		ids = append(ids, id)
 	}
+	return ids, nil
+}
 
-	return ids, rows.Err()
+// FindGameByTitle searches for a game by exact title match
+func (r *CatalogRepository) FindGameByTitle(ctx context.Context, title string) (int64, error) {
+	var gameID int64
+	err := r.db.QueryRow(ctx, "SELECT id FROM games WHERE title = $1 LIMIT 1", title).Scan(&gameID)
+	if err != nil {
+		return 0, err
+	}
+	return gameID, nil
 }
 
 // GetIndiaArbitrage calculates India vs Global pricing with GST

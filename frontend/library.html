@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Steam Library - DropsAndGrinds</title>
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/library.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1 class="logo">DropsAndGrinds</h1>
+            <nav class="nav">
+                <a href="index.html" class="nav-link">Deals</a>
+                <a href="library.html" class="nav-link active">Library</a>
+                <a href="wishlist.html" class="nav-link">Wishlist</a>
+            </nav>
+            <div class="auth-buttons">
+                <button id="login-btn" class="btn btn-primary">Login</button>
+                <button id="logout-btn" class="btn btn-secondary" style="display: none;">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="library-section">
+            <h2 class="section-title">Steam Library Import</h2>
+            <p class="section-subtitle">Import your Steam games to hide owned games from the deal grid</p>
+
+            <div class="import-card">
+                <form id="import-form" class="import-form">
+                    <div class="form-group">
+                        <label for="steam-id">Steam ID</label>
+                        <input type="text" id="steam-id" name="steam_id" placeholder="76561198000000000" required>
+                        <small class="form-hint">Your 64-bit Steam ID. Find it at steamid.io</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="consent-analytics" name="consent_analytics">
+                            <span>I consent to analytics tracking for my library data</span>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-large" id="import-btn">
+                        Import Library
+                    </button>
+                </form>
+
+                <div id="import-result" class="import-result" style="display: none;">
+                    <div class="result-icon">✓</div>
+                    <h3 id="result-title">Import Successful</h3>
+                    <p id="result-message">Your library has been imported successfully.</p>
+                </div>
+
+                <div id="import-error" class="import-error" style="display: none;">
+                    <div class="error-icon">✕</div>
+                    <h3 id="error-title">Import Failed</h3>
+                    <p id="error-message">Failed to import your library. Please try again.</p>
+                </div>
+            </div>
+
+            <div id="library-stats" class="library-stats" style="display: none;">
+                <div class="stat-card">
+                    <div class="stat-value" id="owned-count">0</div>
+                    <div class="stat-label">Games Owned</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="hidden-count">0</div>
+                    <div class="stat-label">Hidden from Deals</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/auth.js"></script>
+    <script src="js/library.js"></script>
+</body>
+</html>

@@ -13,6 +13,8 @@ type Config struct {
 	JWTSecret             string
 	AccessTokenTTLMinutes int
 	RefreshTokenTTLHours  int
+	SentryDSN             string
+	SteamAPIKey           string
 }
 
 func LoadConfig() Config {
@@ -22,6 +24,8 @@ func LoadConfig() Config {
 	jwtSecret := os.Getenv("JWT_SECRET")
 	accessTokenTTLMinutes := parseEnvInt("ACCESS_TOKEN_TTL_MINUTES", 15)
 	refreshTokenTTLHours := parseEnvInt("REFRESH_TOKEN_TTL_HOURS", 168)
+	sentryDSN := os.Getenv("SENTRY_DSN")
+	steamAPIKey := os.Getenv("STEAM_API_KEY")
 
 	if dbURL == "" {
 		log.Fatal("DATABASE_URL is not set")
@@ -44,6 +48,8 @@ func LoadConfig() Config {
 		JWTSecret:             jwtSecret,
 		AccessTokenTTLMinutes: accessTokenTTLMinutes,
 		RefreshTokenTTLHours:  refreshTokenTTLHours,
+		SentryDSN:             sentryDSN,
+		SteamAPIKey:           steamAPIKey,
 	}
 }
 

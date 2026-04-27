@@ -18,14 +18,15 @@ func SetGamesService(svc *services.GamesService) {
 
 // GamesListHandler returns paginated games filtered by query and platform.
 // @Summary      List games
-// @Description  Returns a paginated deal grid with optional search and platform filtering
+// @Description  Returns a paginated deal grid with optional search and platform filtering. Can exclude owned games.
 // @Tags         games
 // @Produce      json
-// @Param        q         query  string  false  "Search query"
-// @Param        platform  query  string  false  "Platform filter"
-// @Param        limit     query  int     false  "Page size"  default(20)
-// @Param        offset    query  int     false  "Page offset"  default(0)
-// @Success      200       {object}  models.GameListResponse
+// @Param        q              query  string  false  "Search query"
+// @Param        platform       query  string  false  "Platform filter"
+// @Param        limit          query  int     false  "Page size"  default(20)
+// @Param        offset        query  int     false  "Page offset"  default(0)
+// @Param        exclude_owned  query  bool    false  "Exclude owned games"  default(false)
+// @Success      200            {object}  models.GameListResponse
 // @Router       /api/games [get]
 func GamesListHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -39,11 +40,21 @@ func GamesListHandler(w http.ResponseWriter, r *http.Request) {
 
 	limit := parseQueryInt(r.URL.Query().Get("limit"), 20)
 	offset := parseQueryInt(r.URL.Query().Get("offset"), 0)
+	excludeOwned := r.URL.Query().Get("exclude_owned") == "true"
+
+	// Get user_id from context if authenticated
+	var userID int64
+	if uid := r.Context().Value("user_id"); uid != nil {
+		userID = uid.(int64)
+	}
+
 	response, err := gamesService.ListGames(r.Context(), services.GameFilter{
-		Query:    r.URL.Query().Get("q"),
-		Platform: r.URL.Query().Get("platform"),
-		Limit:    limit,
-		Offset:   offset,
+		Query:        r.URL.Query().Get("q"),
+		Platform:     r.URL.Query().Get("platform"),
+		Limit:        limit,
+		Offset:       offset,
+		ExcludeOwned: excludeOwned,
+		UserID:       userID,
 	})
 	if err != nil {
 		writeServiceError(w, err, "Failed to list games")
@@ -180,7 +191,8 @@ func PriceHistoryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	limit := parseQueryInt(r.URL.Query().Get("limit"), 30)
-	response, err := gamesService.GetPriceHistory(r.Context(), gameID, limit)
+	offset := parseQueryInt(r.URL.Query().Get("offset"), 0)
+	response, err := gamesService.GetPriceHistory(r.Context(), gameID, limit, offset)
 	if err != nil {
 		writeServiceError(w, err, "Failed to fetch price history")
 		return

@@ -6,14 +6,27 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/models"
+	"github.com/redis/go-redis/v9"
+	"github.com/tanmaybhardwaj2004/dropsandgrinds/pkg/cheapshark"
 )
 
 var dbPool *pgxpool.Pool
+var redisClient *redis.Client
+var steamAPIKey string
 
 // SetDBPool wires the primary database pool into handlers that need dependency checks.
 func SetDBPool(pool *pgxpool.Pool) {
 	dbPool = pool
+}
+
+// SetRedisClient wires the Redis client for health checks.
+func SetRedisClient(client *redis.Client) {
+	redisClient = client
+}
+
+// SetSteamAPIKey wires the Steam API key for health checks.
+func SetSteamAPIKey(apiKey string) {
+	steamAPIKey = apiKey
 }
 
 // HealthHandler reports basic process health.
@@ -29,31 +42,63 @@ func HealthHandler(w http.ResponseWriter, r *http.Request) {
 
 // HealthDepsHandler checks critical infrastructure dependencies.
 // @Summary      Dependency Health Check
-// @Description  Check database connectivity and other core dependencies
+// @Description  Check database, Redis, Steam API, and CheapShark connectivity
 // @Tags         system
 // @Produce      json
-// @Success      200  {object}  map[string]string
+// @Success      200  {object}  map[string]interface{}
 // @Failure      503  {object}  models.APIError
 // @Router       /health/deps [get]
 func HealthDepsHandler(w http.ResponseWriter, r *http.Request) {
-	if dbPool == nil {
-		writeJSON(w, http.StatusServiceUnavailable, models.APIError{Error: "Database pool not initialized"})
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	if err := dbPool.Ping(ctx); err != nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{
-			"status":   "degraded",
-			"database": "down",
-		})
+	status := make(map[string]interface{})
+	status["status"] = "ok"
+
+	// Check Database
+	if dbPool == nil {
+		status["database"] = "not_initialized"
+		status["status"] = "degraded"
+	} else if err := dbPool.Ping(ctx); err != nil {
+		status["database"] = "down"
+		status["status"] = "degraded"
+	} else {
+		status["database"] = "up"
+	}
+
+	// Check Redis
+	if redisClient == nil {
+		status["redis"] = "not_initialized"
+		status["status"] = "degraded"
+	} else if err := redisClient.Ping(ctx).Err(); err != nil {
+		status["redis"] = "down"
+		status["status"] = "degraded"
+	} else {
+		status["redis"] = "up"
+	}
+
+	// Check Steam API (lightweight check - just validate API key is set)
+	if steamAPIKey == "" {
+		status["steam_api"] = "not_configured"
+	} else {
+		status["steam_api"] = "configured"
+	}
+
+	// Check CheapShark API (make a lightweight request)
+	csClient := cheapshark.NewClient()
+	_, err := csClient.GetDeals(ctx, map[string]string{"limit": "1"})
+	if err != nil {
+		status["cheapshark"] = "down"
+		status["status"] = "degraded"
+	} else {
+		status["cheapshark"] = "up"
+	}
+
+	// Return appropriate status code
+	if status["status"] == "degraded" {
+		writeJSON(w, http.StatusServiceUnavailable, status)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{
-		"status":   "ok",
-		"database": "up",
-	})
+	writeJSON(w, http.StatusOK, status)
 }

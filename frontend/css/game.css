@@ -271,9 +271,140 @@
     text-align: center;
 }
 
+/* Price History Chart */
+.chart-container {
+    background-color: #0d1117;
+    border-radius: 8px;
+    padding: 24px;
+    margin-top: 16px;
+    height: 300px;
+    position: relative;
+}
+
+.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Review Scores Section */
+.review-card {
+    padding: 32px;
+}
+
+.review-aggregate {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 32px;
+}
+
+.aggregate-score {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.score-ring {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    font-weight: 700;
+    border: 8px solid;
+    transition: all 0.3s ease;
+}
+
+.score-ring.green { border-color: #238636; color: #3fb950; }
+.score-ring.amber { border-color: #d29922; color: #e3b341; }
+.score-ring.orange { border-color: #d26922; color: #ffa657; }
+.score-ring.red { border-color: #da3633; color: #ff7b72; }
+.score-ring.gray { border-color: #8b949e; color: #c9d1d9; }
+
+.aggregate-label {
+    text-align: left;
+}
+
+#review-label {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.source-count {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.review-sources {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.source-item {
+    background-color: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: border-color 0.2s ease;
+}
+
+.source-item:hover {
+    border-color: var(--primary-color);
+}
+
+.source-name {
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.source-score {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.source-bar {
+    width: 100px;
+    height: 8px;
+    background-color: #21262d;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.source-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+.source-bar-fill.green { background-color: #238636; }
+.source-bar-fill.amber { background-color: #d29922; }
+.source-bar-fill.orange { background-color: #d26922; }
+.source-bar-fill.red { background-color: #da3633; }
+
+.source-value {
+    font-weight: 700;
+    min-width: 32px;
+    text-align: right;
+}
+
 /* Responsive */
 @media (max-width: 900px) {
     .game-hero, .metrics-grid {
         grid-template-columns: 1fr;
+    }
+    
+    .aggregate-score {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .aggregate-label {
+        text-align: center;
     }
 }
