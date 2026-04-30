@@ -5,6 +5,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
 let priceChart = null;
 
+// Transform external image URLs to use local proxy (bypasses hotlink protection)
+function getProxiedImageUrl(originalUrl) {
+    if (!originalUrl) return '';
+    
+    if (originalUrl.includes('steamstatic.com')) {
+        return originalUrl.replace('https://shared.cloudflare.steamstatic.com/', '/img/steam/');
+    }
+    if (originalUrl.includes('gog-statics.com')) {
+        return originalUrl.replace('https://images.gog-statics.com/', '/img/gog/');
+    }
+    if (originalUrl.includes('unrealengine.com')) {
+        return originalUrl.replace('https://cdn2.unrealengine.com/', '/img/epic/');
+    }
+    
+    return originalUrl;
+}
+
 async function initGamePage() {
     const gameID = getGameIDFromURL();
     if (!gameID) {
@@ -199,7 +216,7 @@ async function loadGameDetails(gameID) {
         }
 
         document.getElementById('game-title').textContent = game.title;
-        document.getElementById('game-cover').src = game.cover_url || '';
+        document.getElementById('game-cover').src = getProxiedImageUrl(game.cover_url) || '';
         document.getElementById('game-cover').alt = `${game.title} cover`;
 
         document.getElementById('main-price').textContent = formatINR(game.price_inr);

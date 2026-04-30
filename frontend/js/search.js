@@ -18,6 +18,23 @@ let currentPage = 0;
 const limit = 30;
 let totalResults = 0;
 
+// Transform external image URLs to use local proxy (bypasses hotlink protection)
+function getProxiedImageUrl(originalUrl) {
+    if (!originalUrl) return '';
+    
+    if (originalUrl.includes('steamstatic.com')) {
+        return originalUrl.replace('https://shared.cloudflare.steamstatic.com/', '/img/steam/');
+    }
+    if (originalUrl.includes('gog-statics.com')) {
+        return originalUrl.replace('https://images.gog-statics.com/', '/img/gog/');
+    }
+    if (originalUrl.includes('unrealengine.com')) {
+        return originalUrl.replace('https://cdn2.unrealengine.com/', '/img/epic/');
+    }
+    
+    return originalUrl;
+}
+
 function initSearch() {
     const searchInput = document.getElementById('search-input');
     const searchBtn = document.getElementById('search-btn');
@@ -184,7 +201,7 @@ function createGameCard(game) {
 
     return `
         <div class="deal-card" onclick="window.location.href='game.html?id=${game.id}'">
-            <img src="${game.cover_url || 'https://via.placeholder.com/400x600?text=No+Cover'}" 
+            <img src="${getProxiedImageUrl(game.cover_url) || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22%3ENo Image%3C/text%3E%3C/svg%3E'}" 
                  alt="${game.title}" 
                  class="deal-cover"
                  onerror="this.src='https://via.placeholder.com/400x600?text=No+Cover'">

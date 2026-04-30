@@ -4,6 +4,23 @@ document.addEventListener('DOMContentLoaded', () => {
     checkAuthAndLoadWishlist();
 });
 
+// Transform external image URLs to use local proxy (bypasses hotlink protection)
+function getProxiedImageUrl(originalUrl) {
+    if (!originalUrl) return '';
+    
+    if (originalUrl.includes('steamstatic.com')) {
+        return originalUrl.replace('https://shared.cloudflare.steamstatic.com/', '/img/steam/');
+    }
+    if (originalUrl.includes('gog-statics.com')) {
+        return originalUrl.replace('https://images.gog-statics.com/', '/img/gog/');
+    }
+    if (originalUrl.includes('unrealengine.com')) {
+        return originalUrl.replace('https://cdn2.unrealengine.com/', '/img/epic/');
+    }
+    
+    return originalUrl;
+}
+
 function checkAuthAndLoadWishlist() {
     const token = getAccessToken();
     if (!token) {
@@ -65,7 +82,7 @@ function renderWishlistItem(item) {
 
     return `
         <div class="wishlist-card" data-id="${item.id}">
-            <img src="${item.cover_url}" class="wishlist-cover" alt="${item.title} cover">
+            <img src="${getProxiedImageUrl(item.cover_url)}" class="wishlist-cover" alt="${item.title} cover" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22%3ENo Image%3C/text%3E%3C/svg%3E'">
             <div class="wishlist-info">
                 <div class="wishlist-title">${item.title}</div>
                 <div class="wishlist-platform">${item.platform}</div>
