@@ -1,7 +1,23 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log("DropsAndGrinds App Loaded");
     initApp();
+    registerServiceWorker();
 });
+
+// Register Service Worker for PWA
+function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+                .then((registration) => {
+                    console.log('Service Worker registered:', registration);
+                })
+                .catch((error) => {
+                    console.log('Service Worker registration failed:', error);
+                });
+        });
+    }
+}
 
 let allDeals = [];
 
@@ -39,8 +55,30 @@ async function loadActiveSales() {
     }
 }
 
+function initSearch() {
+    const searchInput = document.getElementById('search-input');
+    const searchBtn = document.getElementById('search-btn');
+
+    if (!searchInput || !searchBtn) return;
+
+    const performSearch = () => {
+        const query = searchInput.value.trim();
+        if (query) {
+            window.location.href = `search.html?q=${encodeURIComponent(query)}`;
+        }
+    };
+
+    searchBtn.addEventListener('click', performSearch);
+    searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            performSearch();
+        }
+    });
+}
+
 async function initApp() {
     initAuthButton();
+    initSearch();
     await checkHealth();
     await loadActiveSales();
     await loadDeals();

@@ -8,17 +8,17 @@
     font-size: 2rem;
     font-weight: 700;
     margin-bottom: 8px;
-    color: var(--text-main);
+    color: var(--color-text-primary);
 }
 
 .section-subtitle {
-    color: var(--text-muted);
+    color: var(--color-text-secondary);
     margin-bottom: 32px;
 }
 
 .bundle-input-card {
-    background-color: #161b22;
-    border: 1px solid #30363d;
+    background-color: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
     border-radius: 12px;
     padding: 24px;
     margin-bottom: 32px;
@@ -39,16 +39,16 @@
 .form-group label {
     font-size: 0.9rem;
     font-weight: 500;
-    color: var(--text-main);
+    color: var(--color-text-primary);
 }
 
 .url-input,
 #bundle-price {
     padding: 12px 16px;
-    border: 1px solid #30363d;
+    border: 1px solid var(--color-border);
     border-radius: 6px;
-    background-color: #0d1117;
-    color: var(--text-main);
+    background-color: var(--color-bg-secondary);
+    color: var(--color-text-primary);
     font-size: 0.95rem;
     transition: border-color 0.2s ease;
 }
@@ -56,12 +56,12 @@
 .url-input:focus,
 #bundle-price:focus {
     outline: none;
-    border-color: var(--primary-color);
+    border-color: var(--color-accent-primary);
 }
 
 .form-hint {
     font-size: 0.8rem;
-    color: var(--text-muted);
+    color: var(--color-text-secondary);
 }
 
 .loading-state,
@@ -74,8 +74,8 @@
     width: 40px;
     height: 40px;
     margin: 0 auto 16px;
-    border: 3px solid #30363d;
-    border-top-color: var(--primary-color);
+    border: 3px solid var(--color-border);
+    border-top-color: var(--color-accent-primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -93,11 +93,11 @@
     font-size: 1.25rem;
     font-weight: 600;
     margin-bottom: 8px;
-    color: var(--text-main);
+    color: var(--color-text-primary);
 }
 
 .error-state p {
-    color: var(--text-muted);
+    color: var(--color-text-secondary);
     margin-bottom: 16px;
 }
 
@@ -142,22 +142,22 @@
 }
 
 .summary-item {
-    background-color: #161b22;
-    border: 1px solid #30363d;
+    background-color: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
     border-radius: 8px;
     padding: 16px;
 }
 
 .summary-label {
     font-size: 0.85rem;
-    color: var(--text-muted);
+    color: var(--color-text-secondary);
     margin-bottom: 4px;
 }
 
 .summary-value {
     font-size: 1.25rem;
     font-weight: 600;
-    color: var(--text-main);
+    color: var(--color-text-primary);
 }
 
 .savings-value {
@@ -165,8 +165,8 @@
 }
 
 .games-table-container {
-    background-color: #161b22;
-    border: 1px solid #30363d;
+    background-color: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
     border-radius: 12px;
     padding: 24px;
 }
@@ -175,7 +175,7 @@
     font-size: 1.25rem;
     font-weight: 600;
     margin-bottom: 16px;
-    color: var(--text-main);
+    color: var(--color-text-primary);
 }
 
 .games-table {
@@ -187,18 +187,18 @@
 .games-table td {
     padding: 12px;
     text-align: left;
-    border-bottom: 1px solid #30363d;
+    border-bottom: 1px solid var(--color-border);
 }
 
 .games-table th {
     font-size: 0.85rem;
     font-weight: 600;
-    color: var(--text-muted);
+    color: var(--color-text-secondary);
     text-transform: uppercase;
 }
 
 .games-table td {
-    color: var(--text-main);
+    color: var(--color-text-primary);
 }
 
 .games-table tr:last-child td {
@@ -216,6 +216,6 @@
 }
 
 .status-unknown {
-    color: var(--text-muted);
+    color: var(--color-text-secondary);
     font-style: italic;
 }

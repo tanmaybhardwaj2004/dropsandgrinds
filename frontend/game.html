@@ -3,55 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Details - DropsAndGrinds</title>
-    <!-- Google Fonts: Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/index.css">
+    <title>Cyberpunk 2077 - DropsAndGrinds</title>
+    <meta name="theme-color" content="#6366f1">
+    <link rel="stylesheet" href="css/modern-theme.css">
     <link rel="stylesheet" href="css/game.css">
 </head>
 <body>
-    <header class="app-header">
-        <div class="logo"><a href="index.html">DropsAndGrinds</a></div>
-        <nav>
-            <ul>
-                <li><a href="index.html">Deals</a></li>
-                <li><a href="#" class="active">Discover</a></li>
-                <li><a href="#">Bundle Breaker</a></li>
-                <li><a href="#">Dashboard</a></li>
-            </ul>
-        </nav>
-        <div class="actions">
-            <button class="btn btn-primary" id="auth-btn" onclick="window.location.href='login.html'">Login</button>
-        </div>
-    </header>
-
-    <main class="container">
-        <!-- Hero Section -->
-        <section class="game-hero">
-            <img src="https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1091500/header.jpg" alt="Game Cover" class="hero-cover" id="game-cover">
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="container flex items-center justify-between" style="height: 64px;">
+            <a href="index.html" class="flex items-center gap-2" style="text-decoration: none;">
+                <div style="width: 36px; height: 36px; background: var(--gradient-primary); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">🎮</div>
+                <span style="font-family: var(--font-display); font-size: var(--text-xl); font-weight: 700; color: var(--color-text-primary);">DropsAndGrinds</span>
+            </a>
             
-            <div class="hero-details">
-                <div class="title-row">
-                    <h1 id="game-title">Cyberpunk 2077</h1>
-                    <div class="wishlist-actions">
-                        <input type="number" id="target-price-input" class="target-price-input" min="1" step="1" value="999" title="Target Price in INR" placeholder="Target ₹">
-                        <button class="btn btn-wishlist" id="wishlist-btn">♥ Add to Wishlist</button>
+            <div class="flex items-center gap-1" id="nav-links" style="display: none;">
+                <a href="index.html" class="nav-link">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    Deals
+                </a>
+                <a href="library.html" class="nav-link">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                    Library
+                </a>
+                <a href="wishlist.html" class="nav-link">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                    Wishlist
+                </a>
+                <a href="savings.html" class="nav-link">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    Savings
+                </a>
+                <a href="about.html" class="nav-link">About</a>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button id="theme-toggle" class="btn btn-ghost btn-sm" title="Toggle theme">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                </button>
+                <button class="btn btn-primary btn-sm" id="auth-btn" onclick="window.location.href='login.html'">Sign In</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container" style="margin-bottom: var(--space-16);">
+        <!-- Game Hero -->
+        <section style="display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-6); margin-top: var(--space-6);">
+            <!-- Left: Cover & Info -->
+            <div>
+                <div style="border-radius: var(--radius-lg); overflow: hidden; margin-bottom: var(--space-5); position: relative;">
+                    <img src="https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1091500/header.jpg" alt="Cyberpunk 2077" style="width: 100%; aspect-ratio: 16/9; object-fit: cover;" id="game-cover">
+                    <div style="position: absolute; top: var(--space-3); left: var(--space-3);">
+                        <span class="badge badge-primary" id="store-badge">Steam</span>
                     </div>
                 </div>
-                <div class="tags">
-                    <span class="tag">RPG</span>
-                    <span class="tag">Sci-Fi</span>
-                    <span class="tag">Open World</span>
+                
+                <h1 id="game-title" style="font-size: var(--text-3xl); margin-bottom: var(--space-3);">Cyberpunk 2077</h1>
+                
+                <div style="display: flex; gap: var(--space-2); margin-bottom: var(--space-4); flex-wrap: wrap;">
+                    <span class="badge badge-primary">RPG</span>
+                    <span class="badge badge-primary">Sci-Fi</span>
+                    <span class="badge badge-primary">Open World</span>
+                    <span class="badge badge-success">-50%</span>
                 </div>
                 
-                <p class="description">Cyberpunk 2077 is an open-world, action-adventure RPG set in the dark future of Night City — a megalopolis obsessed with power, glamour, and body modification.</p>
+                <p style="color: var(--color-text-secondary); line-height: 1.7; font-size: var(--text-lg);">Cyberpunk 2077 is an open-world, action-adventure RPG set in the dark future of Night City — a megalopolis obsessed with power, glamour, and body modification.</p>
+            </div>
+            
+            <!-- Right: Pricing & Actions -->
+            <div>
+                <div class="card card-elevated" style="margin-bottom: var(--space-4);">
+                    <!-- Price -->
+                    <div style="text-align: center; padding: var(--space-5) 0; border-bottom: 1px solid var(--color-border);">
+                        <div style="display: flex; align-items: baseline; justify-content: center; gap: var(--space-2); margin-bottom: var(--space-2);">
+                            <span style="font-size: var(--text-sm); color: var(--color-text-muted); text-decoration: line-through;" id="original-price">₹2,999</span>
+                            <span style="font-family: var(--font-display); font-size: var(--text-4xl); font-weight: 700; color: var(--color-accent-success);" id="main-price">₹1,499</span>
+                        </div>
+                        <div class="badge badge-success" style="font-size: var(--text-base);">Save 50%</div>
+                    </div>
+                    
+                    <!-- Target Price -->
+                    <div style="padding: var(--space-4);">
+                        <label class="form-label">Alert me when price drops below</label>
+                        <div style="display: flex; gap: var(--space-2);">
+                            <input type="number" id="target-price-input" class="form-input" min="1" step="1" value="999" placeholder="₹999">
+                            <button class="btn btn-primary" id="wishlist-btn" style="white-space: nowrap;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: var(--space-1);"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                Add to Wishlist
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 
-                <!-- Main Pricing Callout -->
-                <div class="hero-pricing">
-                    <span class="current-price" id="main-price">₹1,499</span>
-                    <span class="original-price" id="original-price">₹2,999</span>
-                    <span class="discount-badge" id="discount-badge">-50%</span>
-                    <span class="store-badge" id="store-badge">Steam</span>
+                <!-- Quick Links -->
+                <div class="card" style="padding: var(--space-4);">
+                    <h4 style="font-size: var(--text-sm); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-3);">View on Store</h4>
+                    <a href="#" class="btn btn-secondary" style="width: 100%; margin-bottom: var(--space-2);">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: var(--space-2);"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                        Open in Steam
+                    </a>
+                    <a href="#" class="btn btn-ghost" style="width: 100%; font-size: var(--text-sm);">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: var(--space-2);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                        Price History
+                    </a>
                 </div>
             </div>
         </section>

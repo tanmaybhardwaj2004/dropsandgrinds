@@ -8,11 +8,11 @@
     font-size: 2rem;
     font-weight: 700;
     margin-bottom: 8px;
-    color: var(--text-main);
+    color: var(--color-text-primary);
 }
 
 .section-subtitle {
-    color: var(--text-muted);
+    color: var(--color-text-secondary);
     margin-bottom: 32px;
 }
 
@@ -23,8 +23,8 @@
 }
 
 .wishlist-card {
-    background-color: #161b22;
-    border: 1px solid #30363d;
+    background-color: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
     border-radius: 12px;
     overflow: hidden;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -49,12 +49,12 @@
     font-size: 1.1rem;
     font-weight: 600;
     margin-bottom: 8px;
-    color: var(--text-main);
+    color: var(--color-text-primary);
 }
 
 .wishlist-platform {
     font-size: 0.85rem;
-    color: var(--text-muted);
+    color: var(--color-text-secondary);
     margin-bottom: 12px;
 }
 
@@ -68,12 +68,12 @@
 .current-price {
     font-size: 1.25rem;
     font-weight: 700;
-    color: var(--primary-color);
+    color: var(--color-accent-primary);
 }
 
 .target-price {
     font-size: 0.9rem;
-    color: var(--text-muted);
+    color: var(--color-text-secondary);
 }
 
 .alert-status {
@@ -86,12 +86,12 @@
 }
 
 .alert-status.triggered {
-    background-color: #238636;
+    background-color: var(--color-bg-elevated);
     color: #fff;
 }
 
 .alert-status.waiting {
-    background-color: #d29922;
+    background-color: var(--color-bg-caution);
     color: #000;
 }
 
@@ -118,17 +118,17 @@
 .threshold-input {
     width: 100%;
     padding: 8px 12px;
-    border: 1px solid #30363d;
+    border: 1px solid var(--color-border);
     border-radius: 6px;
-    background-color: #0d1117;
-    color: var(--text-main);
+    background-color: var(--color-bg-secondary);
+    color: var(--color-text-primary);
     font-size: 0.9rem;
     margin-bottom: 8px;
 }
 
 .threshold-input:focus {
     outline: none;
-    border-color: var(--primary-color);
+    border-color: var(--color-accent-primary);
 }
 
 .empty-state,
@@ -149,18 +149,18 @@
     font-size: 1.5rem;
     font-weight: 600;
     margin-bottom: 8px;
-    color: var(--text-main);
+    color: var(--color-text-primary);
 }
 
 .empty-state p,
 .error-state p {
-    color: var(--text-muted);
+    color: var(--color-text-secondary);
     margin-bottom: 24px;
 }
 
 .skeleton-card {
-    background-color: #161b22;
-    border: 1px solid #30363d;
+    background-color: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
     border-radius: 12px;
     overflow: hidden;
 }

@@ -23,9 +23,14 @@ func newHTTPHandler(logger *slog.Logger, cfg config.Config, redisClient *redis.C
 	mux.HandleFunc("/api/auth/login", handlers.LoginHandler)
 	mux.HandleFunc("/api/auth/refresh", handlers.RefreshHandler)
 	mux.HandleFunc("/api/auth/logout", handlers.LogoutHandler)
+	mux.HandleFunc("/auth/google", handlers.GoogleLoginHandler)
+	mux.HandleFunc("/auth/google/callback", handlers.GoogleCallbackHandler)
+	mux.HandleFunc("/auth/steam", handlers.SteamLoginHandler)
+	mux.HandleFunc("/auth/steam/callback", handlers.SteamCallbackHandler)
 
 	// Catalog and profile routes
 	mux.HandleFunc("/api/games", handlers.GamesListHandler)
+	mux.HandleFunc("/api/games/search", handlers.SearchGamesHandler)
 	mux.HandleFunc("/api/games/", handlers.GameDetailHandler)
 	mux.HandleFunc("/api/games/", handlers.GameRedirectHandler)
 	mux.HandleFunc("/api/games/", handlers.ReviewHandler)
@@ -45,6 +50,7 @@ func newHTTPHandler(logger *slog.Logger, cfg config.Config, redisClient *redis.C
 	mux.HandleFunc("/api/games/", handlers.BuyTimingHandler)
 	mux.HandleFunc("/api/sales/active", handlers.ActiveSalesHandler)
 	mux.HandleFunc("/api/sales/calendar", handlers.SalesCalendarHandler)
+	mux.HandleFunc("/api/analytics/events", handlers.AnalyticsEventsHandler)
 
 	// Swagger UI
 	mux.Handle("/swagger/", httpSwagger.Handler(

@@ -1,22 +1,81 @@
 :root {
-  /* Colors - Modern Dark Mode */
+  /* Colors - Modern Dark Mode (Default) */
   --bg-color: #0d1117;
   --surface-color: #161b22;
   --surface-hover: #21262d;
-  --primary-color: #58a6ff;
-  --text-main: #c9d1d9;
+  --primary-color: #2563eb;
+  --primary-hover: #1d4ed8;
+  --text-main: #f0f6fc;
   --text-muted: #8b949e;
   --success: #238636;
+  --success-text: #3fb950;
   --danger: #da3633;
+  --danger-text: #ff7b72;
+  --border-color: #30363d;
+  --shadow-color: rgba(0, 0, 0, 0.4);
   
   /* Typography */
   --font-family: 'Inter', sans-serif;
+}
+
+/* Light Theme */
+[data-theme="light"] {
+  --bg-color: #ffffff;
+  --surface-color: #f6f8fa;
+  --surface-hover: #f3f4f6;
+  --primary-color: #2563eb;
+  --primary-hover: #1d4ed8;
+  --text-main: #1f2328;
+  --text-muted: #656d76;
+  --success: #1a7f37;
+  --success-text: #1f883d;
+  --danger: #cf222e;
+  --danger-text: #d1242f;
+  --border-color: #d0d7de;
+  --shadow-color: rgba(31, 35, 40, 0.08);
+}
+
+/* Auto theme based on system preference */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg-color: #ffffff;
+    --surface-color: #f6f8fa;
+    --surface-hover: #f3f4f6;
+    --primary-color: #2563eb;
+    --primary-hover: #1d4ed8;
+    --text-main: #1f2328;
+    --text-muted: #656d76;
+    --success: #1a7f37;
+    --success-text: #1f883d;
+    --danger: #cf222e;
+    --danger-text: #d1242f;
+    --border-color: #d0d7de;
+    --shadow-color: rgba(31, 35, 40, 0.08);
+  }
 }
 
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 body {
@@ -32,16 +91,22 @@ body {
   padding: 0 24px;
 }
 
+/* Selection styling */
+::selection {
+  background-color: rgba(37, 99, 235, 0.3);
+  color: inherit;
+}
+
 /* Header */
 .app-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
-  background-color: rgba(22, 27, 34, 0.7);
+  background-color: var(--surface-color);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 1px solid var(--border-color);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -75,6 +140,92 @@ nav a:hover, nav a.active {
   color: var(--text-main);
 }
 
+nav a:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px 12px;
+  gap: 8px;
+}
+
+.search-input {
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  font-size: 0.9rem;
+  width: 200px;
+  outline: none;
+}
+
+.search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.search-btn:hover {
+  background-color: var(--surface-hover);
+}
+
+.search-btn:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.search-btn:active {
+  transform: scale(0.95);
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-toggle:hover {
+  background: var(--surface-hover);
+  transform: scale(1.05);
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.theme-toggle:active {
+  transform: scale(0.95);
+}
+
 /* Buttons */
 .btn {
   padding: 8px 16px;
@@ -91,13 +242,22 @@ nav a:hover, nav a.active {
   color: #fff;
 }
 .btn-primary:hover {
-  background-color: #3182ce;
+  background-color: var(--primary-hover);
+}
+
+.btn-primary:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.btn-primary:active {
+  transform: translateY(1px);
 }
 
 /* Banner */
 .banner {
-  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-  border: 1px solid #30363d;
+  background: linear-gradient(135deg, var(--surface-hover) 0%, var(--surface-color) 100%);
+  border: 1px solid var(--border-color);
   border-left: 4px solid var(--primary-color);
   padding: 24px;
   margin: 32px 0;
@@ -119,10 +279,10 @@ nav a:hover, nav a.active {
 
 /* Glassmorphism Sidebar */
 .sidebar {
-  background: rgba(22, 27, 34, 0.45);
+  background: var(--surface-color);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 24px;
   height: max-content;
@@ -166,7 +326,7 @@ nav a:hover, nav a.active {
   width: 100%;
   padding: 12px 16px;
   border-radius: 6px;
-  border: 1px solid #30363d;
+  border: 1px solid var(--border-color);
   background-color: var(--bg-color);
   color: var(--text-main);
   outline: none;
@@ -185,7 +345,7 @@ nav a:hover, nav a.active {
 }
 
 .wishlist-preview {
-  border: 1px solid #30363d;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 10px;
   font-size: 0.85rem;
@@ -227,7 +387,7 @@ nav a:hover, nav a.active {
 .deal-card {
   background-color: var(--surface-color);
   border-radius: 12px;
-  border: 1px solid #30363d;
+  border: 1px solid var(--border-color);
   overflow: hidden;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -239,7 +399,7 @@ nav a:hover, nav a.active {
 
 .deal-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 28px rgba(0,0,0,0.6);
+  box-shadow: 0 12px 28px var(--shadow-color);
 }
 
 .deal-cover {
@@ -265,7 +425,7 @@ nav a:hover, nav a.active {
   align-items: center;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #30363d;
+  border-top: 1px solid var(--border-color);
 }
 
 .discount {
@@ -291,7 +451,7 @@ nav a:hover, nav a.active {
 }
 
 .score-badge {
-  background: rgba(88, 166, 255, 0.15);
+  background: rgba(37, 99, 235, 0.15);
   color: var(--primary-color);
   padding: 2px 6px;
   border-radius: 4px;
@@ -302,7 +462,7 @@ nav a:hover, nav a.active {
 .skeleton-card {
   background-color: var(--surface-color);
   border-radius: 12px;
-  border: 1px solid #30363d;
+  border: 1px solid var(--border-color);
   overflow: hidden;
   break-inside: avoid;
   margin-bottom: 24px;
@@ -313,7 +473,7 @@ nav a:hover, nav a.active {
 .skeleton-cover {
   width: 100%;
   height: 350px;
-  background: linear-gradient(90deg, #21262d 25%, #30363d 50%, #21262d 75%);
+  background: linear-gradient(90deg, var(--surface-hover) 25%, var(--border-color) 50%, var(--surface-hover) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
@@ -324,7 +484,7 @@ nav a:hover, nav a.active {
 
 .skeleton-line {
   height: 16px;
-  background: linear-gradient(90deg, #21262d 25%, #30363d 50%, #21262d 75%);
+  background: linear-gradient(90deg, var(--surface-hover) 25%, var(--border-color) 50%, var(--surface-hover) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 4px;
@@ -382,7 +542,7 @@ nav a:hover, nav a.active {
   color: var(--text-main);
   padding: 12px 24px;
   border-radius: 6px;
-  border: 1px solid #30363d;
+  border: 1px solid var(--border-color);
   cursor: pointer;
   font-weight: 600;
   transition: all 0.2s ease;
@@ -470,7 +630,7 @@ nav a:hover, nav a.active {
 }
 
 .overlay-btn:hover {
-  background-color: #3182ce;
+  background-color: var(--primary-hover);
 }
 
 /* Deals For You Section */
@@ -480,7 +640,7 @@ nav a:hover, nav a.active {
   align-items: center;
   margin: 32px 0 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #30363d;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .section-title {
@@ -523,7 +683,7 @@ nav a:hover, nav a.active {
 .deal-card-small {
   background-color: var(--surface-color);
   border-radius: 12px;
-  border: 1px solid #30363d;
+  border: 1px solid var(--border-color);
   overflow: hidden;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -531,7 +691,7 @@ nav a:hover, nav a.active {
 
 .deal-card-small:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 28px rgba(0,0,0,0.6);
+  box-shadow: 0 12px 28px var(--shadow-color);
 }
 
 .deal-card-small .deal-cover {

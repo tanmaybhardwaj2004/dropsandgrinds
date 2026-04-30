@@ -5,100 +5,319 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DropsAndGrinds - Smart Game Deal Tracker</title>
     <meta name="description" content="Track game deals across multiple platforms with India-specific pricing, multi-source review scores, and an intelligent bundle breaker.">
-    <!-- Google Fonts: Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/images/icon-192x192.png">
+    <meta name="theme-color" content="#6366f1">
+    <link rel="stylesheet" href="css/modern-theme.css">
     <link rel="stylesheet" href="css/index.css">
     <link rel="stylesheet" href="css/consent.css">
 </head>
 <body>
-    <header class="app-header">
-        <div class="logo">DropsAndGrinds</div>
-        <nav>
-            <ul>
-                <li><a href="index.html" class="active">Deals</a></li>
-                <li><a href="library.html">Library</a></li>
-                <li><a href="wishlist.html">Wishlist</a></li>
-                <li><a href="savings.html">Savings</a></li>
-            </ul>
-        </nav>
-        <div class="actions">
-            <!-- Search Icon / Avatar placeholder -->
-            <button class="btn btn-primary" id="auth-btn" onclick="window.location.href='login.html'">Login</button>
-        </div>
-    </header>
-
-    <main class="container">
-        <!-- Hero Section / Live sale banner -->
-        <section id="live-sale-banner" class="banner" style="display: none;">
-            <h2 id="sale-banner-title">Loading...</h2>
-            <p id="sale-banner-message">Loading sale information...</p>
-        </section>
-
-        <!-- Deals For You Section (Phase 4) -->
-        <section id="deals-for-you-section" style="display: none;">
-            <div class="section-header">
-                <div>
-                    <h2 class="section-title">Deals For You</h2>
-                    <p class="section-subtitle">Personalized based on your wishlist and preferences</p>
-                </div>
-                <a href="#" class="view-all-btn">View All →</a>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="container flex items-center justify-between" style="height: 64px;">
+            <a href="index.html" class="flex items-center gap-2" style="text-decoration: none;">
+                <div style="width: 36px; height: 36px; background: var(--gradient-primary); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">🎮</div>
+                <span style="font-family: var(--font-display); font-size: var(--text-xl); font-weight: 700; color: var(--color-text-primary);">DropsAndGrinds</span>
+            </a>
+            
+            <div class="flex items-center gap-1" id="nav-links">
+                <a href="index.html" class="nav-link active">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    Deals
+                </a>
+                <a href="library.html" class="nav-link">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                    Library
+                </a>
+                <a href="wishlist.html" class="nav-link">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                    Wishlist
+                </a>
+                <a href="savings.html" class="nav-link">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    Savings
+                </a>
+                <a href="bundle.html" class="nav-link">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                    Bundle Breaker
+                </a>
+                <a href="buy-timing.html" class="nav-link">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Best Time to Buy
+                </a>
+                <a href="about.html" class="nav-link">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    About
+                </a>
             </div>
-            <div id="deals-for-you-container"></div>
-        </section>
+            
+            <div class="flex items-center gap-3">
+                <button id="theme-toggle" class="btn btn-ghost btn-sm" title="Toggle theme">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="theme-icon-moon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="theme-icon-sun" style="display: none;"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                </button>
+                <button class="btn btn-primary btn-sm" id="auth-btn" onclick="window.location.href='login.html'">Sign In</button>
+            </div>
+        </div>
+    </nav>
 
-        <div class="layout-wrapper">
-            <!-- Glassmorphism Sidebar Filters -->
-            <aside class="sidebar">
-                <h3>Discover Filters</h3>
-                
-                <div class="filter-group">
-                    <input type="text" id="search-input" placeholder="Search games..." class="search-box">
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-bg"></div>
+        <div class="container hero-content">
+            <div style="text-align: center; max-width: 800px; margin: 0 auto;" class="animate-fadeInUp">
+                <div style="display: inline-flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); background: var(--gradient-glow); border: 1px solid var(--color-border-accent); border-radius: var(--radius-full); margin-bottom: var(--space-5);">
+                    <span style="width: 8px; height: 8px; background: var(--color-accent-success); border-radius: 50%; animation: pulse 2s infinite;"></span>
+                    <span style="font-size: var(--text-sm); color: var(--color-text-secondary);">Live deal tracking across 15+ platforms</span>
                 </div>
-
-                <div class="filter-group" id="store-filters">
-                    <label>Store Integrations</label>
-                    <div class="filter-item">
-                        <input type="checkbox" id="store-steam" value="Steam" checked>
-                        <label for="store-steam">Steam</label>
-                    </div>
-                    <div class="filter-item">
-                        <input type="checkbox" id="store-epic" value="Epic Games" checked>
-                        <label for="store-epic">Epic Games</label>
-                    </div>
-                    <div class="filter-item">
-                        <input type="checkbox" id="store-gog" value="GOG" checked>
-                        <label for="store-gog">GOG</label>
-                    </div>
+                <h1 class="hero-title">Never Miss a <span class="text-gradient">Game Deal</span></h1>
+                <p class="hero-subtitle">Track prices across Steam, Epic, GOG & more. India-focused pricing with intelligent deal alerts and multi-source review scores.</p>
+                <div style="display: flex; gap: var(--space-3); justify-content: center; flex-wrap: wrap;">
+                    <button class="btn btn-primary btn-lg" onclick="document.getElementById('deals-container').scrollIntoView({behavior: 'smooth'})">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                        Explore Deals
+                    </button>
+                    <button class="btn btn-secondary btn-lg" onclick="window.location.href='search.html'">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        Search Games
+                    </button>
                 </div>
+            </div>
+        </div>
+    </section>
 
-                <div class="filter-group">
-                    <label for="price-slider">Max Price (₹)</label>
-                    <input type="range" id="price-slider" title="Max Price Slider" min="0" max="5000" value="5000" class="full-width">
-                    <div class="price-display-text" id="price-display">₹5000</div>
+    <!-- Live Sale Banner -->
+    <section id="live-sale-banner" class="container" style="display: none; margin-bottom: var(--space-8);">
+        <div class="card card-elevated" style="border: 1px solid var(--color-border-accent); background: var(--gradient-glow);">
+            <div style="display: flex; align-items: center; gap: var(--space-4); padding: var(--space-5);">
+                <div style="width: 56px; height: 56px; background: var(--gradient-primary); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 1.8rem;">🏷️</div>
+                <div style="flex: 1;">
+                    <h2 id="sale-banner-title" style="font-size: var(--text-xl); margin-bottom: var(--space-1);">Loading...</h2>
+                    <p id="sale-banner-message" style="color: var(--color-text-secondary);">Loading sale information...</p>
                 </div>
+                <button class="btn btn-primary" onclick="window.location.href='search.html'">Browse Sale</button>
+            </div>
+        </div>
+    </section>
 
-                <div class="filter-group">
-                    <div class="filter-item">
-                        <input type="checkbox" id="hide-owned" value="hide-owned">
-                        <label for="hide-owned">Hide owned games</label>
+    <!-- Stats Overview -->
+    <section class="container" style="margin-bottom: var(--space-10);">
+        <div class="grid grid-cols-4" style="gap: var(--space-4);">
+            <div class="stat-card">
+                <div class="stat-label">Active Deals</div>
+                <div class="stat-value" id="stat-deals">0</div>
+                <div class="stat-change positive">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    Live tracking
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Platforms</div>
+                <div class="stat-value">15+</div>
+                <div class="stat-change positive">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                    All major stores
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Avg Savings</div>
+                <div class="stat-value" id="stat-savings">0%</div>
+                <div class="stat-change positive">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
+                    Best deals
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Your Savings</div>
+                <div class="stat-value" id="stat-user-savings">₹0</div>
+                <div class="stat-change" style="color: var(--color-text-muted);">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    Track your deals
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Personalized Deals Section -->
+    <section id="deals-for-you-section" class="container" style="display: none; margin-bottom: var(--space-10);">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-5);">
+            <div>
+                <h2 style="font-size: var(--text-2xl); margin-bottom: var(--space-1);">Deals For You</h2>
+                <p style="color: var(--color-text-secondary);">Personalized based on your wishlist and preferences</p>
+            </div>
+            <a href="wishlist.html" class="btn btn-secondary btn-sm">View Wishlist</a>
+        </div>
+        <div id="deals-for-you-container" class="stagger-children" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-4);"></div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="container" style="margin-bottom: var(--space-16);">
+        <div style="display: grid; grid-template-columns: 280px 1fr; gap: var(--space-6);">
+            <!-- Sidebar Filters -->
+            <aside style="position: sticky; top: 80px; height: fit-content;">
+                <div class="card">
+                    <div style="display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-4);">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--color-accent-primary);"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                        <h3 style="font-size: var(--text-lg);">Filters</h3>
                     </div>
-                </div>
+                    
+                    <!-- Search -->
+                    <div class="form-group">
+                        <label class="form-label">Search Games</label>
+                        <div style="position: relative;">
+                            <input type="text" id="sidebar-search" class="form-input" placeholder="Search..." style="padding-left: 40px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; left: var(--space-3); top: 50%; transform: translateY(-50%); color: var(--color-text-muted);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        </div>
+                    </div>
 
-                <div class="filter-group">
-                    <label>My Wishlist</label>
-                    <div id="wishlist-preview" class="wishlist-preview">Log in to view your wishlist.</div>
+                    <!-- Store Filters -->
+                    <div class="form-group" id="store-filters">
+                        <label class="form-label">Platforms</label>
+                        <div style="display: flex; flex-direction: column; gap: var(--space-2);">
+                            <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer; padding: var(--space-2); border-radius: var(--radius-md); transition: all var(--transition-fast);" class="filter-checkbox">
+                                <input type="checkbox" value="Steam" checked style="accent-color: var(--color-accent-primary);">
+                                <span>Steam</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer; padding: var(--space-2); border-radius: var(--radius-md);" class="filter-checkbox">
+                                <input type="checkbox" value="Epic Games" checked style="accent-color: var(--color-accent-primary);">
+                                <span>Epic Games</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer; padding: var(--space-2); border-radius: var(--radius-md);" class="filter-checkbox">
+                                <input type="checkbox" value="GOG" checked style="accent-color: var(--color-accent-primary);">
+                                <span>GOG</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Price Slider -->
+                    <div class="form-group">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-2);">
+                            <label class="form-label">Max Price</label>
+                            <span id="price-display" style="font-family: var(--font-display); font-weight: 600; color: var(--color-accent-primary);">₹5000</span>
+                        </div>
+                        <input type="range" id="price-slider" min="0" max="5000" value="5000" aria-label="Maximum price range" style="width: 100%; accent-color: var(--color-accent-primary);">
+                    </div>
+
+                    <!-- Hide Owned -->
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer;">
+                            <input type="checkbox" id="hide-owned" style="accent-color: var(--color-accent-primary);">
+                            <span>Hide owned games</span>
+                        </label>
+                    </div>
+
+                    <!-- Wishlist Preview -->
+                    <div style="border-top: 1px solid var(--color-border); padding-top: var(--space-4);">
+                        <label class="form-label">Wishlist</label>
+                        <div id="wishlist-preview" style="padding: var(--space-4); background: var(--color-bg-tertiary); border-radius: var(--radius-md); text-align: center;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--color-text-muted); margin-bottom: var(--space-2);"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                            <p style="font-size: var(--text-sm); color: var(--color-text-muted);">Sign in to view your wishlist</p>
+                        </div>
+                    </div>
                 </div>
             </aside>
 
-            <!-- Deals Grid (Masonry) -->
-            <section class="deals-grid" id="deals-container">
-                <!-- JS will populate these cards -->
+            <!-- Deals Grid -->
+            <section>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-5);">
+                    <h2 style="font-size: var(--text-2xl);">Latest Deals</h2>
+                    <div style="display: flex; gap: var(--space-2);">
+                        <select id="sort-select" class="form-input" title="Sort deals by" style="width: auto; padding-right: var(--space-8);">
+                            <option value="discount">Biggest Discount</option>
+                            <option value="price-low">Price: Low to High</option>
+                            <option value="price-high">Price: High to Low</option>
+                            <option value="rating">Highest Rated</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="deals-container" class="stagger-children" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-4);">
+                    <!-- Loading Skeleton -->
+                    <div class="game-card skeleton-card">
+                        <div class="skeleton" style="aspect-ratio: 16/9;"></div>
+                        <div style="padding: var(--space-4);">
+                            <div class="skeleton" style="height: 20px; width: 70%; margin-bottom: var(--space-2);"></div>
+                            <div class="skeleton" style="height: 16px; width: 40%;"></div>
+                        </div>
+                    </div>
+                    <div class="game-card skeleton-card">
+                        <div class="skeleton" style="aspect-ratio: 16/9;"></div>
+                        <div style="padding: var(--space-4);">
+                            <div class="skeleton" style="height: 20px; width: 60%; margin-bottom: var(--space-2);"></div>
+                            <div class="skeleton" style="height: 16px; width: 50%;"></div>
+                        </div>
+                    </div>
+                    <div class="game-card skeleton-card">
+                        <div class="skeleton" style="aspect-ratio: 16/9;"></div>
+                        <div style="padding: var(--space-4);">
+                            <div class="skeleton" style="height: 20px; width: 80%; margin-bottom: var(--space-2);"></div>
+                            <div class="skeleton" style="height: 16px; width: 45%;"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Load More -->
+                <div style="text-align: center; margin-top: var(--space-8);">
+                    <button id="load-more-btn" class="btn btn-secondary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 16 12 12 8 12"/></svg>
+                        Load More Deals
+                    </button>
+                </div>
             </section>
         </div>
     </main>
 
+    <!-- Footer -->
+    <footer style="border-top: 1px solid var(--color-border); padding: var(--space-8) 0; background: var(--color-bg-secondary);">
+        <div class="container">
+            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: var(--space-8);">
+                <div>
+                    <div style="display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3);">
+                        <div style="width: 32px; height: 32px; background: var(--gradient-primary); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;">🎮</div>
+                        <span style="font-family: var(--font-display); font-weight: 700;">DropsAndGrinds</span>
+                    </div>
+                    <p style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Smart cross-platform game deal tracker for Indian gamers. Never miss a price drop again.</p>
+                </div>
+                <div>
+                    <h4 style="font-size: var(--text-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-3); color: var(--color-text-muted);">Features</h4>
+                    <ul style="list-style: none; display: flex; flex-direction: column; gap: var(--space-2);">
+                        <li><a href="search.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Deal Search</a></li>
+                        <li><a href="library.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Game Library</a></li>
+                        <li><a href="bundle.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Bundle Analyzer</a></li>
+                        <li><a href="buy-timing.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Buy Timing</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 style="font-size: var(--text-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-3); color: var(--color-text-muted);">Tools</h4>
+                    <ul style="list-style: none; display: flex; flex-direction: column; gap: var(--space-2);">
+                        <li><a href="savings.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Savings Tracker</a></li>
+                        <li><a href="wishlist.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Wishlist Alerts</a></li>
+                        <li><a href="search.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Price History</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 style="font-size: var(--text-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-3); color: var(--color-text-muted);">Connect</h4>
+                    <ul style="list-style: none; display: flex; flex-direction: column; gap: var(--space-2);">
+                        <li><a href="about.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">About</a></li>
+                        <li><a href="https://github.com/tanmaybhardwaj2004/dropsandgrinds" target="_blank" rel="noopener noreferrer" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">GitHub</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div style="border-top: 1px solid var(--color-border); margin-top: var(--space-6); padding-top: var(--space-6); text-align: center; color: var(--color-text-muted); font-size: var(--text-sm);">
+                © <span class="copyright-year">2025</span> DropsAndGrinds. Built for Indian gamers.
+            </div>
+        </div>
+    </footer>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="js/logger.js"></script>
+    <script src="js/theme.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/consent.js"></script>
     <script src="js/app.js"></script>
+    <script>document.querySelectorAll('.copyright-year').forEach(el => el.textContent = new Date().getFullYear());</script>
 </body>
 </html>

@@ -11,12 +11,18 @@ import (
 )
 
 var dbPool *pgxpool.Pool
+var readReplicaPool *pgxpool.Pool
 var redisClient *redis.Client
 var steamAPIKey string
 
 // SetDBPool wires the primary database pool into handlers that need dependency checks.
 func SetDBPool(pool *pgxpool.Pool) {
 	dbPool = pool
+}
+
+// SetReadReplicaPool wires the read replica database pool for read queries.
+func SetReadReplicaPool(pool *pgxpool.Pool) {
+	readReplicaPool = pool
 }
 
 // SetRedisClient wires the Redis client for health checks.
@@ -64,6 +70,16 @@ func HealthDepsHandler(w http.ResponseWriter, r *http.Request) {
 		status["status"] = "degraded"
 	} else {
 		status["database"] = "up"
+	}
+
+	// Check Read Replica (optional)
+	if readReplicaPool == nil {
+		status["read_replica"] = "not_configured"
+	} else if err := readReplicaPool.Ping(ctx); err != nil {
+		status["read_replica"] = "down"
+		status["status"] = "degraded"
+	} else {
+		status["read_replica"] = "up"
 	}
 
 	// Check Redis

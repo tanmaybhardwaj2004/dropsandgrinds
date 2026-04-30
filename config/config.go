@@ -7,18 +7,25 @@ import (
 )
 
 type Config struct {
-	DatabaseURL           string
-	RedisURL              string
-	Port                  string
-	JWTSecret             string
-	AccessTokenTTLMinutes int
-	RefreshTokenTTLHours  int
-	SentryDSN             string
-	SteamAPIKey           string
+	DatabaseURL            string
+	DatabaseReadReplicaURL string
+	RedisURL               string
+	Port                   string
+	JWTSecret              string
+	AccessTokenTTLMinutes  int
+	RefreshTokenTTLHours   int
+	SentryDSN              string
+	SteamAPIKey            string
+	MeilisearchURL         string
+	MeilisearchMasterKey   string
+	GoogleClientID         string
+	GoogleClientSecret     string
+	GoogleRedirectURL      string
 }
 
 func LoadConfig() Config {
 	dbURL := os.Getenv("DATABASE_URL")
+	dbReadReplicaURL := os.Getenv("DATABASE_READ_REPLICA_URL")
 	redisURL := os.Getenv("REDIS_URL")
 	port := os.Getenv("PORT")
 	jwtSecret := os.Getenv("JWT_SECRET")
@@ -26,6 +33,11 @@ func LoadConfig() Config {
 	refreshTokenTTLHours := parseEnvInt("REFRESH_TOKEN_TTL_HOURS", 168)
 	sentryDSN := os.Getenv("SENTRY_DSN")
 	steamAPIKey := os.Getenv("STEAM_API_KEY")
+	meilisearchURL := os.Getenv("MEILISEARCH_URL")
+	meilisearchMasterKey := os.Getenv("MEILISEARCH_MASTER_KEY")
+	googleClientID := os.Getenv("GOOGLE_CLIENT_ID")
+	googleClientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
+	googleRedirectURL := os.Getenv("GOOGLE_REDIRECT_URL")
 
 	if dbURL == "" {
 		log.Fatal("DATABASE_URL is not set")
@@ -42,14 +54,20 @@ func LoadConfig() Config {
 	}
 
 	return Config{
-		DatabaseURL:           dbURL,
-		RedisURL:              redisURL,
-		Port:                  port,
-		JWTSecret:             jwtSecret,
-		AccessTokenTTLMinutes: accessTokenTTLMinutes,
-		RefreshTokenTTLHours:  refreshTokenTTLHours,
-		SentryDSN:             sentryDSN,
-		SteamAPIKey:           steamAPIKey,
+		DatabaseURL:            dbURL,
+		DatabaseReadReplicaURL: dbReadReplicaURL,
+		RedisURL:               redisURL,
+		Port:                   port,
+		JWTSecret:              jwtSecret,
+		AccessTokenTTLMinutes:  accessTokenTTLMinutes,
+		RefreshTokenTTLHours:   refreshTokenTTLHours,
+		SentryDSN:              sentryDSN,
+		SteamAPIKey:            steamAPIKey,
+		MeilisearchURL:         meilisearchURL,
+		MeilisearchMasterKey:   meilisearchMasterKey,
+		GoogleClientID:         googleClientID,
+		GoogleClientSecret:     googleClientSecret,
+		GoogleRedirectURL:      googleRedirectURL,
 	}
 }
 

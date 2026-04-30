@@ -177,7 +177,7 @@ func NewReviewAggregator(steamAPIKey, gameSpotAPIKey string) *ReviewAggregator {
 func (a *ReviewAggregator) FetchAllScores(ctx context.Context, gameID string) ([]ReviewScore, error) {
 	var scores []ReviewScore
 	
-	for source, client := range a.clients {
+	for _, client := range a.clients {
 		score, err := client.FetchScore(ctx, gameID)
 		if err != nil {
 			// Log error but continue with other sources

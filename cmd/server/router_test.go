@@ -11,7 +11,7 @@ import (
 
 func TestNewHTTPHandler_HealthRoute(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(httptest.NewRecorder(), nil))
-	h := newHTTPHandler(logger, config.Config{JWTSecret: "test-secret"})
+	h := newHTTPHandler(logger, config.Config{JWTSecret: "test-secret"}, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rr := httptest.NewRecorder()
@@ -27,7 +27,7 @@ func TestNewHTTPHandler_HealthRoute(t *testing.T) {
 
 func TestNewHTTPHandler_ProtectedRouteRequiresAuth(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(httptest.NewRecorder(), nil))
-	h := newHTTPHandler(logger, config.Config{JWTSecret: "test-secret"})
+	h := newHTTPHandler(logger, config.Config{JWTSecret: "test-secret"}, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/me", nil)
 	rr := httptest.NewRecorder()

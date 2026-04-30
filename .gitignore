@@ -2,6 +2,12 @@
 bin/
 *.exe
 
+# Test output
+.tmp-go-test-output.txt
+
+# Report generator (all capstone report files)
+report-generator/
+
 #Ignore Environment files
 .env
 .env.local
@@ -27,3 +33,7 @@ Patent.docx
 # AI agent configs
 .agents/
 .windsurfrules
+
+# Logs
+logs/
+*.log

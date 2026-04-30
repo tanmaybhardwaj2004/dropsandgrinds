@@ -8,10 +8,24 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 
     ports:
-      - "5432:5432"
+      - "5433:5432"
     
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./logs/postgres:/var/log/postgresql
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=postgres"
+    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
@@ -21,6 +35,20 @@ services:
     
     volumes:
       - redisdata:/data
+      - ./logs/redis:/var/log/redis
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=redis"
+    
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
     build:
@@ -32,29 +60,55 @@ services:
       REDIS_URL: redis:6379
       PORT: 8080
       JWT_SECRET: ${JWT_SECRET}
+      STEAM_API_KEY: ${STEAM_API_KEY}
       ACCESS_TOKEN_TTL_MINUTES: 15
       REFRESH_TOKEN_TTL_HOURS: 168
+      LOG_DIR: /app/logs
+      LOG_FORMAT: json
+      LOG_LEVEL: info
     
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    
+    volumes:
+      - ./logs/backend:/app/logs
     
     expose:
       - "8080"
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+        labels: "service=backend"
     
     networks:
       - app-network
 
   frontend:
     build:
-      context: ./docker/frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/frontend/Dockerfile
     
     ports:
       - "80:80"
     
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    
     depends_on:
       - backend
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=frontend"
     
     networks:
       - app-network
@@ -62,6 +116,9 @@ services:
 volumes:
   pgdata:
   redisdata:
+  logs_postgres:
+  logs_redis:
+  logs_backend:
 
 networks:
   app-network:

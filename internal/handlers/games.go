@@ -10,10 +10,114 @@ import (
 )
 
 var gamesService *services.GamesService
+var meilisearchService *services.MeilisearchService
 
 // SetGamesService wires the games service into HTTP handlers at startup.
 func SetGamesService(svc *services.GamesService) {
 	gamesService = svc
+}
+
+// SetMeilisearchService wires the Meilisearch service into HTTP handlers at startup.
+func SetMeilisearchService(svc *services.MeilisearchService) {
+	meilisearchService = svc
+}
+
+// SearchGamesHandler returns games matching search criteria with filters.
+// @Summary      Search games
+// @Description  Full-text search with filters for platform, price range, discount, and review score. Uses Meilisearch if configured, otherwise falls back to PostgreSQL.
+// @Tags         games
+// @Produce      json
+// @Param        q                query  string   false  "Search query"
+// @Param        platform         query  string   false  "Platform filter (steam, epic, gog)"
+// @Param        min_price        query  number   false  "Minimum price in INR"
+// @Param        max_price        query  number   false  "Maximum price in INR"
+// @Param        min_discount     query  int      false  "Minimum discount percentage"
+// @Param        max_discount     query  int      false  "Maximum discount percentage"
+// @Param        min_review_score query  number   false  "Minimum review score (0-100)"
+// @Param        max_review_score query  number   false  "Maximum review score (0-100)"
+// @Param        limit            query  int      false  "Page size"  default(30)
+// @Param        offset           query  int      false  "Page offset"  default(0)
+// @Success      200              {object}  models.GameListResponse
+// @Router       /api/games/search [get]
+func SearchGamesHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, models.APIError{Error: "Method not allowed"})
+		return
+	}
+
+	query := r.URL.Query().Get("q")
+	platform := r.URL.Query().Get("platform")
+	minPrice := parseQueryFloat(r.URL.Query().Get("min_price"), 0)
+	maxPrice := parseQueryFloat(r.URL.Query().Get("max_price"), 0)
+	minDiscount := parseQueryInt(r.URL.Query().Get("min_discount"), 0)
+	maxDiscount := parseQueryInt(r.URL.Query().Get("max_discount"), 0)
+	minReviewScore := parseQueryFloat(r.URL.Query().Get("min_review_score"), 0)
+	maxReviewScore := parseQueryFloat(r.URL.Query().Get("max_review_score"), 0)
+	limit := parseQueryInt(r.URL.Query().Get("limit"), 30)
+	offset := parseQueryInt(r.URL.Query().Get("offset"), 0)
+
+	var games []models.Game
+	var total int
+	var err error
+
+	// Use Meilisearch if available, otherwise fall back to PostgreSQL
+	if meilisearchService != nil {
+		// Build Meilisearch filter string
+		filters := buildMeilisearchFilters(platform, minPrice, maxPrice, minDiscount, maxDiscount, minReviewScore, maxReviewScore)
+		games, total, err = meilisearchService.SearchGames(r.Context(), query, filters, limit, offset)
+	} else {
+		games, total, err = gamesService.SearchGames(r.Context(), query, platform, minPrice, maxPrice, minDiscount, maxDiscount, minReviewScore, maxReviewScore, limit, offset)
+	}
+
+	if err != nil {
+		writeServiceError(w, err, "Failed to search games")
+		return
+	}
+
+	response := models.GameListResponse{
+		Games:  games,
+		Total:  total,
+		Limit:  limit,
+		Offset: offset,
+	}
+
+	writeJSON(w, http.StatusOK, response)
+}
+
+// buildMeilisearchFilters constructs a Meilisearch filter string from query parameters
+func buildMeilisearchFilters(platform string, minPrice, maxPrice float64, minDiscount, maxDiscount int, minReviewScore, maxReviewScore float64) string {
+	var filters []string
+
+	if platform != "" {
+		filters = append(filters, "platform = "+platform)
+	}
+	if minPrice > 0 {
+		filters = append(filters, "price_inr >= "+formatFloat(minPrice))
+	}
+	if maxPrice > 0 {
+		filters = append(filters, "price_inr <= "+formatFloat(maxPrice))
+	}
+	if minDiscount > 0 {
+		filters = append(filters, "discount_percent >= "+strconv.Itoa(minDiscount))
+	}
+	if maxDiscount > 0 {
+		filters = append(filters, "discount_percent <= "+strconv.Itoa(maxDiscount))
+	}
+	if minReviewScore > 0 {
+		filters = append(filters, "review_score >= "+formatFloat(minReviewScore))
+	}
+	if maxReviewScore > 0 {
+		filters = append(filters, "review_score <= "+formatFloat(maxReviewScore))
+	}
+
+	if len(filters) == 0 {
+		return ""
+	}
+	return strings.Join(filters, " AND ")
+}
+
+func formatFloat(f float64) string {
+	return strconv.FormatFloat(f, 'f', -1, 64)
 }
 
 // GamesListHandler returns paginated games filtered by query and platform.
@@ -124,35 +228,15 @@ func parseQueryInt(value string, fallback int) int {
 	return parsed
 }
 
-// DealsListHandler returns current active deals.
-// @Summary      List deals
-// @Description  Returns paginated current active deals
-// @Tags         deals
-// @Produce      json
-// @Param        limit   query  int  false  "Page size"  default(20)
-// @Param        offset  query  int  false  "Page offset"  default(0)
-// @Success      200     {object}  models.DealListResponse
-// @Failure      500     {object}  models.APIError
-// @Router       /api/deals [get]
-func DealsListHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, models.APIError{Error: "Method not allowed"})
-		return
+func parseQueryFloat(value string, fallback float64) float64 {
+	if strings.TrimSpace(value) == "" {
+		return fallback
 	}
-	if gamesService == nil {
-		writeJSON(w, http.StatusInternalServerError, models.APIError{Error: "Games service not initialized"})
-		return
-	}
-
-	limit := parseQueryInt(r.URL.Query().Get("limit"), 20)
-	offset := parseQueryInt(r.URL.Query().Get("offset"), 0)
-	response, err := gamesService.ListDeals(r.Context(), limit, offset)
+	parsed, err := strconv.ParseFloat(value, 64)
 	if err != nil {
-		writeServiceError(w, err, "Failed to list deals")
-		return
+		return fallback
 	}
-
-	writeJSON(w, http.StatusOK, response)
+	return parsed
 }
 
 // PriceHistoryHandler returns price history for a game.

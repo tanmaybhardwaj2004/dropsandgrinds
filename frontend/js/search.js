@@ -1,0 +1,229 @@
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('Search page loaded');
+    initAuthButton();
+    initSearch();
+    initFilters();
+    
+    // Get query from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const query = urlParams.get('q');
+    
+    if (query) {
+        document.getElementById('search-input').value = query;
+        performSearch();
+    }
+});
+
+let currentPage = 0;
+const limit = 30;
+let totalResults = 0;
+
+function initSearch() {
+    const searchInput = document.getElementById('search-input');
+    const searchBtn = document.getElementById('search-btn');
+
+    if (!searchInput || !searchBtn) return;
+
+    const performSearchOnEnter = (e) => {
+        if (e.key === 'Enter') {
+            currentPage = 0;
+            performSearch();
+        }
+    };
+
+    searchBtn.addEventListener('click', () => {
+        currentPage = 0;
+        performSearch();
+    });
+    searchInput.addEventListener('keypress', performSearchOnEnter);
+}
+
+function initFilters() {
+    const applyBtn = document.getElementById('apply-filters-btn');
+    const clearBtn = document.getElementById('clear-filters-btn');
+    const prevBtn = document.getElementById('prev-page-btn');
+    const nextBtn = document.getElementById('next-page-btn');
+
+    if (applyBtn) {
+        applyBtn.addEventListener('click', () => {
+            currentPage = 0;
+            performSearch();
+        });
+    }
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', clearFilters);
+    }
+
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            if (currentPage > 0) {
+                currentPage--;
+                performSearch();
+            }
+        });
+    }
+
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            const maxPage = Math.ceil(totalResults / limit) - 1;
+            if (currentPage < maxPage) {
+                currentPage++;
+                performSearch();
+            }
+        });
+    }
+}
+
+function clearFilters() {
+    document.getElementById('filter-platform').value = '';
+    document.getElementById('filter-min-price').value = '';
+    document.getElementById('filter-max-price').value = '';
+    document.getElementById('filter-min-discount').value = '';
+    document.getElementById('filter-max-discount').value = '';
+    document.getElementById('filter-min-score').value = '';
+    document.getElementById('filter-max-score').value = '';
+    currentPage = 0;
+    performSearch();
+}
+
+async function performSearch() {
+    const query = document.getElementById('search-input').value.trim();
+    const platform = document.getElementById('filter-platform').value;
+    const minPrice = parseFloat(document.getElementById('filter-min-price').value) || 0;
+    const maxPrice = parseFloat(document.getElementById('filter-max-price').value) || 0;
+    const minDiscount = parseInt(document.getElementById('filter-min-discount').value) || 0;
+    const maxDiscount = parseInt(document.getElementById('filter-max-discount').value) || 0;
+    const minReviewScore = parseFloat(document.getElementById('filter-min-score').value) || 0;
+    const maxReviewScore = parseFloat(document.getElementById('filter-max-score').value) || 0;
+
+    const loadingState = document.getElementById('loading-state');
+    const emptyState = document.getElementById('empty-state');
+    const errorState = document.getElementById('error-state');
+    const resultsGrid = document.getElementById('results-grid');
+    const pagination = document.getElementById('pagination');
+
+    // Show loading state
+    if (loadingState) loadingState.style.display = 'flex';
+    if (emptyState) emptyState.style.display = 'none';
+    if (errorState) errorState.style.display = 'none';
+    if (resultsGrid) resultsGrid.innerHTML = '';
+    if (pagination) pagination.style.display = 'none';
+
+    // Build query params
+    const params = new URLSearchParams();
+    if (query) params.append('q', query);
+    if (platform) params.append('platform', platform);
+    if (minPrice > 0) params.append('min_price', minPrice);
+    if (maxPrice > 0) params.append('max_price', maxPrice);
+    if (minDiscount > 0) params.append('min_discount', minDiscount);
+    if (maxDiscount > 0) params.append('max_discount', maxDiscount);
+    if (minReviewScore > 0) params.append('min_review_score', minReviewScore);
+    if (maxReviewScore > 0) params.append('max_review_score', maxReviewScore);
+    params.append('limit', limit);
+    params.append('offset', currentPage * limit);
+
+    try {
+        const response = await fetch(`/api/games/search?${params.toString()}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Search failed');
+        }
+
+        // Hide loading state
+        if (loadingState) loadingState.style.display = 'none';
+
+        totalResults = data.total || 0;
+
+        // Update results count
+        const resultsCount = document.getElementById('results-count');
+        if (resultsCount) {
+            resultsCount.textContent = `${totalResults} results`;
+        }
+
+        // Update results title
+        const resultsTitle = document.getElementById('results-title');
+        if (resultsTitle) {
+            resultsTitle.textContent = query ? `Results for "${query}"` : 'All Games';
+        }
+
+        if (data.games && data.games.length > 0) {
+            renderResults(data.games);
+            updatePagination();
+        } else {
+            if (emptyState) emptyState.style.display = 'flex';
+        }
+
+    } catch (error) {
+        console.error('Search failed:', error);
+        if (loadingState) loadingState.style.display = 'none';
+        if (errorState) errorState.style.display = 'flex';
+    }
+}
+
+function renderResults(games) {
+    const resultsGrid = document.getElementById('results-grid');
+    if (!resultsGrid) return;
+
+    resultsGrid.innerHTML = games.map(game => createGameCard(game)).join('');
+}
+
+function createGameCard(game) {
+    const discountBadge = game.discount_percent > 0 
+        ? `<div class="discount">-${game.discount_percent}%</div>` 
+        : '';
+    
+    const reviewBadge = game.review_score > 0
+        ? `<div class="score-badge">${game.review_score.toFixed(0)}</div>`
+        : '';
+
+    const lowestBadge = game.is_all_time_low
+        ? `<div class="lowest-badge">🔥 All-time low</div>`
+        : '';
+
+    return `
+        <div class="deal-card" onclick="window.location.href='game.html?id=${game.id}'">
+            <img src="${game.cover_url || 'https://via.placeholder.com/400x600?text=No+Cover'}" 
+                 alt="${game.title}" 
+                 class="deal-cover"
+                 onerror="this.src='https://via.placeholder.com/400x600?text=No+Cover'">
+            <div class="deal-info">
+                <h3 class="deal-title">${game.title}</h3>
+                <div class="deal-price-row">
+                    <div class="price">₹${game.price_inr.toFixed(0)}</div>
+                    ${discountBadge}
+                </div>
+                <div class="meta-row">
+                    <span>${game.platform}</span>
+                    ${reviewBadge}
+                </div>
+                ${lowestBadge}
+            </div>
+        </div>
+    `;
+}
+
+function updatePagination() {
+    const pagination = document.getElementById('pagination');
+    const prevBtn = document.getElementById('prev-page-btn');
+    const nextBtn = document.getElementById('next-page-btn');
+    const pageInfo = document.getElementById('page-info');
+
+    if (!pagination) return;
+
+    const maxPage = Math.ceil(totalResults / limit) - 1;
+
+    if (totalResults > limit) {
+        pagination.style.display = 'flex';
+        
+        if (prevBtn) prevBtn.disabled = currentPage === 0;
+        if (nextBtn) nextBtn.disabled = currentPage >= maxPage;
+        
+        if (pageInfo) {
+            pageInfo.textContent = `Page ${currentPage + 1} of ${maxPage + 1}`;
+        }
+    } else {
+        pagination.style.display = 'none';
+    }
+}

@@ -1,0 +1,131 @@
+.search-page {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 32px;
+    margin-top: 32px;
+}
+
+.filters-sidebar {
+    background-color: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 24px;
+    height: fit-content;
+    position: sticky;
+    top: 100px;
+}
+
+.filters-sidebar h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: var(--color-text-primary);
+}
+
+.filter-group {
+    margin-bottom: 20px;
+}
+
+.filter-group label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    margin-bottom: 8px;
+}
+
+.filter-select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-size: 0.9rem;
+    outline: none;
+}
+
+.filter-select:focus {
+    border-color: var(--color-accent-primary);
+}
+
+.price-range {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.price-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-size: 0.9rem;
+    outline: none;
+}
+
+.price-input:focus {
+    border-color: var(--color-accent-primary);
+}
+
+.filter-btn {
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.results-section {
+    min-height: 400px;
+}
+
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.results-header h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+}
+
+.results-count {
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid #30363d;
+}
+
+#page-info {
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .search-page {
+        grid-template-columns: 1fr;
+    }
+    
+    .filters-sidebar {
+        position: relative;
+        top: 0;
+    }
+}

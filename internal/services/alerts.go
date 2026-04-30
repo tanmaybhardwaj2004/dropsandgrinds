@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/repositories"
@@ -12,7 +11,6 @@ import (
 type AlertService struct {
 	wishlistRepo *repositories.WishlistRepository
 	catalogRepo  *repositories.CatalogRepository
-	authRepo     *repositories.AuthRepository
 	logger       *slog.Logger
 }
 
@@ -20,13 +18,11 @@ type AlertService struct {
 func NewAlertService(
 	wishlistRepo *repositories.WishlistRepository,
 	catalogRepo *repositories.CatalogRepository,
-	authRepo *repositories.AuthRepository,
 	logger *slog.Logger,
 ) *AlertService {
 	return &AlertService{
 		wishlistRepo: wishlistRepo,
 		catalogRepo:  catalogRepo,
-		authRepo:     authRepo,
 		logger:       logger,
 	}
 }
@@ -50,12 +46,12 @@ func (s *AlertService) CheckAndTriggerAlerts(ctx context.Context) error {
 
 // TriggeredAlert represents an alert that was triggered
 type TriggeredAlert struct {
-	UserID        int64  `json:"user_id"`
-	GameID        int64  `json:"game_id"`
-	GameTitle     string `json:"game_title"`
-	TargetPrice   int    `json:"target_price"`
-	CurrentPrice  int    `json:"current_price"`
-	AlertType     string `json:"alert_type"` // "threshold" or "all_time_low"
+	UserID       int64  `json:"user_id"`
+	GameID       int64  `json:"game_id"`
+	GameTitle    string `json:"game_title"`
+	TargetPrice  int    `json:"target_price"`
+	CurrentPrice int    `json:"current_price"`
+	AlertType    string `json:"alert_type"` // "threshold" or "all_time_low"
 }
 
 // SendEmailAlert sends an email alert to a user

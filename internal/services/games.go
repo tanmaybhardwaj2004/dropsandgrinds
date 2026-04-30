@@ -10,6 +10,7 @@ import (
 
 type CatalogStore interface {
 	ListGames(ctx context.Context, query, platform string, limit, offset int, excludeOwned bool, userID int64) ([]models.Game, int, error)
+	SearchGames(ctx context.Context, query string, platform string, minPrice, maxPrice float64, minDiscount, maxDiscount int, minReviewScore, maxReviewScore float64, limit, offset int) ([]models.Game, int, error)
 	GetGameByID(ctx context.Context, id int64) (models.Game, bool, error)
 	ListDeals(ctx context.Context, limit, offset int) ([]models.Deal, int, error)
 	GetPriceHistory(ctx context.Context, gameID int64, limit, offset int) ([]models.PriceHistoryPoint, error)
@@ -151,6 +152,25 @@ func (s *GamesService) GetIndiaArbitrage(ctx context.Context, gameID int64) (mod
 	}
 
 	return arbitrage, nil
+}
+
+func (s *GamesService) SearchGames(ctx context.Context, query string, platform string, minPrice, maxPrice float64, minDiscount, maxDiscount int, minReviewScore, maxReviewScore float64, limit, offset int) ([]models.Game, int, error) {
+	if limit <= 0 {
+		limit = 30
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	games, total, err := s.repo.SearchGames(ctx, query, platform, minPrice, maxPrice, minDiscount, maxDiscount, minReviewScore, maxReviewScore, limit, offset)
+	if err != nil {
+		return nil, 0, &ServiceError{StatusCode: 500, Message: "Failed to search games"}
+	}
+
+	return games, total, nil
 }
 
 func (s *GamesService) GetBuyAdvice(ctx context.Context, gameID int64) (models.BuyAdviceResponse, error) {

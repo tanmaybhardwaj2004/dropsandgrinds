@@ -8,11 +8,11 @@
     font-size: 2rem;
     font-weight: 700;
     margin-bottom: 8px;
-    color: var(--text-main);
+    color: var(--color-text-primary);
 }
 
 .section-subtitle {
-    color: var(--text-muted);
+    color: var(--color-text-secondary);
     margin-bottom: 32px;
 }
 
@@ -24,8 +24,8 @@
 }
 
 .summary-card {
-    background-color: #161b22;
-    border: 1px solid #30363d;
+    background-color: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
     border-radius: 12px;
     padding: 24px;
     display: flex;
@@ -34,8 +34,8 @@
 }
 
 .summary-card.equivalent-games {
-    background: linear-gradient(135deg, #161b22 0%, #1f2428 100%);
-    border-color: var(--primary-color);
+    background: linear-gradient(135deg, var(--color-bg-tertiary) 0%, var(--color-bg-secondary) 100%);
+    border-color: var(--color-accent-primary);
 }
 
 .summary-icon {
@@ -48,25 +48,25 @@
 
 .summary-label {
     font-size: 0.9rem;
-    color: var(--text-muted);
+    color: var(--color-text-secondary);
     margin-bottom: 4px;
 }
 
 .summary-value {
     font-size: 2rem;
     font-weight: 700;
-    color: var(--primary-color);
+    color: var(--color-accent-primary);
 }
 
 .summary-message {
     font-size: 1rem;
-    color: var(--text-main);
+    color: var(--color-text-primary);
     font-weight: 500;
 }
 
 .log-purchase-card {
-    background-color: #161b22;
-    border: 1px solid #30363d;
+    background-color: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
     border-radius: 12px;
     padding: 24px;
     margin-bottom: 32px;
@@ -76,7 +76,7 @@
     font-size: 1.25rem;
     font-weight: 600;
     margin-bottom: 16px;
-    color: var(--text-main);
+    color: var(--color-text-primary);
 }
 
 .purchase-form {
@@ -100,27 +100,27 @@
 .form-group label {
     font-size: 0.9rem;
     font-weight: 500;
-    color: var(--text-main);
+    color: var(--color-text-primary);
 }
 
 .form-group input {
     padding: 10px 12px;
-    border: 1px solid #30363d;
+    border: 1px solid var(--color-border);
     border-radius: 6px;
-    background-color: #0d1117;
-    color: var(--text-main);
+    background-color: var(--color-bg-secondary);
+    color: var(--color-text-primary);
     font-size: 0.95rem;
     transition: border-color 0.2s ease;
 }
 
 .form-group input:focus {
     outline: none;
-    border-color: var(--primary-color);
+    border-color: var(--color-accent-primary);
 }
 
 .monthly-breakdown {
-    background-color: #161b22;
-    border: 1px solid #30363d;
+    background-color: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
     border-radius: 12px;
     padding: 24px;
     margin-bottom: 32px;
@@ -130,7 +130,7 @@
     font-size: 1.25rem;
     font-weight: 600;
     margin-bottom: 16px;
-    color: var(--text-main);
+    color: var(--color-text-primary);
 }
 
 .monthly-chart {
@@ -148,20 +148,20 @@
 .monthly-label {
     width: 80px;
     font-size: 0.85rem;
-    color: var(--text-muted);
+    color: var(--color-text-secondary);
 }
 
 .monthly-bar-container {
     flex: 1;
     height: 32px;
-    background-color: #21262d;
+    background-color: var(--color-bg-elevated);
     border-radius: 4px;
     overflow: hidden;
 }
 
 .monthly-bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--primary-color), #238636);
+    background: linear-gradient(90deg, var(--color-accent-primary), #238636);
     border-radius: 4px;
     transition: width 0.3s ease;
     display: flex;
@@ -177,8 +177,8 @@
 }
 
 .purchase-history {
-    background-color: #161b22;
-    border: 1px solid #30363d;
+    background-color: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
     border-radius: 12px;
     padding: 24px;
 }
@@ -187,7 +187,7 @@
     font-size: 1.25rem;
     font-weight: 600;
     margin-bottom: 16px;
-    color: var(--text-main);
+    color: var(--color-text-primary);
 }
 
 .purchase-list {
@@ -201,7 +201,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px;
-    background-color: #21262d;
+    background-color: var(--color-bg-elevated);
     border-radius: 8px;
 }
 
@@ -211,13 +211,13 @@
 
 .purchase-title {
     font-weight: 600;
-    color: var(--text-main);
+    color: var(--color-text-primary);
     margin-bottom: 4px;
 }
 
 .purchase-date {
     font-size: 0.8rem;
-    color: var(--text-muted);
+    color: var(--color-text-secondary);
 }
 
 .purchase-savings {
@@ -232,13 +232,13 @@
 
 .purchase-savings .price-breakdown {
     font-size: 0.8rem;
-    color: var(--text-muted);
+    color: var(--color-text-secondary);
 }
 
 .empty-purchases {
     text-align: center;
     padding: 32px;
-    color: var(--text-muted);
+    color: var(--color-text-secondary);
 }
 
 @media (max-width: 600px) {

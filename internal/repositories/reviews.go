@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -29,7 +28,7 @@ func (r *ReviewRepository) StoreReviewScore(ctx context.Context, gameID int64, s
 			url = EXCLUDED.url,
 			fetched_at = EXCLUDED.fetched_at
 	`
-	
+
 	_, err := r.db.Exec(ctx, query, gameID, string(score.Source), score.Score, score.URL, score.FetchedAt)
 	return err
 }
@@ -42,13 +41,13 @@ func (r *ReviewRepository) GetReviewScores(ctx context.Context, gameID int64) ([
 		WHERE game_id = $1
 		ORDER BY fetched_at DESC
 	`
-	
+
 	rows, err := r.db.Query(ctx, query, gameID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var scores []reviews.ReviewScore
 	for rows.Next() {
 		var score reviews.ReviewScore
@@ -60,7 +59,7 @@ func (r *ReviewRepository) GetReviewScores(ctx context.Context, gameID int64) ([
 		score.Source = reviews.ReviewSource(source)
 		scores = append(scores, score)
 	}
-	
+
 	return scores, rows.Err()
 }
 
@@ -71,15 +70,13 @@ func (r *ReviewRepository) GetReviewScore(ctx context.Context, gameID int64, sou
 		FROM review_scores
 		WHERE game_id = $1 AND source = $2
 	`
-	
+
 	var score reviews.ReviewScore
-	var source string
-	err := r.db.QueryRow(ctx, query, gameID, string(source)).Scan(&source, &score.Score, &score.URL, &score.FetchedAt)
+	err := r.db.QueryRow(ctx, query, gameID, string(source)).Scan(&score.Source, &score.Score, &score.URL, &score.FetchedAt)
 	if err != nil {
 		return nil, err
 	}
-	
-	score.Source = reviews.ReviewSource(source)
+
 	return &score, nil
 }
 
@@ -97,13 +94,13 @@ func (r *ReviewRepository) GetStaleReviews(ctx context.Context, olderThan time.D
 		FROM review_scores
 		WHERE fetched_at < $1
 	`
-	
+
 	rows, err := r.db.Query(ctx, query, time.Now().Add(-olderThan))
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var gameIDs []int64
 	for rows.Next() {
 		var gameID int64
@@ -112,6 +109,6 @@ func (r *ReviewRepository) GetStaleReviews(ctx context.Context, olderThan time.D
 		}
 		gameIDs = append(gameIDs, gameID)
 	}
-	
+
 	return gameIDs, rows.Err()
 }

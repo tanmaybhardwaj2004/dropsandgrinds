@@ -20,6 +20,7 @@ import (
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/repositories"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/scheduler"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/services"
+	"github.com/tanmaybhardwaj2004/dropsandgrinds/pkg/logger"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/pkg/steam"
 )
 
@@ -30,30 +31,83 @@ import (
 // @BasePath        /
 func main() {
 	_ = godotenv.Load()
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	cfg := config.LoadConfig()
 
+	// Initialize file-based logger
+	logFormat := "text"
+	if os.Getenv("LOG_FORMAT") == "json" {
+		logFormat = "json"
+	}
+	logLevel := slog.LevelInfo
+	if os.Getenv("LOG_LEVEL") == "debug" {
+		logLevel = slog.LevelDebug
+	}
+	if err := logger.Init(logger.Config{
+		LogDir:      os.Getenv("LOG_DIR"),
+		Level:       logLevel,
+		Format:      logFormat,
+		ServiceName: "backend",
+	}); err != nil {
+		log.Printf("Failed to initialize logger: %v", err)
+		log.Println("Falling back to stdout logging")
+		logger.Logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
+	}
+
+	// Log application startup
+	logger.LogStartup("1.0", cfg.Port)
+
 	// Set auth logger
-	middleware.SetAuthLogger(logger)
+	middleware.SetAuthLogger(logger.Logger)
 
 	// Initialize Sentry
 	config.InitSentry(cfg.SentryDSN)
 	defer config.FlushSentry()
 
+	logger.LogComponentStartup("database", map[string]string{"url": cfg.DatabaseURL})
 	conn, err := config.ConnectDB(cfg.DatabaseURL)
 	if err != nil {
+		logger.LogError("database connection", err, map[string]string{"url": cfg.DatabaseURL})
 		log.Fatal("Failed to connect to database:", err)
 	}
-	defer conn.Close()
+	defer func() {
+		conn.Close()
+		logger.LogComponentShutdown("database", "normal shutdown")
+	}()
 	handlers.SetDBPool(conn)
+	logger.LogInfo("database connected successfully", nil)
 
+	// Connect to read replica if configured
+	if cfg.DatabaseReadReplicaURL != "" {
+		logger.LogComponentStartup("read_replica", map[string]string{"url": cfg.DatabaseReadReplicaURL})
+		readReplicaConn, err := config.ConnectReadReplica(cfg.DatabaseReadReplicaURL)
+		if err != nil {
+			logger.LogError("read replica connection", err, map[string]string{"url": cfg.DatabaseReadReplicaURL})
+			log.Printf("Failed to connect to read replica (continuing without): %v", err)
+			readReplicaConn = nil
+		}
+		if readReplicaConn != nil {
+			defer func() {
+				readReplicaConn.Close()
+				logger.LogComponentShutdown("read_replica", "normal shutdown")
+			}()
+			handlers.SetReadReplicaPool(readReplicaConn)
+			logger.LogInfo("read replica connected successfully", nil)
+		}
+	}
+
+	logger.LogComponentStartup("redis", map[string]string{"url": cfg.RedisURL})
 	redisClient, err := config.NewRedisClient(cfg.RedisURL)
 	if err != nil {
+		logger.LogError("redis connection", err, map[string]string{"url": cfg.RedisURL})
 		log.Fatal("Failed to connect to Redis:", err)
 	}
-	defer redisClient.Close()
+	defer func() {
+		redisClient.Close()
+		logger.LogComponentShutdown("redis", "normal shutdown")
+	}()
 	handlers.SetRedisClient(redisClient)
 	handlers.SetSteamAPIKey(cfg.SteamAPIKey)
+	logger.LogInfo("redis connected successfully", nil)
 
 	catalogRepo := repositories.NewCatalogRepository(conn, redisClient)
 	gamesService := services.NewGamesService(catalogRepo)
@@ -82,7 +136,7 @@ func main() {
 	// Initialize library service
 	libraryRepo := repositories.NewLibraryRepository(conn)
 	steamClient := steam.NewClient(cfg.SteamAPIKey)
-	libraryService := services.NewLibraryService(libraryRepo, catalogRepo, steamClient, logger)
+	libraryService := services.NewLibraryService(libraryRepo, catalogRepo, steamClient, logger.Logger)
 	handlers.SetLibraryService(libraryService)
 
 	// Initialize savings service
@@ -94,36 +148,68 @@ func main() {
 	clicksRepo := repositories.NewClicksRepository(conn)
 	handlers.SetClicksRepository(clicksRepo)
 
+	// Initialize analytics repository
+	analyticsRepo := repositories.NewAnalyticsRepository(conn)
+	handlers.SetAnalyticsRepository(analyticsRepo)
+
 	// Initialize sales calendar repository
 	salesCalendarRepo := repositories.NewSalesCalendarRepository(conn)
 
 	// Initialize bundle service
-	bundleService := services.NewBundleService(catalogRepo, logger)
+	bundleService := services.NewBundleService(catalogRepo, logger.Logger)
 	handlers.SetBundleService(bundleService)
 
 	// Initialize buy timing service
-	buyTimingService := services.NewBuyTimingService(salesCalendarRepo, logger)
+	buyTimingService := services.NewBuyTimingService(salesCalendarRepo, logger.Logger)
 	handlers.SetBuyTimingService(buyTimingService)
 
-	log.Println("Database connected successfully")
+	// Initialize OAuth service (optional)
+	var oauthService *services.OAuthService
+	if cfg.GoogleClientID != "" && cfg.GoogleClientSecret != "" {
+		logger.LogComponentStartup("oauth", map[string]string{"provider": "google"})
+		oauthService = services.NewOAuthService(cfg.GoogleClientID, cfg.GoogleClientSecret, cfg.GoogleRedirectURL, authService)
+		handlers.SetOAuthService(oauthService)
+		logger.LogInfo("OAuth service initialized", nil)
+	}
+
+	// Initialize Meilisearch service (optional)
+	var meilisearchService *services.MeilisearchService
+	if cfg.MeilisearchURL != "" && cfg.MeilisearchMasterKey != "" {
+		logger.LogComponentStartup("meilisearch", map[string]string{"url": cfg.MeilisearchURL})
+		meilisearchService = services.NewMeilisearchService(cfg.MeilisearchURL, cfg.MeilisearchMasterKey)
+		if err := meilisearchService.ConfigureIndex(); err != nil {
+			logger.LogError("meilisearch configuration", err, nil)
+			logger.Logger.Warn("failed to configure Meilisearch index", "error", err)
+		} else {
+			handlers.SetMeilisearchService(meilisearchService)
+			logger.LogInfo("Meilisearch service initialized", nil)
+		}
+	}
 
 	// Initialize and start scheduler
-	sched := scheduler.New(logger)
+	logger.LogComponentStartup("scheduler", nil)
+	sched := scheduler.New(logger.Logger)
 	sched.AddJob(scheduler.Job{
 		Name:     "price-refresh",
 		Interval: 15 * time.Minute,
-		Run:      scheduler.PriceRefreshJob(catalogRepo, logger),
+		Run:      scheduler.PriceRefreshJob(catalogRepo, logger.Logger),
 	})
 	sched.AddJob(scheduler.Job{
 		Name:     "review-refresh",
 		Interval: 24 * time.Hour,
-		Run:      scheduler.ReviewRefreshJob(reviewService, logger),
+		Run:      scheduler.ReviewRefreshJob(reviewService, logger.Logger),
 	})
 
-	sched.Start(context.Background())
-	defer sched.Stop()
+	// Start Meilisearch sync if configured
+	scheduler.StartMeilisearchSync(sched, catalogRepo, meilisearchService, logger.Logger)
 
-	wrappedHandler := newHTTPHandler(logger, cfg, redisClient)
+	sched.Start(context.Background())
+	defer func() {
+		sched.Stop()
+		logger.LogComponentShutdown("scheduler", "normal shutdown")
+	}()
+
+	wrappedHandler := newHTTPHandler(logger.Logger, cfg, redisClient)
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           wrappedHandler,
@@ -135,16 +221,21 @@ func main() {
 
 	go func() {
 		<-ctx.Done()
+		logger.LogInfo("shutdown signal received", map[string]string{"signal": "interrupt"})
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if shutdownErr := server.Shutdown(shutdownCtx); shutdownErr != nil {
-			logger.Error("graceful shutdown failed", "error", shutdownErr)
+			logger.LogError("graceful shutdown", shutdownErr, nil)
+		} else {
+			logger.LogInfo("graceful shutdown completed", nil)
 		}
 	}()
 
-	logger.Info("server listening", "port", cfg.Port)
+	logger.LogInfo("server listening", map[string]string{"port": cfg.Port, "address": ":" + cfg.Port})
 	err = server.ListenAndServe()
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		logger.LogError("server startup", err, nil)
 		log.Fatal(err)
 	}
+	logger.LogShutdown("server closed")
 }

@@ -12,5 +12,15 @@ func ConnectDB(conString string) (*pgxpool.Pool, error) {
 		return nil, err
 	}
 	return pool, nil
+}
 
+func ConnectReadReplica(conString string) (*pgxpool.Pool, error) {
+	if conString == "" {
+		return nil, nil // No read replica configured
+	}
+	pool, err := pgxpool.New(context.Background(), conString)
+	if err != nil {
+		return nil, err
+	}
+	return pool, nil
 }

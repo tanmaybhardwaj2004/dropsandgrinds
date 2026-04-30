@@ -8,12 +8,12 @@
 
 .auth-card {
     background-color: var(--surface-color);
-    border: 1px solid #30363d;
+    border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 40px;
     width: 100%;
     max-width: 450px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    box-shadow: 0 8px 32px var(--shadow-color);
 }
 
 .auth-card h2 {
@@ -45,17 +45,18 @@
     width: 100%;
     padding: 12px 16px;
     border-radius: 6px;
-    border: 1px solid #30363d;
+    border: 1px solid var(--border-color);
     background-color: var(--bg-color);
     color: var(--text-main);
     font-family: var(--font-family);
     font-size: 1rem;
     outline: none;
-    transition: border-color 0.2s ease;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .form-group input:focus {
     border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
 }
 
 .help-text {
@@ -80,6 +81,11 @@
     font-size: 0.9rem;
     color: var(--text-muted);
     cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.checkbox-group:hover label {
+    color: var(--text-main);
 }
 
 .full-width {
@@ -106,6 +112,12 @@
     text-decoration: underline;
 }
 
+.auth-footer a:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
 .alert {
     padding: 12px 16px;
     border-radius: 6px;
@@ -114,9 +126,9 @@
 }
 
 .alert.error {
-    background-color: rgba(218, 54, 51, 0.1);
+    background-color: rgba(207, 34, 46, 0.1);
     border: 1px solid var(--danger);
-    color: #ff7b72;
+    color: var(--danger-text);
 }
 
 .hidden {

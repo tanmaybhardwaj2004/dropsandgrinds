@@ -8,17 +8,17 @@
     font-size: 2rem;
     font-weight: 700;
     margin-bottom: 8px;
-    color: var(--text-main);
+    color: var(--color-text-primary);
 }
 
 .section-subtitle {
-    color: var(--text-muted);
+    color: var(--color-text-secondary);
     margin-bottom: 32px;
 }
 
 .game-search-card {
-    background-color: #161b22;
-    border: 1px solid #30363d;
+    background-color: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
     border-radius: 12px;
     padding: 24px;
     margin-bottom: 32px;
@@ -34,25 +34,33 @@
     gap: 8px;
 }
 
+.form-group.btn-group {
+    flex: 0 0 auto;
+}
+
+.game-search-card .btn {
+    height: 42px;
+}
+
 .form-group label {
     font-size: 0.9rem;
     font-weight: 500;
-    color: var(--text-main);
+    color: var(--color-text-primary);
 }
 
 .game-id-input {
     padding: 12px 16px;
-    border: 1px solid #30363d;
+    border: 1px solid var(--color-border);
     border-radius: 6px;
-    background-color: #0d1117;
-    color: var(--text-main);
+    background-color: var(--color-bg-secondary);
+    color: var(--color-text-primary);
     font-size: 0.95rem;
     transition: border-color 0.2s ease;
 }
 
 .game-id-input:focus {
     outline: none;
-    border-color: var(--primary-color);
+    border-color: var(--color-accent-primary);
 }
 
 .loading-state {
@@ -64,8 +72,8 @@
     width: 40px;
     height: 40px;
     margin: 0 auto 16px;
-    border: 3px solid #30363d;
-    border-top-color: var(--primary-color);
+    border: 3px solid var(--color-border);
+    border-top-color: var(--color-accent-primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -75,8 +83,8 @@
 }
 
 .recommendation-card {
-    background-color: #161b22;
-    border: 1px solid #30363d;
+    background-color: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
     border-radius: 12px;
     padding: 24px;
     margin-bottom: 32px;
@@ -119,26 +127,26 @@
 }
 
 .detail-item {
-    background-color: #21262d;
+    background-color: var(--color-bg-elevated);
     border-radius: 8px;
     padding: 16px;
 }
 
 .detail-label {
     font-size: 0.85rem;
-    color: var(--text-muted);
+    color: var(--color-text-secondary);
     margin-bottom: 4px;
 }
 
 .detail-value {
     font-size: 1.1rem;
     font-weight: 600;
-    color: var(--text-main);
+    color: var(--color-text-primary);
 }
 
 .sales-calendar-section {
-    background-color: #161b22;
-    border: 1px solid #30363d;
+    background-color: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
     border-radius: 12px;
     padding: 24px;
 }
@@ -147,7 +155,7 @@
     font-size: 1.25rem;
     font-weight: 600;
     margin-bottom: 16px;
-    color: var(--text-main);
+    color: var(--color-text-primary);
 }
 
 .sales-calendar {
@@ -157,15 +165,15 @@
 }
 
 .sale-card {
-    background-color: #21262d;
-    border: 1px solid #30363d;
+    background-color: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
     border-radius: 8px;
     padding: 16px;
 }
 
 .sale-card.active {
-    border-color: #238636;
-    background: linear-gradient(135deg, #21262d 0%, #1f2428 100%);
+    border-color: var(--color-accent-success);
+    background: linear-gradient(135deg, var(--color-bg-tertiary) 0%, var(--color-bg-secondary) 100%);
 }
 
 .sale-card.active::before {
@@ -183,19 +191,19 @@
 .sale-name {
     font-size: 1rem;
     font-weight: 600;
-    color: var(--text-main);
+    color: var(--color-text-primary);
     margin-bottom: 8px;
 }
 
 .sale-platform {
     font-size: 0.85rem;
-    color: var(--text-muted);
+    color: var(--color-text-secondary);
     margin-bottom: 8px;
 }
 
 .sale-dates {
     font-size: 0.85rem;
-    color: var(--text-main);
+    color: var(--color-text-primary);
 }
 
 @media (max-width: 600px) {

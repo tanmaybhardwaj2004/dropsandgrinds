@@ -3,78 +3,179 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Steam Library - DropsAndGrinds</title>
-    <link rel="stylesheet" href="css/index.css">
+    <title>Your Library - DropsAndGrinds</title>
+    <meta name="theme-color" content="#6366f1">
+    <link rel="stylesheet" href="css/modern-theme.css">
     <link rel="stylesheet" href="css/library.css">
 </head>
 <body>
-    <header class="header">
-        <div class="header-content">
-            <h1 class="logo">DropsAndGrinds</h1>
-            <nav class="nav">
-                <a href="index.html" class="nav-link">Deals</a>
-                <a href="library.html" class="nav-link active">Library</a>
-                <a href="wishlist.html" class="nav-link">Wishlist</a>
-            </nav>
-            <div class="auth-buttons">
-                <button id="login-btn" class="btn btn-primary">Login</button>
-                <button id="logout-btn" class="btn btn-secondary" style="display: none;">Logout</button>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="container flex items-center justify-between" style="height: 64px;">
+            <a href="index.html" class="flex items-center gap-2" style="text-decoration: none;">
+                <div style="width: 36px; height: 36px; background: var(--gradient-primary); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">🎮</div>
+                <span style="font-family: var(--font-display); font-size: var(--text-xl); font-weight: 700; color: var(--color-text-primary);">DropsAndGrinds</span>
+            </a>
+            
+            <div class="flex items-center gap-1" id="nav-links">
+                <a href="index.html" class="nav-link">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    Deals
+                </a>
+                <a href="library.html" class="nav-link active">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                    Library
+                </a>
+                <a href="wishlist.html" class="nav-link">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                    Wishlist
+                </a>
+                <a href="savings.html" class="nav-link">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    Savings
+                </a>
+                <a href="bundle.html" class="nav-link">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                    Bundle Breaker
+                </a>
+                <a href="buy-timing.html" class="nav-link">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Best Time to Buy
+                </a>
+                <a href="about.html" class="nav-link">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    About
+                </a>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button id="theme-toggle" class="btn btn-ghost btn-sm" title="Toggle theme">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="theme-icon-moon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="theme-icon-sun" style="display: none;"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                </button>
+                <button class="btn btn-primary btn-sm" id="auth-btn" onclick="window.location.href='login.html'">Sign In</button>
             </div>
         </div>
-    </header>
+    </nav>
 
-    <main class="container">
-        <section class="library-section">
-            <h2 class="section-title">Steam Library Import</h2>
-            <p class="section-subtitle">Import your Steam games to hide owned games from the deal grid</p>
+    <!-- Hero Section -->
+    <section class="hero" style="padding: var(--space-10) 0;">
+        <div class="hero-bg"></div>
+        <div class="container hero-content">
+            <div style="text-align: center; max-width: 600px; margin: 0 auto;" class="animate-fadeInUp">
+                <h1 style="font-size: var(--text-3xl); margin-bottom: var(--space-3);">Your <span class="text-gradient">Game Library</span></h1>
+                <p style="color: var(--color-text-secondary);">Import your Steam library to automatically hide owned games from deal searches</p>
+            </div>
+        </div>
+    </section>
 
-            <div class="import-card">
-                <form id="import-form" class="import-form">
+    <main class="container" style="margin-bottom: var(--space-16);">
+        <div style="max-width: 600px; margin: 0 auto;">
+            <!-- Import Card -->
+            <div class="card card-elevated" style="margin-bottom: var(--space-6);">
+                <div style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-5);">
+                    <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #1b2838 0%, #2a475e 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">🎮</div>
+                    <div>
+                        <h3 style="font-size: var(--text-xl);">Steam Library Import</h3>
+                        <p style="font-size: var(--text-sm); color: var(--color-text-muted);">Connect your Steam account</p>
+                    </div>
+                </div>
+
+                <form id="import-form" class="auth-form">
                     <div class="form-group">
-                        <label for="steam-id">Steam ID</label>
-                        <input type="text" id="steam-id" name="steam_id" placeholder="76561198000000000" required>
-                        <small class="form-hint">Your 64-bit Steam ID. Find it at steamid.io</small>
+                        <label class="form-label" for="steam-id">Steam ID</label>
+                        <input type="text" id="steam-id" name="steam_id" class="form-input" placeholder="76561198000000000" required>
+                        <p style="font-size: var(--text-xs); color: var(--color-text-muted); margin-top: var(--space-1);">Find your Steam ID at <a href="https://steamid.io" target="_blank">steamid.io</a></p>
                     </div>
 
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="consent-analytics" name="consent_analytics">
-                            <span>I consent to analytics tracking for my library data</span>
-                        </label>
-                    </div>
+                    <label class="terms-checkbox">
+                        <input type="checkbox" id="consent-analytics" name="consent_analytics">
+                        <span>I consent to analytics tracking for my library data</span>
+                    </label>
 
-                    <button type="submit" class="btn btn-primary btn-large" id="import-btn">
+                    <button type="submit" class="btn btn-primary auth-submit" id="import-btn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: var(--space-2);">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
                         Import Library
                     </button>
                 </form>
 
-                <div id="import-result" class="import-result" style="display: none;">
-                    <div class="result-icon">✓</div>
-                    <h3 id="result-title">Import Successful</h3>
-                    <p id="result-message">Your library has been imported successfully.</p>
+                <!-- Success State -->
+                <div id="import-result" class="auth-success" style="display: none; padding: 0;">
+                    <div class="auth-success-icon">✓</div>
+                    <h3 style="font-size: var(--text-xl);">Import Successful!</h3>
+                    <p style="color: var(--color-text-secondary);">Your Steam library has been imported.</p>
                 </div>
 
-                <div id="import-error" class="import-error" style="display: none;">
-                    <div class="error-icon">✕</div>
-                    <h3 id="error-title">Import Failed</h3>
-                    <p id="error-message">Failed to import your library. Please try again.</p>
+                <!-- Error State -->
+                <div id="import-error" class="auth-error" style="display: none;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <span>Failed to import library. Please check your Steam ID.</span>
                 </div>
             </div>
 
-            <div id="library-stats" class="library-stats" style="display: none;">
-                <div class="stat-card">
-                    <div class="stat-value" id="owned-count">0</div>
-                    <div class="stat-label">Games Owned</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="hidden-count">0</div>
-                    <div class="stat-label">Hidden from Deals</div>
+            <!-- Stats -->
+            <div id="library-stats" style="display: none;">
+                <div class="grid grid-cols-2" style="gap: var(--space-4);">
+                    <div class="stat-card">
+                        <div class="stat-value" id="owned-count" style="color: var(--color-accent-primary);">0</div>
+                        <div class="stat-label">Games Owned</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="hidden-count">0</div>
+                        <div class="stat-label">Hidden from Deals</div>
+                    </div>
                 </div>
             </div>
-        </section>
+        </div>
     </main>
 
+    <!-- Footer -->
+    <footer style="border-top: 1px solid var(--color-border); padding: var(--space-8) 0; background: var(--color-bg-secondary); margin-top: auto;">
+        <div class="container">
+            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: var(--space-8);">
+                <div>
+                    <div style="display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3);">
+                        <div style="width: 32px; height: 32px; background: var(--gradient-primary); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;">🎮</div>
+                        <span style="font-family: var(--font-display); font-weight: 700;">DropsAndGrinds</span>
+                    </div>
+                    <p style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Smart cross-platform game deal tracker for Indian gamers. Never miss a price drop again.</p>
+                </div>
+                <div>
+                    <h4 style="font-size: var(--text-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-3); color: var(--color-text-muted);">Features</h4>
+                    <ul style="list-style: none; display: flex; flex-direction: column; gap: var(--space-2);">
+                        <li><a href="search.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Deal Search</a></li>
+                        <li><a href="library.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Game Library</a></li>
+                        <li><a href="bundle.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Bundle Analyzer</a></li>
+                        <li><a href="buy-timing.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Buy Timing</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 style="font-size: var(--text-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-3); color: var(--color-text-muted);">Tools</h4>
+                    <ul style="list-style: none; display: flex; flex-direction: column; gap: var(--space-2);">
+                        <li><a href="savings.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Savings Tracker</a></li>
+                        <li><a href="wishlist.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Wishlist Alerts</a></li>
+                        <li><a href="search.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Price History</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 style="font-size: var(--text-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-3); color: var(--color-text-muted);">Connect</h4>
+                    <ul style="list-style: none; display: flex; flex-direction: column; gap: var(--space-2);">
+                        <li><a href="about.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">About</a></li>
+                        <li><a href="https://github.com/tanmaybhardwaj2004/dropsandgrinds" target="_blank" rel="noopener noreferrer" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">GitHub</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div style="border-top: 1px solid var(--color-border); margin-top: var(--space-6); padding-top: var(--space-6); text-align: center; color: var(--color-text-muted); font-size: var(--text-sm);">
+                © <span class="copyright-year">2025</span> DropsAndGrinds. Built for Indian gamers.
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/theme.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/library.js"></script>
+    <script>document.querySelectorAll('.copyright-year').forEach(el => el.textContent = new Date().getFullYear());</script>
 </body>
 </html>
