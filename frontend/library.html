@@ -7,6 +7,7 @@
     <meta name="theme-color" content="#6366f1">
     <link rel="stylesheet" href="css/modern-theme.css">
     <link rel="stylesheet" href="css/library.css">
+    <link rel="stylesheet" href="css/responsive.css">
 </head>
 <body>
     <!-- Navigation -->
@@ -17,7 +18,13 @@
                 <span style="font-family: var(--font-display); font-size: var(--text-xl); font-weight: 700; color: var(--color-text-primary);">DropsAndGrinds</span>
             </a>
             
-            <div class="flex items-center gap-1" id="nav-links">
+            <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            
+            <div class="flex items-center gap-1 nav-links" id="nav-links">
                 <a href="index.html" class="nav-link">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
                     Deals
