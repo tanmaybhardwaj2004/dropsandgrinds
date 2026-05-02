@@ -242,10 +242,11 @@ async function loadGameDetails(gameID) {
 async function loadBuyAdvice(gameID) {
     try {
         const response = await fetch(`/api/games/${gameID}/buy-advice`);
-        const advice = await response.json();
         if (!response.ok) {
-            throw new Error(advice.error || 'Failed to load buy advice');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to load buy advice');
         }
+        const advice = await response.json();
 
         const verdict = document.getElementById('timeline-verdict');
         const recommendation = (advice.recommendation || 'unknown').toUpperCase();
