@@ -22,13 +22,13 @@ let totalResults = 0;
 function getProxiedImageUrl(originalUrl) {
     if (!originalUrl) return '';
     
-    if (originalUrl.includes('steamstatic.com')) {
+    if (originalUrl.includes('shared.cloudflare.steamstatic.com')) {
         return originalUrl.replace('https://shared.cloudflare.steamstatic.com/', '/img/steam/');
     }
-    if (originalUrl.includes('gog-statics.com')) {
+    if (originalUrl.includes('images.gog-statics.com')) {
         return originalUrl.replace('https://images.gog-statics.com/', '/img/gog/');
     }
-    if (originalUrl.includes('unrealengine.com')) {
+    if (originalUrl.includes('cdn2.unrealengine.com')) {
         return originalUrl.replace('https://cdn2.unrealengine.com/', '/img/epic/');
     }
     
