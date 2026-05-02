@@ -204,10 +204,45 @@
         <!-- Price History Chart Section (Phase 5) -->
         <section class="metrics-grid" style="margin-top: 32px;">
             <div class="metric-card full-width">
-                <h3>📈 Price History</h3>
-                <p class="metric-sub">Track price changes over time to find the best deal</p>
-                <div id="price-chart-container" class="chart-container">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+                    <div>
+                        <h3>📈 Price History</h3>
+                        <p class="metric-sub">Track price changes over time to find the best deal</p>
+                    </div>
+                    <div style="display: flex; gap: var(--space-2);">
+                        <button id="chart-period-30" class="btn btn-sm btn-ghost chart-period-btn active" data-days="30">30 Days</button>
+                        <button id="chart-period-90" class="btn btn-sm btn-ghost chart-period-btn" data-days="90">90 Days</button>
+                        <button id="chart-period-all" class="btn btn-sm btn-ghost chart-period-btn" data-days="365">1 Year</button>
+                    </div>
+                </div>
+                <div id="price-chart-container" class="chart-container" style="position: relative;">
+                    <div id="price-chart-loading" class="loading-overlay" style="display: none;">
+                        <div class="spinner"></div>
+                        <p>Loading price history...</p>
+                    </div>
+                    <div id="price-chart-error" class="error-overlay" style="display: none;">
+                        <p>Failed to load price history</p>
+                        <button onclick="loadPriceHistory()" class="btn btn-sm btn-primary">Retry</button>
+                    </div>
                     <canvas id="priceChart"></canvas>
+                </div>
+                <div id="price-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--space-4); margin-top: var(--space-4);">
+                    <div class="stat-box">
+                        <div class="stat-label">Lowest Price</div>
+                        <div class="stat-value" id="stat-lowest">--</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Highest Price</div>
+                        <div class="stat-value" id="stat-highest">--</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Average Price</div>
+                        <div class="stat-value" id="stat-average">--</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Price Drop</div>
+                        <div class="stat-value" id="stat-drop">--</div>
+                    </div>
                 </div>
             </div>
         </section>

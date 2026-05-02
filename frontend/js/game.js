@@ -39,23 +39,69 @@ async function initGamePage() {
     initWishlistButton(gameID);
 }
 
-async function loadPriceHistory(gameID) {
-    try {
-        const response = await fetch(`/api/prices/${gameID}/history?limit=30`);
-        const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.error || 'Failed to load price history');
-        }
+let priceChart = null;
+let currentGameID = null;
 
-        renderPriceChart(data.prices || []);
+async function loadPriceHistory(gameID, days = 30) {
+    currentGameID = gameID;
+    const loadingEl = document.getElementById('price-chart-loading');
+    const errorEl = document.getElementById('price-chart-error');
+    const canvas = document.getElementById('priceChart');
+    
+    // Show loading, hide error
+    if (loadingEl) loadingEl.style.display = 'flex';
+    if (errorEl) errorEl.style.display = 'none';
+    if (canvas) canvas.style.opacity = '0.3';
+    
+    try {
+        const response = await fetch(`/api/prices/${gameID}/history?limit=${days}`);
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to load price history');
+        }
+        
+        const data = await response.json();
+        renderPriceChart(data.prices || [], days);
+        updatePriceStats(data.prices || []);
+        
+        // Hide loading
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (canvas) canvas.style.opacity = '1';
     } catch (error) {
         console.error('Failed to load price history:', error);
-        document.getElementById('price-chart-container').innerHTML = `
-            <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);">
-                Price history unavailable
-            </div>
-        `;
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (errorEl) errorEl.style.display = 'flex';
+        if (canvas) canvas.style.opacity = '0';
     }
+}
+
+function updatePriceStats(prices) {
+    if (!prices || prices.length === 0) return;
+    
+    const priceValues = prices.map(p => p.price_inr);
+    const lowest = Math.min(...priceValues);
+    const highest = Math.max(...priceValues);
+    const average = Math.round(priceValues.reduce((a, b) => a + b, 0) / priceValues.length);
+    const drop = highest - lowest;
+    
+    document.getElementById('stat-lowest').textContent = `₹${lowest.toLocaleString()}`;
+    document.getElementById('stat-highest').textContent = `₹${highest.toLocaleString()}`;
+    document.getElementById('stat-average').textContent = `₹${average.toLocaleString()}`;
+    document.getElementById('stat-drop').textContent = `₹${drop.toLocaleString()}`;
+}
+
+function initChartPeriodButtons() {
+    const buttons = document.querySelectorAll('.chart-period-btn');
+    buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            buttons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const days = parseInt(btn.dataset.days);
+            if (currentGameID) {
+                loadPriceHistory(currentGameID, days);
+            }
+        });
+    });
 }
 
 function renderPriceChart(prices) {

@@ -345,18 +345,85 @@
 .source-item {
     background-color: var(--color-bg-secondary);
     border: 1px solid var(--color-border);
-    border-radius: 8px;
-    padding: 16px;
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    min-height: 300px;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    transition: border-color 0.2s ease;
+    justify-content: center;
 }
 
 .source-item:hover {
     border-color: var(--color-accent-primary);
 }
 
+/* Price Chart Loading States */
+.loading-overlay,
+.error-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    z-index: 10;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--color-border);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: var(--space-3);
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.error-overlay p {
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-3);
+}
+
+/* Chart Period Buttons */
+.chart-period-btn {
+    font-size: var(--text-xs);
+    padding: var(--space-2) var(--space-3);
+}
+
+.chart-period-btn.active {
+    background: var(--color-primary);
+    color: white;
+}
+
+/* Price Stats */
+.stat-box {
+    text-align: center;
+    padding: var(--space-3);
+    background: var(--color-surface-elevated);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+}
+
+.stat-label {
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: var(--space-1);
+}
+
+.stat-value {
+    font-size: var(--text-lg);
+    font-weight: 700;
 .source-name {
     font-weight: 600;
     color: var(--color-text-primary);
