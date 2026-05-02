@@ -363,7 +363,7 @@ function renderDealsForYou(deals) {
 
     container.innerHTML = '<div class="deals-for-you-grid">' + deals.map(deal => `
         <div class="deal-card-small" onclick="window.location.href='game.html?id=${deal.id}'">
-            <img src="${deal.cover}" class="deal-cover" alt="${deal.title} cover" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22%3ENo Image%3C/text%3E%3C/svg%3E'">
+            <img src="${deal.cover}" class="deal-cover" alt="${deal.title} cover" loading="lazy" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22%3ENo Image%3C/text%3E%3C/svg%3E'">
             <div class="deal-info">
                 <span class="personalized-badge">${deal.reason}</span>
                 <div class="deal-title">${deal.title}</div>
@@ -419,7 +419,7 @@ function renderDeals(dealsArray) {
         const savingsAmount = deal.original - deal.price;
         
         card.innerHTML = `
-            <img src="${deal.cover}" class="deal-cover" alt="${deal.title} cover" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22%3ENo Image%3C/text%3E%3C/svg%3E'">
+            <img src="${deal.cover}" class="deal-cover" alt="${deal.title} cover" loading="lazy" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22%3ENo Image%3C/text%3E%3C/svg%3E'">
             <div class="deal-info">
                 <div class="meta-row">
                     <span>${deal.store} ${deal.isGSTAdded ? '(Inc. GST)' : ''}</span>
