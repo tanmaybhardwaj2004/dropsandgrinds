@@ -390,6 +390,10 @@ a:hover {
   color: var(--color-text-secondary);
   border-radius: var(--radius-md);
   transition: all var(--transition-fast);
+  white-space: nowrap;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .nav-link:hover,
