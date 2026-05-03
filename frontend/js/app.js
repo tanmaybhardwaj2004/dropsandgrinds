@@ -289,6 +289,9 @@ async function loadDeals() {
             isGSTAdded: true
         }));
 
+        // DEBUG: Log deal IDs to verify correct mapping
+        console.log('Loaded deals:', allDeals.map(d => ({ id: d.id, title: d.title })));
+
         renderDeals(allDeals);
     } catch (error) {
         container.innerHTML = renderErrorState('Failed to load deals from API. Please try again.', 'loadDeals');
