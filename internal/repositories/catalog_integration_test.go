@@ -27,10 +27,10 @@ func TestCatalogRepositoryIntegration(t *testing.T) {
 		t.Fatalf("failed to prepare test database: %v", err)
 	}
 
-	repo := NewCatalogRepository(pool)
+	repo := NewCatalogRepository(pool, nil)
 
 	t.Run("ListGames", func(t *testing.T) {
-		games, total, err := repo.ListGames(ctx, "", "", 20, 0)
+		games, total, err := repo.ListGames(ctx, "", "", 20, 0, false, 0)
 		if err != nil {
 			t.Fatalf("ListGames returned error: %v", err)
 		}
@@ -63,7 +63,7 @@ func TestCatalogRepositoryIntegration(t *testing.T) {
 	})
 
 	t.Run("GetPriceHistory", func(t *testing.T) {
-		history, err := repo.GetPriceHistory(ctx, 1, 30)
+		history, err := repo.GetPriceHistory(ctx, 1, 30, 0)
 		if err != nil {
 			t.Fatalf("GetPriceHistory returned error: %v", err)
 		}
@@ -73,7 +73,7 @@ func TestCatalogRepositoryIntegration(t *testing.T) {
 	})
 
 	t.Run("ListGamesIncludesLowestPrice", func(t *testing.T) {
-		games, _, err := repo.ListGames(ctx, "", "", 20, 0)
+		games, _, err := repo.ListGames(ctx, "", "", 20, 0, false, 0)
 		if err != nil {
 			t.Fatalf("ListGames returned error: %v", err)
 		}

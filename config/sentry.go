@@ -2,6 +2,8 @@ package config
 
 import (
 	"log"
+	"os"
+	"time"
 
 	"github.com/getsentry/sentry-go"
 )
@@ -15,7 +17,7 @@ func InitSentry(dsn string) {
 
 	err := sentry.Init(sentry.ClientOptions{
 		Dsn:              dsn,
-		Environment:      "production",
+		Environment:      sentryEnvironment(),
 		TracesSampleRate: 0.1, // Sample 10% of transactions for performance monitoring
 	})
 	if err != nil {
@@ -40,5 +42,15 @@ func CaptureMessage(msg string) {
 
 // FlushSentry flushes any pending events to Sentry
 func FlushSentry() {
-	sentry.Flush(2 * 1000) // 2 second timeout
+	sentry.Flush(2 * time.Second)
+}
+
+func sentryEnvironment() string {
+	if env := os.Getenv("SENTRY_ENVIRONMENT"); env != "" {
+		return env
+	}
+	if env := os.Getenv("APP_ENV"); env != "" {
+		return env
+	}
+	return "production"
 }

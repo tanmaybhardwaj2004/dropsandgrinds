@@ -2,8 +2,10 @@ package config
 
 import (
 	"log"
+	"net/url"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type Config struct {
@@ -24,15 +26,18 @@ type Config struct {
 }
 
 func LoadConfig() Config {
-	dbURL := os.Getenv("DATABASE_URL")
+	dbURL := readSecretEnv("DATABASE_URL")
+	if dbURL == "" {
+		dbURL = buildDatabaseURLFromEnv()
+	}
 	dbReadReplicaURL := os.Getenv("DATABASE_READ_REPLICA_URL")
 	redisURL := os.Getenv("REDIS_URL")
 	port := os.Getenv("PORT")
-	jwtSecret := os.Getenv("JWT_SECRET")
+	jwtSecret := readSecretEnv("JWT_SECRET")
 	accessTokenTTLMinutes := parseEnvInt("ACCESS_TOKEN_TTL_MINUTES", 15)
 	refreshTokenTTLHours := parseEnvInt("REFRESH_TOKEN_TTL_HOURS", 168)
-	sentryDSN := os.Getenv("SENTRY_DSN")
-	steamAPIKey := os.Getenv("STEAM_API_KEY")
+	sentryDSN := readSecretEnv("SENTRY_DSN")
+	steamAPIKey := readSecretEnv("STEAM_API_KEY")
 	meilisearchURL := os.Getenv("MEILISEARCH_URL")
 	meilisearchMasterKey := os.Getenv("MEILISEARCH_MASTER_KEY")
 	googleClientID := os.Getenv("GOOGLE_CLIENT_ID")
@@ -82,4 +87,49 @@ func parseEnvInt(key string, fallback int) int {
 		return fallback
 	}
 	return parsed
+}
+
+func readSecretEnv(key string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	filePath := os.Getenv(key + "_FILE")
+	if filePath == "" {
+		return ""
+	}
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		log.Printf("failed to read %s from %s: %v", key, filePath, err)
+		return ""
+	}
+	return strings.TrimSpace(string(data))
+}
+
+func buildDatabaseURLFromEnv() string {
+	password := readSecretEnv("POSTGRES_PASSWORD")
+	if password == "" {
+		return ""
+	}
+
+	host := envOrDefault("POSTGRES_HOST", "postgres")
+	port := envOrDefault("POSTGRES_PORT", "5432")
+	user := envOrDefault("POSTGRES_USER", "postgres")
+	dbName := envOrDefault("POSTGRES_DB", "dropsandgrinds")
+	sslMode := envOrDefault("POSTGRES_SSLMODE", "disable")
+
+	databaseURL := url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(user, password),
+		Host:     host + ":" + port,
+		Path:     dbName,
+		RawQuery: "sslmode=" + url.QueryEscape(sslMode),
+	}
+	return databaseURL.String()
+}
+
+func envOrDefault(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
 }

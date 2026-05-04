@@ -1,0 +1,12 @@
+.git
+.github
+logs
+tmp
+coverage.out
+*.test
+.env
+.env.*
+!.env.example
+secrets
+node_modules
+vendor

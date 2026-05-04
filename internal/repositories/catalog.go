@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/models"
+	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/monitoring"
 )
 
 const (
@@ -35,9 +36,11 @@ func (r *CatalogRepository) SearchGames(ctx context.Context, query string, platf
 				Total int           `json:"total"`
 			}
 			if err := json.Unmarshal([]byte(cached), &cachedResult); err == nil {
+				monitoring.RecordCacheHit("catalog_search")
 				return cachedResult.Games, cachedResult.Total, nil
 			}
 		}
+		monitoring.RecordCacheMiss("catalog_search")
 	}
 
 	// Build WHERE clause with filters
@@ -227,9 +230,11 @@ func (r *CatalogRepository) ListGames(ctx context.Context, query, platform strin
 				Total int           `json:"total"`
 			}
 			if err := json.Unmarshal([]byte(cached), &cachedResult); err == nil {
+				monitoring.RecordCacheHit("games_list")
 				return cachedResult.Games, cachedResult.Total, nil
 			}
 		}
+		monitoring.RecordCacheMiss("games_list")
 	}
 
 	countQuery := `
@@ -353,9 +358,11 @@ func (r *CatalogRepository) GetGameByID(ctx context.Context, id int64) (models.G
 		if err == nil {
 			var game models.Game
 			if err := json.Unmarshal([]byte(cached), &game); err == nil {
+				monitoring.RecordCacheHit("game_detail")
 				return game, true, nil
 			}
 		}
+		monitoring.RecordCacheMiss("game_detail")
 	}
 
 	query := `
@@ -432,9 +439,11 @@ func (r *CatalogRepository) ListDeals(ctx context.Context, limit, offset int) ([
 				Total int           `json:"total"`
 			}
 			if err := json.Unmarshal([]byte(cached), &cachedResult); err == nil {
+				monitoring.RecordCacheHit("deals_list")
 				return cachedResult.Deals, cachedResult.Total, nil
 			}
 		}
+		monitoring.RecordCacheMiss("deals_list")
 	}
 
 	countQuery := `SELECT COUNT(*) FROM deals d WHERE d.is_active = TRUE`

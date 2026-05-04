@@ -2,59 +2,76 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 	"log/slog"
-	"math/rand"
-	"time"
+	"math"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/repositories"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/services"
+	"github.com/tanmaybhardwaj2004/dropsandgrinds/pkg/cheapshark"
 )
 
-// PriceRefreshJob fetches current prices from external APIs and updates the database
-// This is a skeleton implementation - actual API integration would call CheapShark, Steam, etc.
+const usdToINR = 83.0
+
+// PriceRefreshJob fetches current CheapShark deals and updates matching catalog prices.
 func PriceRefreshJob(repo *repositories.CatalogRepository, logger *slog.Logger) func(ctx context.Context) error {
 	return func(ctx context.Context) error {
 		logger.Info("starting price refresh job")
 
-		// Get all game IDs
-		gameIDs, err := repo.GetAllGameIDs(ctx)
+		client := cheapshark.NewClient()
+		deals, err := client.GetDeals(ctx, map[string]string{
+			"pageSize": "60",
+			"sortBy":   "Deal Rating",
+		})
 		if err != nil {
 			return err
 		}
 
-		logger.Info("fetching prices for games", "count", len(gameIDs))
-
-		// For each game, fetch and update prices
-		// In production, this would call external APIs (CheapShark, Steam, etc.)
-		for _, gameID := range gameIDs {
-			// Simulate API call with random price variation
-			// In production: call actual APIs here
-			basePrice := 1000 + rand.Intn(2000) // Random price between 1000-3000
-			discountPercent := rand.Intn(70)    // Random discount 0-70%
-
-			currentPrice := basePrice * (100 - discountPercent) / 100
-			originalPrice := basePrice
-
-			// Insert new price entry
-			if err := repo.InsertPrice(ctx, gameID, currentPrice, "Steam"); err != nil {
-				logger.Error("failed to insert price", "game_id", gameID, "error", err)
+		var matched int
+		var skipped int
+		for _, deal := range deals {
+			gameID, err := repo.FindGameByTitle(ctx, deal.Title)
+			if err != nil {
+				if errors.Is(err, pgx.ErrNoRows) {
+					skipped++
+					continue
+				}
+				logger.Error("failed to find game for CheapShark deal", "title", deal.Title, "error", err)
 				continue
 			}
 
-			// Update deal if there's a discount (> 10%)
-			if discountPercent > 10 {
-				if err := repo.UpdateDeal(ctx, gameID, originalPrice, discountPercent); err != nil {
-					logger.Error("failed to update deal", "game_id", gameID, "error", err)
-				}
+			currentPriceINR := dollarsToINR(deal.SalePrice)
+			normalPriceINR := dollarsToINR(deal.NormalPrice)
+			if currentPriceINR <= 0 {
+				skipped++
+				continue
 			}
 
-			// Small delay to avoid overwhelming APIs
-			time.Sleep(10 * time.Millisecond)
+			if err := repo.InsertPrice(ctx, gameID, currentPriceINR, "CheapShark:"+deal.StoreID); err != nil {
+				logger.Error("failed to insert CheapShark price", "game_id", gameID, "title", deal.Title, "error", err)
+				continue
+			}
+
+			discountPercent := int(math.Round(deal.Savings))
+			if normalPriceINR > 0 && discountPercent > 0 {
+				if err := repo.UpdateDeal(ctx, gameID, normalPriceINR, discountPercent); err != nil {
+					logger.Error("failed to update CheapShark deal", "game_id", gameID, "title", deal.Title, "error", err)
+				}
+			}
+			matched++
 		}
 
-		logger.Info("price refresh job completed", "games_updated", len(gameIDs))
+		logger.Info("price refresh job completed", "deals_seen", len(deals), "games_updated", matched, "games_skipped", skipped)
 		return nil
 	}
+}
+
+func dollarsToINR(price float64) int {
+	if price <= 0 {
+		return 0
+	}
+	return int(math.Round(price * usdToINR))
 }
 
 // ReviewRefreshJob refreshes review scores for all games with stale data

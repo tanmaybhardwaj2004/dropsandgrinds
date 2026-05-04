@@ -1,3 +1,5 @@
+//go:build integration
+
 package tests
 
 import (
@@ -10,7 +12,7 @@ import (
 
 func TestLibraryRepository(t *testing.T) {
 	ctx := context.Background()
-	
+
 	pool := SetupTestDB(ctx, t)
 	defer pool.Close()
 	defer CleanupTestData(ctx, pool, t)
@@ -52,7 +54,7 @@ func TestLibraryRepository(t *testing.T) {
 
 func TestLibraryRepositoryUpdate(t *testing.T) {
 	ctx := context.Background()
-	
+
 	pool := SetupTestDB(ctx, t)
 	defer pool.Close()
 	defer CleanupTestData(ctx, pool, t)
@@ -101,7 +103,7 @@ func TestLibraryRepositoryUpdate(t *testing.T) {
 
 func TestLibraryRepositoryLinkGame(t *testing.T) {
 	ctx := context.Background()
-	
+
 	pool := SetupTestDB(ctx, t)
 	defer pool.Close()
 	defer CleanupTestData(ctx, pool, t)
@@ -150,7 +152,7 @@ func TestLibraryRepositoryLinkGame(t *testing.T) {
 
 func TestLibraryRepositoryIsGameOwned(t *testing.T) {
 	ctx := context.Background()
-	
+
 	pool := SetupTestDB(ctx, t)
 	defer pool.Close()
 	defer CleanupTestData(ctx, pool, t)
@@ -203,7 +205,7 @@ func TestLibraryRepositoryIsGameOwned(t *testing.T) {
 
 func TestLibraryRepositoryGetCount(t *testing.T) {
 	ctx := context.Background()
-	
+
 	pool := SetupTestDB(ctx, t)
 	defer pool.Close()
 	defer CleanupTestData(ctx, pool, t)
@@ -234,7 +236,7 @@ func TestLibraryRepositoryGetCount(t *testing.T) {
 
 func TestLibraryRepositoryEmptyLibrary(t *testing.T) {
 	ctx := context.Background()
-	
+
 	pool := SetupTestDB(ctx, t)
 	defer pool.Close()
 	defer CleanupTestData(ctx, pool, t)

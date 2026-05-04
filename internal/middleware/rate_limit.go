@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -20,6 +21,9 @@ func RateLimit(redisClient *redis.Client, maxRequests int, window time.Duration)
 	}
 	if window <= 0 {
 		window = time.Minute
+	}
+	if redisClient == nil {
+		return inMemoryRateLimit(maxRequests, window)
 	}
 
 	return func(next http.Handler) http.Handler {
@@ -54,6 +58,42 @@ func RateLimit(redisClient *redis.Client, maxRequests int, window time.Duration)
 				// Increment existing
 				redisClient.Incr(ctx, key)
 			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func inMemoryRateLimit(maxRequests int, window time.Duration) func(http.Handler) http.Handler {
+	type counter struct {
+		count     int
+		expiresAt time.Time
+	}
+
+	var mu sync.Mutex
+	counts := make(map[string]counter)
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			clientIP := resolveClientIP(r)
+			if clientIP == "" {
+				clientIP = "unknown"
+			}
+
+			now := time.Now()
+			mu.Lock()
+			entry := counts[clientIP]
+			if now.After(entry.expiresAt) {
+				entry = counter{expiresAt: now.Add(window)}
+			}
+			if entry.count >= maxRequests {
+				mu.Unlock()
+				writeRateLimitError(w)
+				return
+			}
+			entry.count++
+			counts[clientIP] = entry
+			mu.Unlock()
 
 			next.ServeHTTP(w, r)
 		})
