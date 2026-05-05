@@ -39,8 +39,8 @@ func (f *fakeCatalogStore) GetPriceHistory(ctx context.Context, gameID int64, li
 	return f.getPriceHistoryFunc(ctx, gameID, limit, offset)
 }
 
-func (f *fakeCatalogStore) GetIndiaArbitrage(ctx context.Context, gameID int64) (models.IndiaArbitrage, error) {
-	return models.IndiaArbitrage{}, nil
+func (f *fakeCatalogStore) GetIndiaArbitrage(ctx context.Context, gameID int64) (models.ArbitrageData, error) {
+	return models.ArbitrageData{}, nil
 }
 
 func TestGamesService_ListGames_NormalizesLimitOffset(t *testing.T) {

@@ -36,8 +36,8 @@ func (f *fakeCatalogStoreForHandler) GetPriceHistory(ctx context.Context, gameID
 	return []models.PriceHistoryPoint{{PriceINR: 1499, FetchedAt: "2026-04-21T10:00:00Z"}}, nil
 }
 
-func (f *fakeCatalogStoreForHandler) GetIndiaArbitrage(ctx context.Context, gameID int64) (models.IndiaArbitrage, error) {
-	return models.IndiaArbitrage{}, nil
+func (f *fakeCatalogStoreForHandler) GetIndiaArbitrage(ctx context.Context, gameID int64) (models.ArbitrageData, error) {
+	return models.ArbitrageData{}, nil
 }
 
 func TestGamesListHandler_OK(t *testing.T) {
