@@ -13,7 +13,11 @@ import (
 
 type fakeCatalogStoreForHandler struct{}
 
-func (f *fakeCatalogStoreForHandler) ListGames(ctx context.Context, query, platform string, limit, offset int) ([]models.Game, int, error) {
+func (f *fakeCatalogStoreForHandler) ListGames(ctx context.Context, query, platform string, limit, offset int, excludeOwned bool, userID int64) ([]models.Game, int, error) {
+	return []models.Game{{ID: 1, Title: "Cyberpunk 2077", Platform: "Steam", PriceINR: 1499, LowestPriceINR: 999, IsAllTimeLow: false}}, 1, nil
+}
+
+func (f *fakeCatalogStoreForHandler) SearchGames(ctx context.Context, query string, platform string, minPrice, maxPrice float64, minDiscount, maxDiscount int, minReviewScore, maxReviewScore float64, limit, offset int) ([]models.Game, int, error) {
 	return []models.Game{{ID: 1, Title: "Cyberpunk 2077", Platform: "Steam", PriceINR: 1499, LowestPriceINR: 999, IsAllTimeLow: false}}, 1, nil
 }
 
@@ -28,8 +32,12 @@ func (f *fakeCatalogStoreForHandler) ListDeals(ctx context.Context, limit, offse
 	return []models.Deal{{Game: models.Game{ID: 1, Title: "Cyberpunk 2077", Platform: "Steam", PriceINR: 1499, LowestPriceINR: 999, IsAllTimeLow: false, OriginalINR: 2999, DiscountPercent: 50}}}, 1, nil
 }
 
-func (f *fakeCatalogStoreForHandler) GetPriceHistory(ctx context.Context, gameID int64, limit int) ([]models.PriceHistoryPoint, error) {
+func (f *fakeCatalogStoreForHandler) GetPriceHistory(ctx context.Context, gameID int64, limit, offset int) ([]models.PriceHistoryPoint, error) {
 	return []models.PriceHistoryPoint{{PriceINR: 1499, FetchedAt: "2026-04-21T10:00:00Z"}}, nil
+}
+
+func (f *fakeCatalogStoreForHandler) GetIndiaArbitrage(ctx context.Context, gameID int64) (models.IndiaArbitrage, error) {
+	return models.IndiaArbitrage{}, nil
 }
 
 func TestGamesListHandler_OK(t *testing.T) {

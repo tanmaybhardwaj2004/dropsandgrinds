@@ -9,14 +9,22 @@ import (
 )
 
 type fakeCatalogStore struct {
-	listGamesFunc       func(ctx context.Context, query, platform string, limit, offset int) ([]models.Game, int, error)
+	listGamesFunc       func(ctx context.Context, query, platform string, limit, offset int, excludeOwned bool, userID int64) ([]models.Game, int, error)
+	searchGamesFunc     func(ctx context.Context, query string, platform string, minPrice, maxPrice float64, minDiscount, maxDiscount int, minReviewScore, maxReviewScore float64, limit, offset int) ([]models.Game, int, error)
 	getGameByIDFunc     func(ctx context.Context, id int64) (models.Game, bool, error)
 	listDealsFunc       func(ctx context.Context, limit, offset int) ([]models.Deal, int, error)
-	getPriceHistoryFunc func(ctx context.Context, gameID int64, limit int) ([]models.PriceHistoryPoint, error)
+	getPriceHistoryFunc func(ctx context.Context, gameID int64, limit, offset int) ([]models.PriceHistoryPoint, error)
 }
 
-func (f *fakeCatalogStore) ListGames(ctx context.Context, query, platform string, limit, offset int) ([]models.Game, int, error) {
-	return f.listGamesFunc(ctx, query, platform, limit, offset)
+func (f *fakeCatalogStore) ListGames(ctx context.Context, query, platform string, limit, offset int, excludeOwned bool, userID int64) ([]models.Game, int, error) {
+	return f.listGamesFunc(ctx, query, platform, limit, offset, excludeOwned, userID)
+}
+
+func (f *fakeCatalogStore) SearchGames(ctx context.Context, query string, platform string, minPrice, maxPrice float64, minDiscount, maxDiscount int, minReviewScore, maxReviewScore float64, limit, offset int) ([]models.Game, int, error) {
+	if f.searchGamesFunc == nil {
+		return nil, 0, nil
+	}
+	return f.searchGamesFunc(ctx, query, platform, minPrice, maxPrice, minDiscount, maxDiscount, minReviewScore, maxReviewScore, limit, offset)
 }
 
 func (f *fakeCatalogStore) GetGameByID(ctx context.Context, id int64) (models.Game, bool, error) {
@@ -27,13 +35,17 @@ func (f *fakeCatalogStore) ListDeals(ctx context.Context, limit, offset int) ([]
 	return f.listDealsFunc(ctx, limit, offset)
 }
 
-func (f *fakeCatalogStore) GetPriceHistory(ctx context.Context, gameID int64, limit int) ([]models.PriceHistoryPoint, error) {
-	return f.getPriceHistoryFunc(ctx, gameID, limit)
+func (f *fakeCatalogStore) GetPriceHistory(ctx context.Context, gameID int64, limit, offset int) ([]models.PriceHistoryPoint, error) {
+	return f.getPriceHistoryFunc(ctx, gameID, limit, offset)
+}
+
+func (f *fakeCatalogStore) GetIndiaArbitrage(ctx context.Context, gameID int64) (models.IndiaArbitrage, error) {
+	return models.IndiaArbitrage{}, nil
 }
 
 func TestGamesService_ListGames_NormalizesLimitOffset(t *testing.T) {
 	store := &fakeCatalogStore{
-		listGamesFunc: func(ctx context.Context, query, platform string, limit, offset int) ([]models.Game, int, error) {
+		listGamesFunc: func(ctx context.Context, query, platform string, limit, offset int, excludeOwned bool, userID int64) ([]models.Game, int, error) {
 			if limit != 100 {
 				t.Fatalf("expected limit 100, got %d", limit)
 			}
@@ -44,7 +56,7 @@ func TestGamesService_ListGames_NormalizesLimitOffset(t *testing.T) {
 		},
 		getGameByIDFunc:     func(context.Context, int64) (models.Game, bool, error) { return models.Game{}, false, nil },
 		listDealsFunc:       func(context.Context, int, int) ([]models.Deal, int, error) { return nil, 0, nil },
-		getPriceHistoryFunc: func(context.Context, int64, int) ([]models.PriceHistoryPoint, error) { return nil, nil },
+		getPriceHistoryFunc: func(context.Context, int64, int, int) ([]models.PriceHistoryPoint, error) { return nil, nil },
 	}
 
 	svc := NewGamesService(store)
@@ -59,12 +71,12 @@ func TestGamesService_ListGames_NormalizesLimitOffset(t *testing.T) {
 
 func TestGamesService_ListGames_ErrorMapping(t *testing.T) {
 	svc := NewGamesService(&fakeCatalogStore{
-		listGamesFunc: func(context.Context, string, string, int, int) ([]models.Game, int, error) {
+		listGamesFunc: func(context.Context, string, string, int, int, bool, int64) ([]models.Game, int, error) {
 			return nil, 0, errors.New("db down")
 		},
 		getGameByIDFunc:     func(context.Context, int64) (models.Game, bool, error) { return models.Game{}, false, nil },
 		listDealsFunc:       func(context.Context, int, int) ([]models.Deal, int, error) { return nil, 0, nil },
-		getPriceHistoryFunc: func(context.Context, int64, int) ([]models.PriceHistoryPoint, error) { return nil, nil },
+		getPriceHistoryFunc: func(context.Context, int64, int, int) ([]models.PriceHistoryPoint, error) { return nil, nil },
 	})
 
 	_, err := svc.ListGames(context.Background(), GameFilter{})
@@ -79,13 +91,15 @@ func TestGamesService_ListGames_ErrorMapping(t *testing.T) {
 
 func TestGamesService_GetPriceHistory_ValidatesInput(t *testing.T) {
 	svc := NewGamesService(&fakeCatalogStore{
-		listGamesFunc:       func(context.Context, string, string, int, int) ([]models.Game, int, error) { return nil, 0, nil },
+		listGamesFunc: func(context.Context, string, string, int, int, bool, int64) ([]models.Game, int, error) {
+			return nil, 0, nil
+		},
 		getGameByIDFunc:     func(context.Context, int64) (models.Game, bool, error) { return models.Game{}, false, nil },
 		listDealsFunc:       func(context.Context, int, int) ([]models.Deal, int, error) { return nil, 0, nil },
-		getPriceHistoryFunc: func(context.Context, int64, int) ([]models.PriceHistoryPoint, error) { return nil, nil },
+		getPriceHistoryFunc: func(context.Context, int64, int, int) ([]models.PriceHistoryPoint, error) { return nil, nil },
 	})
 
-	_, err := svc.GetPriceHistory(context.Background(), 0, 10)
+	_, err := svc.GetPriceHistory(context.Background(), 0, 10, 0)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -97,7 +111,9 @@ func TestGamesService_GetPriceHistory_ValidatesInput(t *testing.T) {
 
 func TestGamesService_ListDeals_AddsDealEvaluation(t *testing.T) {
 	svc := NewGamesService(&fakeCatalogStore{
-		listGamesFunc:   func(context.Context, string, string, int, int) ([]models.Game, int, error) { return nil, 0, nil },
+		listGamesFunc: func(context.Context, string, string, int, int, bool, int64) ([]models.Game, int, error) {
+			return nil, 0, nil
+		},
 		getGameByIDFunc: func(context.Context, int64) (models.Game, bool, error) { return models.Game{}, false, nil },
 		listDealsFunc: func(context.Context, int, int) ([]models.Deal, int, error) {
 			return []models.Deal{{
@@ -111,7 +127,7 @@ func TestGamesService_ListDeals_AddsDealEvaluation(t *testing.T) {
 				},
 			}}, 1, nil
 		},
-		getPriceHistoryFunc: func(context.Context, int64, int) ([]models.PriceHistoryPoint, error) { return nil, nil },
+		getPriceHistoryFunc: func(context.Context, int64, int, int) ([]models.PriceHistoryPoint, error) { return nil, nil },
 	})
 
 	resp, err := svc.ListDeals(context.Background(), 20, 0)
@@ -131,10 +147,12 @@ func TestGamesService_ListDeals_AddsDealEvaluation(t *testing.T) {
 
 func TestGamesService_GetBuyAdvice_ReturnsRecommendation(t *testing.T) {
 	svc := NewGamesService(&fakeCatalogStore{
-		listGamesFunc:   func(context.Context, string, string, int, int) ([]models.Game, int, error) { return nil, 0, nil },
+		listGamesFunc: func(context.Context, string, string, int, int, bool, int64) ([]models.Game, int, error) {
+			return nil, 0, nil
+		},
 		getGameByIDFunc: func(context.Context, int64) (models.Game, bool, error) { return models.Game{}, false, nil },
 		listDealsFunc:   func(context.Context, int, int) ([]models.Deal, int, error) { return nil, 0, nil },
-		getPriceHistoryFunc: func(context.Context, int64, int) ([]models.PriceHistoryPoint, error) {
+		getPriceHistoryFunc: func(context.Context, int64, int, int) ([]models.PriceHistoryPoint, error) {
 			return []models.PriceHistoryPoint{
 				{PriceINR: 1500, FetchedAt: "2026-04-22T10:00:00Z"},
 				{PriceINR: 1300, FetchedAt: "2026-04-20T10:00:00Z"},

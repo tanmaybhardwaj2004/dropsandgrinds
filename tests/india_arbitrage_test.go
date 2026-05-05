@@ -1,3 +1,5 @@
+//go:build integration
+
 package tests
 
 import (
@@ -10,7 +12,7 @@ import (
 
 func TestIndiaArbitrageCalculation(t *testing.T) {
 	ctx := context.Background()
-	
+
 	pool := SetupTestDB(ctx, t)
 	defer pool.Close()
 	defer CleanupTestData(ctx, pool, t)
@@ -77,7 +79,7 @@ func TestIndiaArbitrageCalculation(t *testing.T) {
 
 func TestIndiaArbitrageNoSubsidy(t *testing.T) {
 	ctx := context.Background()
-	
+
 	pool := SetupTestDB(ctx, t)
 	defer pool.Close()
 	defer CleanupTestData(ctx, pool, t)
@@ -112,7 +114,7 @@ func TestIndiaArbitrageNoSubsidy(t *testing.T) {
 
 func TestIndiaArbitrageNonExistentGame(t *testing.T) {
 	ctx := context.Background()
-	
+
 	pool := SetupTestDB(ctx, t)
 	defer pool.Close()
 	defer CleanupTestData(ctx, pool, t)

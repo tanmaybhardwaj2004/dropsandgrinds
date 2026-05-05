@@ -1,3 +1,5 @@
+//go:build integration
+
 package tests
 
 import (
@@ -10,7 +12,7 @@ import (
 
 func TestSalesCalendarRepository(t *testing.T) {
 	ctx := context.Background()
-	
+
 	pool := SetupTestDB(ctx, t)
 	defer pool.Close()
 	defer CleanupTestData(ctx, pool, t)
@@ -49,7 +51,7 @@ func TestSalesCalendarRepository(t *testing.T) {
 
 func TestBuyTimingService(t *testing.T) {
 	ctx := context.Background()
-	
+
 	pool := SetupTestDB(ctx, t)
 	defer pool.Close()
 	defer CleanupTestData(ctx, pool, t)
@@ -89,33 +91,33 @@ func TestBuyTimingService(t *testing.T) {
 func TestBundleServiceVerdict(t *testing.T) {
 	// Test verdict logic directly
 	testCases := []struct {
-		name           string
-		individualSum  float64
-		bundlePrice    float64
+		name            string
+		individualSum   float64
+		bundlePrice     float64
 		expectedVerdict string
 	}{
 		{
-			name:           "Bundle is much cheaper",
-			individualSum:  1000,
-			bundlePrice:    500,
+			name:            "Bundle is much cheaper",
+			individualSum:   1000,
+			bundlePrice:     500,
 			expectedVerdict: "buy_bundle",
 		},
 		{
-			name:           "Bundle is slightly cheaper",
-			individualSum:  1000,
-			bundlePrice:    850,
+			name:            "Bundle is slightly cheaper",
+			individualSum:   1000,
+			bundlePrice:     850,
 			expectedVerdict: "mixed",
 		},
 		{
-			name:           "Bundle is more expensive",
-			individualSum:  500,
-			bundlePrice:    1000,
+			name:            "Bundle is more expensive",
+			individualSum:   500,
+			bundlePrice:     1000,
 			expectedVerdict: "buy_separately",
 		},
 		{
-			name:           "Equal prices",
-			individualSum:  500,
-			bundlePrice:    500,
+			name:            "Equal prices",
+			individualSum:   500,
+			bundlePrice:     500,
 			expectedVerdict: "mixed",
 		},
 	}

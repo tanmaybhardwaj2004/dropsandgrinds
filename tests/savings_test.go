@@ -1,3 +1,5 @@
+//go:build integration
+
 package tests
 
 import (
@@ -9,7 +11,7 @@ import (
 
 func TestSavingsRepository(t *testing.T) {
 	ctx := context.Background()
-	
+
 	pool := SetupTestDB(ctx, t)
 	defer pool.Close()
 	defer CleanupTestData(ctx, pool, t)
@@ -79,7 +81,7 @@ func TestSavingsRepository(t *testing.T) {
 
 func TestSavingsRepositoryMultiplePurchases(t *testing.T) {
 	ctx := context.Background()
-	
+
 	pool := SetupTestDB(ctx, t)
 	defer pool.Close()
 	defer CleanupTestData(ctx, pool, t)
@@ -140,7 +142,7 @@ func TestSavingsRepositoryMultiplePurchases(t *testing.T) {
 
 func TestSavingsRepositoryEmptyHistory(t *testing.T) {
 	ctx := context.Background()
-	
+
 	pool := SetupTestDB(ctx, t)
 	defer pool.Close()
 	defer CleanupTestData(ctx, pool, t)

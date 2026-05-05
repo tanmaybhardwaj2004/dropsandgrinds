@@ -57,5 +57,12 @@ func newHTTPHandler(logger *slog.Logger, cfg config.Config, redisClient *redis.C
 		httpSwagger.URL("/swagger/doc.json"),
 	))
 
-	return middleware.RequestID(middleware.Logging(logger, middleware.RateLimit(redisClient, 60, time.Minute)(mux)))
+	var handler http.Handler = mux
+	if redisClient != nil {
+		handler = middleware.RateLimit(redisClient, 60, time.Minute)(handler)
+	}
+	handler = middleware.Metrics(handler)
+	handler = middleware.Logging(logger, handler)
+	handler = middleware.Sentry(handler)
+	return middleware.RequestID(handler)
 }

@@ -11,6 +11,7 @@ report-generator/
 #Ignore Environment files
 .env
 .env.local
+secrets/
 
 #ignore OS files
 .DS_Store

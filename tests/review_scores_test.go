@@ -1,3 +1,5 @@
+//go:build integration
+
 package tests
 
 import (
@@ -10,7 +12,7 @@ import (
 
 func TestReviewRepository(t *testing.T) {
 	ctx := context.Background()
-	
+
 	pool := SetupTestDB(ctx, t)
 	defer pool.Close()
 	defer CleanupTestData(ctx, pool, t)
@@ -67,7 +69,7 @@ func TestReviewRepository(t *testing.T) {
 
 func TestReviewRepositoryUpdate(t *testing.T) {
 	ctx := context.Background()
-	
+
 	pool := SetupTestDB(ctx, t)
 	defer pool.Close()
 	defer CleanupTestData(ctx, pool, t)
@@ -107,7 +109,7 @@ func TestReviewRepositoryUpdate(t *testing.T) {
 
 func TestReviewRepositoryDelete(t *testing.T) {
 	ctx := context.Background()
-	
+
 	pool := SetupTestDB(ctx, t)
 	defer pool.Close()
 	defer CleanupTestData(ctx, pool, t)
@@ -152,7 +154,7 @@ func TestReviewRepositoryDelete(t *testing.T) {
 
 func TestReviewRepositoryFindStale(t *testing.T) {
 	ctx := context.Background()
-	
+
 	pool := SetupTestDB(ctx, t)
 	defer pool.Close()
 	defer CleanupTestData(ctx, pool, t)
@@ -169,7 +171,7 @@ func TestReviewRepositoryFindStale(t *testing.T) {
 	// The test helper cleanup will clear all data, so we can't test stale detection
 	// in a meaningful way without modifying the fetched_at directly.
 	// For now, just verify the function exists and doesn't error.
-	
+
 	stale, err := repo.FindStaleReviews(ctx, 25) // 25 hours threshold
 	if err != nil {
 		t.Fatalf("FindStaleReviews failed: %v", err)
@@ -180,7 +182,7 @@ func TestReviewRepositoryFindStale(t *testing.T) {
 
 func TestReviewRepositoryNonExistentGame(t *testing.T) {
 	ctx := context.Background()
-	
+
 	pool := SetupTestDB(ctx, t)
 	defer pool.Close()
 	defer CleanupTestData(ctx, pool, t)
@@ -200,7 +202,7 @@ func TestReviewRepositoryNonExistentGame(t *testing.T) {
 
 func TestReviewRepositoryDeleteAllForGame(t *testing.T) {
 	ctx := context.Background()
-	
+
 	pool := SetupTestDB(ctx, t)
 	defer pool.Close()
 	defer CleanupTestData(ctx, pool, t)

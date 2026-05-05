@@ -1,3 +1,5 @@
+//go:build integration
+
 package tests
 
 import (
@@ -11,7 +13,7 @@ import (
 
 func TestPriceHistoryRepository(t *testing.T) {
 	ctx := context.Background()
-	
+
 	// Setup test database
 	pool := SetupTestDB(ctx, t)
 	defer pool.Close()
@@ -68,7 +70,7 @@ func TestPriceHistoryRepository(t *testing.T) {
 
 func TestPriceHistoryWithLimit(t *testing.T) {
 	ctx := context.Background()
-	
+
 	pool := SetupTestDB(ctx, t)
 	defer pool.Close()
 	defer CleanupTestData(ctx, pool, t)
@@ -105,7 +107,7 @@ func TestPriceHistoryWithLimit(t *testing.T) {
 
 func TestPriceHistoryNonExistentGame(t *testing.T) {
 	ctx := context.Background()
-	
+
 	pool := SetupTestDB(ctx, t)
 	defer pool.Close()
 	defer CleanupTestData(ctx, pool, t)

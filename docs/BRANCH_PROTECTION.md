@@ -13,8 +13,8 @@ Navigate to: Repository Settings → Branches → Branch protection rules → Ad
 1. **Require status checks to pass before merging**
    - Enable: ✅
    - Required checks:
-     - `Test and Vet`
-     - `Trivy Security Scan`
+     - `Go Test And Vet`
+     - `Trivy Docker Image Scan`
 
 2. **Require branches to be up to date before merging**
    - Enable: ✅
@@ -36,8 +36,8 @@ Navigate to: Repository Settings → Branches → Branch protection rules → Ad
 
 ## Why These Rules?
 
-- **Test and Vet**: Ensures all Go tests pass and code is vetted before merging
-- **Trivy Security Scan**: Blocks merges with HIGH/CRITICAL security vulnerabilities
+- **Go Test And Vet**: Ensures all Go tests pass and code is vetted before merging
+- **Trivy Docker Image Scan**: Blocks merges with HIGH/CRITICAL security vulnerabilities
 - **Up to date**: Ensures PRs are based on the latest `main` to avoid conflicts
 - **Review approval**: Ensures code review before production deployment
 - **Conversation resolution**: Ensures all discussions are resolved before merging
@@ -59,6 +59,6 @@ The `.github/workflows/deploy.yml` workflow is configured to:
 - Run tests and vet on all branches
 - Run security scan on all branches
 - Only build and push to ECR on `main` branch
-- Only deploy to EC2 on `main` branch
+- Trigger Watchtower deployment on `main` branch
 
 With branch protection enabled, the workflow must pass before any PR can be merged to `main`.

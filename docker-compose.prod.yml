@@ -1,73 +1,102 @@
-version: '3.8'
-
 services:
   frontend:
     build:
       context: .
       dockerfile: docker/frontend/Dockerfile
+    image: ${FRONTEND_IMAGE:-dropsandgrinds-frontend:prod}
     ports:
       - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
     networks:
-      - dropsandgrinds_network
+      - dropsandgrinds
     restart: unless-stopped
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/health"]
       interval: 30s
-      timeout: 10s
+      timeout: 5s
       retries: 3
-      start_period: 40s
+      start_period: 10s
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile
+    image: ${BACKEND_IMAGE:-dropsandgrinds-backend:prod}
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
-      - JWT_SECRET=${JWT_SECRET}
-      - SENTRY_DSN=${SENTRY_DSN}
-      - PORT=8080
+      APP_ENV: ${APP_ENV:-production}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-dropsandgrinds}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_SSLMODE: disable
+      REDIS_URL: redis:6379
+      PORT: 8080
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      SENTRY_DSN_FILE: /run/secrets/sentry_dsn
+      STEAM_API_KEY_FILE: /run/secrets/steam_api_key
+      ACCESS_TOKEN_TTL_MINUTES: ${ACCESS_TOKEN_TTL_MINUTES:-15}
+      REFRESH_TOKEN_TTL_HOURS: ${REFRESH_TOKEN_TTL_HOURS:-168}
+      LOG_DIR: /app/logs
+      LOG_FORMAT: json
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    secrets:
+      - postgres_password
+      - jwt_secret
+      - sentry_dsn
+      - steam_api_key
+    volumes:
+      - backend_logs:/app/logs
     ports:
       - "8080:8080"
-    networks:
-      - dropsandgrinds_network
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - dropsandgrinds
     restart: unless-stopped
+    stop_grace_period: 30s
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8080/health"]
       interval: 30s
-      timeout: 10s
+      timeout: 5s
       retries: 3
-      start_period: 40s
+      start_period: 20s
 
   postgres:
     image: postgres:16-alpine
     environment:
-      - POSTGRES_DB=${POSTGRES_DB:-dropsandgrinds}
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-dropsandgrinds}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - dropsandgrinds_network
+      - dropsandgrinds
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-dropsandgrinds}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
-    command: redis-server --appendonly yes
+    command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis_data:/data
     networks:
-      - dropsandgrinds_network
+      - dropsandgrinds
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -75,10 +104,36 @@ services:
       timeout: 5s
       retries: 5
 
+  watchtower:
+    image: containrrr/watchtower:1.7.1
+    command:
+      - --label-enable
+      - --rolling-restart
+      - --cleanup
+      - --interval
+      - "60"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${DOCKER_CONFIG_PATH:-/root/.docker/config.json}:/config.json:ro
+    networks:
+      - dropsandgrinds
+    restart: unless-stopped
+
 networks:
-  dropsandgrinds_network:
+  dropsandgrinds:
     driver: bridge
 
 volumes:
+  backend_logs:
   postgres_data:
   redis_data:
+
+secrets:
+  postgres_password:
+    file: ${POSTGRES_PASSWORD_FILE:-./secrets/postgres_password.txt}
+  jwt_secret:
+    file: ${JWT_SECRET_FILE:-./secrets/jwt_secret.txt}
+  sentry_dsn:
+    file: ${SENTRY_DSN_FILE:-./secrets/sentry_dsn.txt}
+  steam_api_key:
+    file: ${STEAM_API_KEY_FILE:-./secrets/steam_api_key.txt}

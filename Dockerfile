@@ -1,38 +1,33 @@
-# Build stage
 FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 
-# Install build dependencies
 RUN apk add --no-cache git
 
-# Copy go mod files
 COPY go.mod go.sum ./
-
-# Download dependencies
 RUN go mod download
 
-# Copy source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server ./cmd/server
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/server ./cmd/server
 
-# Runtime stage
-FROM alpine:latest
+FROM alpine:3.22
 
-RUN apk --no-cache add ca-certificates
+RUN apk add --no-cache ca-certificates wget \
+	&& addgroup -S app \
+	&& adduser -S -G app -h /app app \
+	&& mkdir -p /app/logs \
+	&& chown -R app:app /app
 
-WORKDIR /root/
+WORKDIR /app
 
-# Create logs directory
-RUN mkdir -p /app/logs && chmod 755 /app/logs
+COPY --from=builder --chown=app:app /out/server /app/server
 
-# Copy the binary from builder
-COPY --from=builder /app/server .
+USER app
 
-# Expose port
 EXPOSE 8080
 
-# Run the binary
-CMD ["./server"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+	CMD wget --quiet --tries=1 --spider http://127.0.0.1:8080/health || exit 1
+
+CMD ["/app/server"]

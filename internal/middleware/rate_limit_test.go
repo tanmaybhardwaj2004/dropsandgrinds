@@ -8,9 +8,9 @@ import (
 )
 
 func TestRateLimit_BlocksWhenLimitExceeded(t *testing.T) {
-	h := RateLimit(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := RateLimit(nil, 1, time.Minute)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-	}), 1, time.Minute)
+	}))
 
 	req1 := httptest.NewRequest(http.MethodGet, "/health", nil)
 	req1.RemoteAddr = "127.0.0.1:12345"
