@@ -618,7 +618,7 @@ func (r *CatalogRepository) FindGameByTitle(ctx context.Context, title string) (
 }
 
 // GetIndiaArbitrage calculates India vs Global pricing with GST
-func (r *CatalogRepository) GetIndiaArbitrage(ctx context.Context, gameID int64) (models.IndiaArbitrage, error) {
+func (r *CatalogRepository) GetIndiaArbitrage(ctx context.Context, gameID int64) (models.ArbitrageData, error) {
 	// Get current price from database
 	query := `
 		SELECT COALESCE(p.price_inr, 0) AS current_price
@@ -636,17 +636,17 @@ func (r *CatalogRepository) GetIndiaArbitrage(ctx context.Context, gameID int64)
 	var currentPrice int
 	err := r.db.QueryRow(ctx, query, gameID).Scan(&currentPrice)
 	if err != nil {
-		return models.IndiaArbitrage{}, err
+		return models.ArbitrageData{}, err
 	}
 
 	// For MVP: use current price as India price, simulate global price
 	// In production: fetch actual Steam India and Global prices from API
-	steamIndiaPrice := currentPrice
-	steamGlobalPrice := currentPrice * 8 // Simulate global price in USD
+	steamIndiaPrice := float64(currentPrice)
+	steamGlobalPrice := float64(currentPrice) * 8 // Simulate global price in USD
 	usdToINR := 83.0
-	steamGlobalINR := int(float64(steamGlobalPrice) * usdToINR)
+	steamGlobalINR := steamGlobalPrice * usdToINR
 	gstRate := 0.18
-	gstAmount := int(float64(steamGlobalINR) * gstRate)
+	gstAmount := steamGlobalINR * gstRate
 	totalWithGST := steamGlobalINR + gstAmount
 
 	// Determine cheapest region
@@ -659,20 +659,20 @@ func (r *CatalogRepository) GetIndiaArbitrage(ctx context.Context, gameID int64)
 	verdict := ""
 	if cheapestRegion == "India" {
 		savings := totalWithGST - steamIndiaPrice
-		verdict = fmt.Sprintf("Buy from India - saves ₹%d", savings)
+		verdict = fmt.Sprintf("Buy from India - saves ₹%.0f", savings)
 	} else {
 		savings := steamIndiaPrice - totalWithGST
-		verdict = fmt.Sprintf("Buy from Global - saves ₹%d", savings)
+		verdict = fmt.Sprintf("Buy from Global - saves ₹%.0f", savings)
 	}
 
-	return models.IndiaArbitrage{
-		GameID:           gameID,
-		SteamIndiaPrice:  steamIndiaPrice,
-		SteamGlobalPrice: steamGlobalPrice,
-		SteamGlobalINR:   steamGlobalINR,
-		GSTAmount:        gstAmount,
-		TotalWithGST:     totalWithGST,
-		CheapestRegion:   cheapestRegion,
-		Verdict:          verdict,
+	return models.ArbitrageData{
+		IndiaBaseINR:   steamIndiaPrice,
+		IndiaGSTINR:    steamIndiaPrice * gstRate,
+		IndiaTotalINR:  steamIndiaPrice + (steamIndiaPrice * gstRate),
+		GlobalBaseINR:  steamGlobalINR,
+		GlobalGSTINR:   gstAmount,
+		GlobalTotalINR: totalWithGST,
+		CheapestRegion: cheapestRegion,
+		Verdict:        verdict,
 	}, nil
 }
