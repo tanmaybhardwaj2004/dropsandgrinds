@@ -30,8 +30,16 @@ async function initGamePage() {
     }
 
     initAuthButton();
+
+    // Try cache first for instant render
+    const cached = await getCachedGameMeta(gameID);
+    if (cached) {
+        populateGameDetails(cached, { fromCache: true });
+    }
+
+    // Fetch fresh data in parallel
     await Promise.all([
-        loadGameDetails(gameID), 
+        loadGameDetails(gameID),
         loadBuyAdvice(gameID),
         loadPriceHistory(gameID),
         loadReviewScores(gameID)
@@ -261,27 +269,122 @@ async function loadGameDetails(gameID) {
             throw new Error(game.error || 'Failed to load game');
         }
 
-        document.getElementById('game-title').textContent = game.title;
-        document.getElementById('game-cover').src = getProxiedImageUrl(game.cover_url) || '';
-        document.getElementById('game-cover').alt = `${game.title} cover`;
-
-        document.getElementById('main-price').textContent = formatINR(game.price_inr);
-        document.getElementById('original-price').textContent = formatINR(game.original_inr);
-        document.getElementById('discount-badge').textContent = `-${game.discount_percent || 0}%`;
-        document.getElementById('store-badge').textContent = game.platform || 'Store';
-
-        const arbitrage = document.getElementById('arbitrage-cost');
-        arbitrage.textContent = `${formatINR(game.price_inr)}.00`;
-
-        const verdict = document.getElementById('arbitrage-verdict');
-        if (game.is_all_time_low) {
-            verdict.textContent = 'VERDICT: All-time low detected. Excellent buy window.';
-            verdict.classList.add('green');
-        } else {
-            verdict.textContent = `VERDICT: Current lowest seen: ${formatINR(game.lowest_price_inr)}.`;
+        // Cache the fetched data
+        if (window.imageCache) {
+            window.imageCache.cacheGameMeta(gameID, game);
         }
+
+        populateGameDetails(game, { fromCache: false });
     } catch (error) {
         renderGameError(error.message);
+    }
+}
+
+function populateGameDetails(game, opts = {}) {
+    // Update page title
+    document.title = `${game.title || 'Game'} - DropsAndGrinds`;
+
+    // Title
+    const titleEl = document.getElementById('game-title');
+    if (titleEl) titleEl.textContent = game.title || 'Unknown Game';
+
+    // Cover image (use cache if available)
+    const coverEl = document.getElementById('game-cover');
+    const coverSkeleton = document.getElementById('cover-skeleton');
+    if (coverEl && game.cover_url) {
+        const proxiedUrl = getProxiedImageUrl(game.cover_url);
+        coverEl.style.display = 'block';
+        if (coverSkeleton) coverSkeleton.style.display = 'none';
+
+        if (window.imageCache) {
+            window.imageCache.fetchCachedImage(proxiedUrl || game.cover_url).then(objectUrl => {
+                coverEl.src = objectUrl;
+                coverEl.alt = `${game.title} cover`;
+            });
+        } else {
+            coverEl.src = proxiedUrl || game.cover_url;
+            coverEl.alt = `${game.title} cover`;
+        }
+    }
+
+    // Genre badges (if genres exist in API response)
+    const genreContainer = document.getElementById('genre-badges');
+    if (genreContainer && game.genres && game.genres.length > 0) {
+        genreContainer.innerHTML = game.genres.map(g =>
+            `<span class="badge badge-primary">${g}</span>`
+        ).join('');
+    }
+
+    // Discount badge
+    const discountBadge = document.getElementById('discount-badge');
+    if (discountBadge) {
+        if (game.discount_percent > 0) {
+            discountBadge.textContent = `-${game.discount_percent}%`;
+            discountBadge.style.display = 'inline-flex';
+        } else {
+            discountBadge.style.display = 'none';
+        }
+    }
+
+    // Description
+    const descEl = document.getElementById('game-description');
+    if (descEl && game.description) {
+        descEl.textContent = game.description;
+    }
+
+    // Store badge
+    const storeBadge = document.getElementById('store-badge');
+    if (storeBadge) storeBadge.textContent = game.platform || 'Store';
+
+    // Prices
+    const mainPrice = document.getElementById('main-price');
+    if (mainPrice) mainPrice.textContent = formatINR(game.price_inr);
+
+    const originalPrice = document.getElementById('original-price');
+    if (originalPrice) originalPrice.textContent = formatINR(game.original_inr);
+
+    // Savings badge
+    const savingsBadge = document.getElementById('savings-badge');
+    if (savingsBadge) {
+        const savings = (game.original_inr || 0) - (game.price_inr || 0);
+        if (savings > 0) {
+            savingsBadge.textContent = `Save ${formatINR(savings)}`;
+            savingsBadge.style.display = 'inline-flex';
+        } else {
+            savingsBadge.style.display = 'none';
+        }
+    }
+
+    // Arbitrage: switch from skeleton to loaded view
+    const arbLoading = document.getElementById('arbitrage-loading');
+    const arbLoaded = document.getElementById('arbitrage-loaded');
+    if (arbLoading) arbLoading.style.display = 'none';
+    if (arbLoaded) arbLoaded.style.display = 'block';
+
+    // Populate arbitrage loaded view
+    const arbCostFinal = document.getElementById('arbitrage-cost-final');
+    if (arbCostFinal) arbCostFinal.textContent = formatINR(game.price_inr);
+
+    const arbBase = document.getElementById('arbitrage-base');
+    if (arbBase && game.global_base_inr) arbBase.textContent = formatINR(game.global_base_inr);
+
+    const arbGst = document.getElementById('arbitrage-gst');
+    if (arbGst && game.gst_amount) arbGst.textContent = `+ ${formatINR(game.gst_amount)}`;
+
+    const arbGlobal = document.getElementById('arbitrage-global');
+    if (arbGlobal && game.global_total_inr) arbGlobal.textContent = formatINR(game.global_total_inr);
+
+    // Arbitrage verdict
+    const verdict = document.getElementById('arbitrage-verdict');
+    if (verdict) {
+        verdict.innerHTML = '';
+        if (game.is_all_time_low) {
+            verdict.textContent = 'VERDICT: All-time low detected. Excellent buy window.';
+            verdict.className = 'arbitrage-verdict green';
+        } else {
+            verdict.textContent = `VERDICT: Current lowest seen: ${formatINR(game.lowest_price_inr || game.price_inr)}.`;
+            verdict.className = 'arbitrage-verdict';
+        }
     }
 }
 
@@ -294,27 +397,44 @@ async function loadBuyAdvice(gameID) {
         }
         const advice = await response.json();
 
+        // Switch from skeleton to loaded timeline
+        const tlLoading = document.getElementById('timeline-loading');
+        const tlLoaded = document.getElementById('timeline-loaded');
+        if (tlLoading) tlLoading.style.display = 'none';
+        if (tlLoaded) tlLoaded.style.display = 'block';
+
         const verdict = document.getElementById('timeline-verdict');
-        const recommendation = (advice.recommendation || 'unknown').toUpperCase();
-        verdict.textContent = `${recommendation}: ${advice.reason || 'No recommendation available.'}`;
+        if (verdict) {
+            const recommendation = (advice.recommendation || 'unknown').toUpperCase();
+            verdict.textContent = `${recommendation}: ${advice.reason || 'No recommendation available.'}`;
+        }
 
         const activeCost = document.querySelector('.current-node-cost');
         if (activeCost) {
             activeCost.textContent = formatINR(advice.current_price_inr);
         }
 
-        const futureNode = document.querySelector('.time-node.future .node-cost');
+        const pastTitle = document.getElementById('timeline-past-title');
+        if (pastTitle) pastTitle.textContent = advice.past_sale_name || 'Previous Sale';
+
+        const pastPrice = document.getElementById('timeline-past-price');
+        if (pastPrice) pastPrice.textContent = formatINR(advice.past_sale_price_inr);
+
+        const futureTitle = document.getElementById('timeline-future-title');
+        if (futureTitle) futureTitle.textContent = advice.next_sale_name || 'Expected Drop';
+
+        const futureNode = document.getElementById('timeline-future-price');
         if (futureNode) {
             futureNode.textContent = `Predicted: ${formatINR(advice.lowest_price_inr)}`;
         }
 
-        const confidence = document.querySelector('.time-node.future .confidence');
+        const confidence = document.getElementById('timeline-confidence');
         if (confidence) {
             confidence.textContent = `${advice.confidence_percent || 0}% Confidence`;
         }
     } catch (error) {
         const verdict = document.getElementById('timeline-verdict');
-        verdict.textContent = `UNKNOWN: ${error.message}`;
+        if (verdict) verdict.textContent = `UNKNOWN: ${error.message}`;
     }
 }
 

@@ -422,7 +422,7 @@ function renderDeals(dealsArray) {
         const savingsAmount = deal.original - deal.price;
         
         card.innerHTML = `
-            <img src="${deal.cover}" class="deal-cover" alt="${deal.title} cover" loading="lazy" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22%3ENo Image%3C/text%3E%3C/svg%3E'">
+            <img data-src="${deal.cover}" class="deal-cover" alt="${deal.title} cover" loading="lazy" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22%3ENo Image%3C/text%3E%3C/svg%3E'">
             <div class="deal-info">
                 <div class="meta-row">
                     <span>${deal.store} ${deal.isGSTAdded ? '(Inc. GST)' : ''}</span>
@@ -452,5 +452,17 @@ function renderDeals(dealsArray) {
             </div>
         `;
         container.appendChild(card);
+
+        // Load cached image asynchronously after DOM insertion
+        const img = card.querySelector('img[data-src]');
+        if (img && window.imageCache) {
+            window.imageCache.fetchCachedImage(img.dataset.src).then(url => {
+                img.src = url;
+            }).catch(() => {
+                img.src = img.dataset.src;
+            });
+        } else if (img) {
+            img.src = img.dataset.src;
+        }
     });
 }
