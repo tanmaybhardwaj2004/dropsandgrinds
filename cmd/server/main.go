@@ -43,6 +43,9 @@ func main() {
 	}
 	defer sentry.Flush(2 * time.Second)
 
+	// Verify Sentry integration
+	sentry.CaptureMessage("Sentry integration verified - DropsAndGrinds backend started")
+
 	// Initialize file-based logger
 	logFormat := "text"
 	if os.Getenv("LOG_FORMAT") == "json" {
