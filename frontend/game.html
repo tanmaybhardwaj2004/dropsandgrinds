@@ -155,23 +155,33 @@
                         <span class="highlight-green" id="arbitrage-cost"><span class="skeleton" style="width: 70px; height: 1em; display: inline-block;"></span></span>
                     </div>
                 </div>
-                <div class="receipt" id="arbitrage-loaded" style="display: none;">
-                    <div class="receipt-row">
-                        <span>Base USD → INR Conv.</span>
-                        <span id="arbitrage-base">--</span>
-                    </div>
-                    <div class="receipt-row">
-                        <span>Statutory Digital Tax (18% GST)</span>
-                        <span class="tax-value" id="arbitrage-gst">--</span>
-                    </div>
-                    <div class="receipt-divider"></div>
-                    <div class="receipt-row total-row">
-                        <span>True Global Value</span>
-                        <span id="arbitrage-global">--</span>
-                    </div>
-                    <div class="receipt-row highlight-row mt-3">
-                        <span>Current Store Price (India)</span>
-                        <span class="highlight-green" id="arbitrage-cost-final">--</span>
+                <div id="arbitrage-loaded" style="display: none;">
+                    <table class="arbitrage-table">
+                        <thead>
+                            <tr>
+                                <th>Region / Store</th>
+                                <th>Base Price</th>
+                                <th>GST (18%)</th>
+                                <th>Total Price</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr id="arbitrage-row-india">
+                                <td>🇮🇳 Steam India</td>
+                                <td class="price-cell" id="arbitrage-india-base">--</td>
+                                <td class="price-cell tax-value" id="arbitrage-india-gst">--</td>
+                                <td class="price-cell" id="arbitrage-india-total">--</td>
+                            </tr>
+                            <tr id="arbitrage-row-global">
+                                <td>🌍 Steam Global (USD → INR)</td>
+                                <td class="price-cell" id="arbitrage-global-base">--</td>
+                                <td class="price-cell tax-value" id="arbitrage-global-gst">--</td>
+                                <td class="price-cell" id="arbitrage-global-total">--</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div style="text-align: center; margin-bottom: 16px;">
+                        <span id="arbitrage-cheapest-badge"></span>
                     </div>
                 </div>
                 

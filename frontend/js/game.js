@@ -224,14 +224,23 @@ function renderReviewScores(data) {
     if (data.sources && data.sources.length > 0) {
         sourcesContainer.innerHTML = data.sources.map(source => {
             const sourceColor = getScoreColor(source.score);
+            const linkHtml = source.url ? `
+                <a href="${source.url}" target="_blank" rel="noopener noreferrer" class="source-link">
+                    Read review
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                </a>
+            ` : '';
             return `
                 <div class="source-item">
-                    <span class="source-name">${capitalizeFirst(source.source)}</span>
-                    <div class="source-score">
-                        <div class="source-bar">
-                            <div class="source-bar-fill ${sourceColor}" style="width: ${source.score}%"></div>
+                    <div>
+                        <span class="source-name">${capitalizeFirst(source.source)}</span>
+                        <div class="source-score">
+                            <div class="source-bar">
+                                <div class="source-bar-fill ${sourceColor}" style="width: ${source.score}%"></div>
+                            </div>
+                            <span class="source-value">${source.score}</span>
                         </div>
-                        <span class="source-value">${source.score}</span>
+                        ${linkHtml}
                     </div>
                 </div>
             `;
@@ -361,18 +370,48 @@ function populateGameDetails(game, opts = {}) {
     if (arbLoading) arbLoading.style.display = 'none';
     if (arbLoaded) arbLoaded.style.display = 'block';
 
-    // Populate arbitrage loaded view
-    const arbCostFinal = document.getElementById('arbitrage-cost-final');
-    if (arbCostFinal) arbCostFinal.textContent = formatINR(game.price_inr);
+    // Populate arbitrage table
+    const indiaBase = document.getElementById('arbitrage-india-base');
+    const indiaGst = document.getElementById('arbitrage-india-gst');
+    const indiaTotal = document.getElementById('arbitrage-india-total');
+    const globalBase = document.getElementById('arbitrage-global-base');
+    const globalGst = document.getElementById('arbitrage-global-gst');
+    const globalTotal = document.getElementById('arbitrage-global-total');
 
-    const arbBase = document.getElementById('arbitrage-base');
-    if (arbBase && game.global_base_inr) arbBase.textContent = formatINR(game.global_base_inr);
+    if (game.arbitrage) {
+        if (indiaBase) indiaBase.textContent = formatINR(game.arbitrage.india_base_inr);
+        if (indiaGst) indiaGst.textContent = `+ ${formatINR(game.arbitrage.india_gst_inr)}`;
+        if (indiaTotal) indiaTotal.textContent = formatINR(game.arbitrage.india_total_inr);
+        if (globalBase) globalBase.textContent = formatINR(game.arbitrage.global_base_inr);
+        if (globalGst) globalGst.textContent = `+ ${formatINR(game.arbitrage.global_gst_inr)}`;
+        if (globalTotal) globalTotal.textContent = formatINR(game.arbitrage.global_total_inr);
 
-    const arbGst = document.getElementById('arbitrage-gst');
-    if (arbGst && game.gst_amount) arbGst.textContent = `+ ${formatINR(game.gst_amount)}`;
+        // Highlight cheapest row
+        const indiaRow = document.getElementById('arbitrage-row-india');
+        const globalRow = document.getElementById('arbitrage-row-global');
+        const cheapestBadge = document.getElementById('arbitrage-cheapest-badge');
 
-    const arbGlobal = document.getElementById('arbitrage-global');
-    if (arbGlobal && game.global_total_inr) arbGlobal.textContent = formatINR(game.global_total_inr);
+        if (indiaRow) indiaRow.classList.remove('cheapest');
+        if (globalRow) globalRow.classList.remove('cheapest');
+
+        if (game.arbitrage.cheapest_region === 'india' && indiaRow) {
+            indiaRow.classList.add('cheapest');
+            if (cheapestBadge) cheapestBadge.innerHTML = '<span class="cheapest-badge">Cheapest Region</span>';
+        } else if (game.arbitrage.cheapest_region === 'global' && globalRow) {
+            globalRow.classList.add('cheapest');
+            if (cheapestBadge) cheapestBadge.innerHTML = '<span class="cheapest-badge">Cheapest Region</span>';
+        } else {
+            if (cheapestBadge) cheapestBadge.innerHTML = '';
+        }
+    } else {
+        // Fallback: use current price as India price, show placeholder for global
+        if (indiaBase) indiaBase.textContent = formatINR(game.price_inr);
+        if (indiaGst) indiaGst.textContent = '+ --';
+        if (indiaTotal) indiaTotal.textContent = formatINR(game.price_inr);
+        if (globalBase) globalBase.textContent = '--';
+        if (globalGst) globalGst.textContent = '+ --';
+        if (globalTotal) globalTotal.textContent = '--';
+    }
 
     // Arbitrage verdict
     const verdict = document.getElementById('arbitrage-verdict');

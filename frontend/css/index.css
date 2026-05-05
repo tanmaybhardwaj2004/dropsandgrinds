@@ -613,6 +613,31 @@ nav a:focus-visible {
 .score-circle.orange { background: rgba(210, 105, 34, 0.3); color: #ffa657; }
 .score-circle.red { background: rgba(218, 54, 51, 0.3); color: #ff7b72; }
 
+.deal-score-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+}
+
+.deal-score-badge.green { background-color: #238636; }
+.deal-score-badge.amber { background-color: #d29922; }
+.deal-score-badge.orange { background-color: #d26922; }
+.deal-score-badge.red { background-color: #da3633; }
+.deal-score-badge.gray { background-color: #6e7681; }
+
+.score-sources {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-left: 2px;
+}
+
 .overlay-savings {
   color: var(--success);
   font-weight: 600;

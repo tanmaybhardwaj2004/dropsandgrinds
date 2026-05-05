@@ -191,8 +191,9 @@ function createGameCard(game) {
         ? `<div class="discount">-${game.discount_percent}%</div>` 
         : '';
     
+    const scoreColor = getScoreColorClass(game.review_score);
     const reviewBadge = game.review_score > 0
-        ? `<div class="score-badge">${game.review_score.toFixed(0)}</div>`
+        ? `<span class="deal-score-badge ${scoreColor}">${game.review_score.toFixed(0)}</span>`
         : '';
 
     const lowestBadge = game.is_all_time_low

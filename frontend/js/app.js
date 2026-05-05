@@ -426,7 +426,10 @@ function renderDeals(dealsArray) {
             <div class="deal-info">
                 <div class="meta-row">
                     <span>${deal.store} ${deal.isGSTAdded ? '(Inc. GST)' : ''}</span>
-                    <span class="score-badge">★ ${deal.score}</span>
+                    <span style="display: flex; align-items: center; gap: 4px;">
+                        <span class="deal-score-badge ${scoreColor}">${deal.score || '--'}</span>
+                        <span class="score-sources">${deal.review_source_count ? `(${deal.review_source_count})` : ''}</span>
+                    </span>
                 </div>
                 <div class="deal-title">${deal.title}</div>
                 <div class="deal-price-row">
