@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/joho/godotenv"
 
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/config"
@@ -32,6 +33,15 @@ import (
 func main() {
 	_ = godotenv.Load()
 	cfg := config.LoadConfig()
+
+	// Initialize Sentry
+	err := sentry.Init(sentry.ClientOptions{
+		Dsn: "https://ca3b71cc206fb5a094dca3953d3052bf@o4511301731811328.ingest.de.sentry.io/4511301742821456",
+	})
+	if err != nil {
+		log.Fatalf("sentry.Init: %s", err)
+	}
+	defer sentry.Flush(2 * time.Second)
 
 	// Initialize file-based logger
 	logFormat := "text"
