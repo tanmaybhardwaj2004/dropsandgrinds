@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/models"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/repositories"
@@ -73,7 +74,56 @@ func (s *DealEvaluationService) EvaluateDeal(ctx context.Context, gameID int64) 
 
 // GetDealsForYou returns personalized deals based on user's wishlist and click history
 func (s *DealEvaluationService) GetDealsForYou(ctx context.Context, userID int64, limit, offset int) ([]models.Deal, int, error) {
-	// For MVP: return top deals sorted by discount
-	// In production: filter by wishlist + click history
-	return s.repo.ListDeals(ctx, limit, offset)
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	deals, total, err := s.repo.ListPersonalizedDeals(ctx, userID, limit, offset)
+	if err != nil {
+		return nil, 0, &ServiceError{StatusCode: http.StatusInternalServerError, Message: "Failed to fetch personalized deals"}
+	}
+	for i := range deals {
+		deals[i].DealQuality = stringQuality(deals[i])
+		deals[i].DealStatus = deals[i].DealQuality
+		deals[i].PotentialSavingsINR = deals[i].OriginalINR - deals[i].PriceINR
+		if deals[i].PotentialSavingsINR < 0 {
+			deals[i].PotentialSavingsINR = 0
+		}
+	}
+	return deals, total, nil
+}
+
+func (s *DealEvaluationService) ListDeals(ctx context.Context, limit, offset int) ([]models.Deal, int, error) {
+	deals, total, err := s.repo.ListDeals(ctx, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	for i := range deals {
+		deals[i].DealQuality = stringQuality(deals[i])
+		deals[i].DealStatus = deals[i].DealQuality
+		deals[i].PotentialSavingsINR = deals[i].OriginalINR - deals[i].PriceINR
+		if deals[i].PotentialSavingsINR < 0 {
+			deals[i].PotentialSavingsINR = 0
+		}
+	}
+	return deals, total, nil
+}
+
+func stringQuality(deal models.Deal) string {
+	if deal.IsAllTimeLow || deal.DiscountPercent >= 70 {
+		return "hot"
+	}
+	if deal.DiscountPercent >= 30 {
+		return "good"
+	}
+	return "meh"
+}
+
+func (s *DealEvaluationService) StoreURL(ctx context.Context, gameID int64, platform string) (string, bool, error) {
+	return s.repo.GetStoreURL(ctx, gameID, platform)
 }

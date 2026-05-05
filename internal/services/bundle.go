@@ -3,8 +3,11 @@ package services
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -70,13 +73,13 @@ func (s *BundleService) AnalyzeBundle(ctx context.Context, bundleURL string, bun
 	bundleShare := bundlePrice / float64(len(games))
 
 	for _, gameTitle := range games {
-		// Try to find game in catalog by title (using ILIKE for fuzzy match)
 		currentPrice := 0.0
 		steamID := int64(0)
-
-		// For MVP, we'll need to add a method to search by title
-		// For now, skip games not in catalog
-		s.logger.Warn("Game title search not fully implemented", "title", gameTitle)
+		matches, err := s.catalogRepo.FindGamePricesByTitle(ctx, gameTitle, 1)
+		if err == nil && len(matches) > 0 {
+			currentPrice = float64(matches[0].PriceINR)
+			steamID = matches[0].ID
+		}
 
 		analysis.Games = append(analysis.Games, BundleGame{
 			Title:        gameTitle,
@@ -99,48 +102,99 @@ func (s *BundleService) AnalyzeBundle(ctx context.Context, bundleURL string, bun
 
 // scrapeBundle scrapes a bundle page and extracts game titles
 func (s *BundleService) scrapeBundle(ctx context.Context, url string) ([]string, error) {
-	// For MVP, implement basic URL pattern matching
-	// In production, this would use proper HTML parsing with colly or similar
-
-	// Respect robots.txt and add delay
 	time.Sleep(1 * time.Second)
+	if err := s.allowedByRobots(ctx, url); err != nil {
+		return nil, err
+	}
 
 	// Detect bundle type from URL
 	if strings.Contains(url, "humblebundle.com") {
-		return s.extractHumbleGames(url), nil
+		return s.extractGamesFromPage(ctx, url)
 	}
 	if strings.Contains(url, "fanatical.com") {
-		return s.extractFanaticalGames(url), nil
+		return s.extractGamesFromPage(ctx, url)
 	}
 	if strings.Contains(url, "store.steampowered.com") && strings.Contains(url, "bundle") {
-		return s.extractSteamGames(url), nil
+		return s.extractGamesFromPage(ctx, url)
 	}
 
 	return nil, fmt.Errorf("unsupported bundle URL")
 }
 
-// extractHumbleGames extracts games from Humble Bundle URL (placeholder)
-func (s *BundleService) extractHumbleGames(url string) []string {
-	// MVP: Return empty list
-	// In production: Parse HTML and extract game titles
-	s.logger.Info("Humble bundle scraping not fully implemented", "url", url)
-	return []string{}
+func (s *BundleService) extractGamesFromPage(ctx context.Context, pageURL string) ([]string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, pageURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "DropsAndGrindsBot/1.0")
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("bundle page returned HTTP %d", resp.StatusCode)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	re := regexp.MustCompile(`(?i)(?:data-title|title|alt)=["']([^"']{3,120})["']`)
+	seen := map[string]struct{}{}
+	var games []string
+	for _, match := range re.FindAllStringSubmatch(string(body), -1) {
+		title := cleanBundleTitle(match[1])
+		if title == "" {
+			continue
+		}
+		if _, ok := seen[strings.ToLower(title)]; ok {
+			continue
+		}
+		seen[strings.ToLower(title)] = struct{}{}
+		games = append(games, title)
+	}
+	return games, nil
 }
 
-// extractFanaticalGames extracts games from Fanatical URL (placeholder)
-func (s *BundleService) extractFanaticalGames(url string) []string {
-	// MVP: Return empty list
-	// In production: Parse HTML and extract game titles
-	s.logger.Info("Fanatical bundle scraping not fully implemented", "url", url)
-	return []string{}
+func (s *BundleService) allowedByRobots(ctx context.Context, rawURL string) error {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return err
+	}
+	robotsURL := parsed.Scheme + "://" + parsed.Host + "/robots.txt"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, robotsURL, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := s.httpClient.Do(req)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		return nil
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil
+	}
+	path := parsed.EscapedPath()
+	for _, line := range strings.Split(string(body), "\n") {
+		line = strings.TrimSpace(strings.ToLower(line))
+		if strings.HasPrefix(line, "disallow:") {
+			disallowed := strings.TrimSpace(strings.TrimPrefix(line, "disallow:"))
+			if disallowed != "" && strings.HasPrefix(strings.ToLower(path), disallowed) {
+				return fmt.Errorf("bundle URL disallowed by robots.txt")
+			}
+		}
+	}
+	return nil
 }
 
-// extractSteamGames extracts games from Steam Bundle URL (placeholder)
-func (s *BundleService) extractSteamGames(url string) []string {
-	// MVP: Return empty list
-	// In production: Parse HTML and extract game titles
-	s.logger.Info("Steam bundle scraping not fully implemented", "url", url)
-	return []string{}
+func cleanBundleTitle(title string) string {
+	title = strings.TrimSpace(strings.ReplaceAll(title, "\n", " "))
+	lower := strings.ToLower(title)
+	if strings.Contains(lower, "logo") || strings.Contains(lower, "icon") || strings.Contains(lower, "bundle") || strings.Contains(lower, "cart") {
+		return ""
+	}
+	return title
 }
 
 // extractBundleName extracts a readable name from the URL

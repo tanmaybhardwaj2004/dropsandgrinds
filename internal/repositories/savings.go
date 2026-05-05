@@ -136,17 +136,17 @@ func (r *SavingsRepository) GetPurchaseHistory(ctx context.Context, userID int64
 // MonthlySavings represents savings data for a month
 type MonthlySavings struct {
 	Month         string `json:"month"`
-	TotalSavings int    `json:"total_savings"`
-	PurchaseCount int   `json:"purchase_count"`
+	TotalSavings  int    `json:"total_savings"`
+	PurchaseCount int    `json:"purchase_count"`
 }
 
 // PurchaseRecord represents a single purchase record
 type PurchaseRecord struct {
-	ID              int64  `json:"id"`
-	GameID          int64  `json:"game_id"`
-	GameTitle       string `json:"game_title"`
-	PaidPriceINR    int    `json:"paid_price_inr"`
+	ID               int64  `json:"id"`
+	GameID           int64  `json:"game_id"`
+	GameTitle        string `json:"game_title"`
+	PaidPriceINR     int    `json:"paid_price_inr"`
 	OriginalPriceINR int    `json:"original_price_inr"`
-	SavedAmountINR  int    `json:"saved_amount_inr"`
-	PurchasedAt     string `json:"purchased_at"`
+	SavedAmountINR   int    `json:"saved_amount_inr"`
+	PurchasedAt      string `json:"purchased_at"`
 }

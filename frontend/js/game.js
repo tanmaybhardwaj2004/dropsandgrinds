@@ -221,21 +221,35 @@ async function loadGameDetails(gameID) {
 
         document.getElementById('main-price').textContent = formatINR(game.price_inr);
         document.getElementById('original-price').textContent = formatINR(game.original_inr);
-        document.getElementById('discount-badge').textContent = `-${game.discount_percent || 0}%`;
+        const discountBadge = document.getElementById('discount-badge');
+        if (discountBadge) discountBadge.textContent = `-${game.discount_percent || 0}%`;
         document.getElementById('store-badge').textContent = game.platform || 'Store';
 
-        const arbitrage = document.getElementById('arbitrage-cost');
-        arbitrage.textContent = `${formatINR(game.price_inr)}.00`;
-
-        const verdict = document.getElementById('arbitrage-verdict');
-        if (game.is_all_time_low) {
-            verdict.textContent = 'VERDICT: All-time low detected. Excellent buy window.';
-            verdict.classList.add('green');
-        } else {
-            verdict.textContent = `VERDICT: Current lowest seen: ${formatINR(game.lowest_price_inr)}.`;
-        }
+        await loadIndiaArbitrage(gameID);
     } catch (error) {
         renderGameError(error.message);
+    }
+}
+
+async function loadIndiaArbitrage(gameID) {
+    try {
+        const response = await fetch(`/api/prices/${gameID}/india`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to load India pricing');
+        const rows = document.querySelectorAll('.receipt-row span:last-child');
+        if (rows[0]) rows[0].textContent = formatINR(data.steam_global_inr);
+        if (rows[1]) rows[1].textContent = `+ ${formatINR(data.gst_amount)}`;
+        if (rows[2]) rows[2].textContent = formatINR(data.total_with_gst);
+        const arbitrage = document.getElementById('arbitrage-cost');
+        if (arbitrage) arbitrage.textContent = formatINR(data.steam_india_price);
+        const verdict = document.getElementById('arbitrage-verdict');
+        if (verdict) {
+            verdict.textContent = `${data.cheapest_region}: ${data.verdict}`;
+            verdict.classList.toggle('green', data.cheapest_region === 'India');
+        }
+    } catch (error) {
+        const verdict = document.getElementById('arbitrage-verdict');
+        if (verdict) verdict.textContent = error.message;
     }
 }
 
@@ -346,7 +360,7 @@ function initWishlistButton(gameID) {
 
             if (response.status === 409) {
                 btn.classList.add('active');
-                btn.textContent = '♥ Already Wishlisted';
+                btn.textContent = 'Already Wishlisted';
                 return;
             }
 
@@ -356,7 +370,7 @@ function initWishlistButton(gameID) {
             }
 
             btn.classList.add('active');
-            btn.textContent = '♥ Wishlisted';
+            btn.textContent = 'Wishlisted';
         } catch (err) {
             btn.textContent = oldText;
             alert(err.message || 'Could not update wishlist');

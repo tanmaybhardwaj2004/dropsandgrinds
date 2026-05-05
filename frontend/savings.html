@@ -13,7 +13,7 @@
     <nav class="nav">
         <div class="container flex items-center justify-between" style="height: 64px;">
             <a href="index.html" class="flex items-center gap-2" style="text-decoration: none;">
-                <div style="width: 36px; height: 36px; background: var(--gradient-primary); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">🎮</div>
+                <div style="width: 36px; height: 36px; background: var(--gradient-primary); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;"><i data-lucide="gamepad-2"></i></div>
                 <span style="font-family: var(--font-display); font-size: var(--text-xl); font-weight: 700; color: var(--color-text-primary);">DropsAndGrinds</span>
             </a>
             
@@ -78,14 +78,14 @@
             <!-- Total Savings Card -->
             <div class="savings-summary">
                 <div class="summary-card">
-                    <div class="summary-icon">💰</div>
+                    <div class="summary-icon"><i data-lucide="wallet"></i></div>
                     <div class="summary-content">
                         <div class="summary-label">Total Saved</div>
                         <div class="summary-value" id="total-savings">₹0</div>
                     </div>
                 </div>
                 <div class="summary-card equivalent-games">
-                    <div class="summary-icon">🎮</div>
+                    <div class="summary-icon"><i data-lucide="gamepad-2"></i></div>
                     <div class="summary-content">
                         <div class="summary-label">Equivalent Free Games</div>
                         <div class="summary-message" id="equivalent-games">Loading...</div>
@@ -145,7 +145,7 @@
             <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: var(--space-8);">
                 <div>
                     <div style="display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3);">
-                        <div style="width: 32px; height: 32px; background: var(--gradient-primary); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;">🎮</div>
+                        <div style="width: 32px; height: 32px; background: var(--gradient-primary); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;"><i data-lucide="gamepad-2"></i></div>
                         <span style="font-family: var(--font-display); font-weight: 700;">DropsAndGrinds</span>
                     </div>
                     <p style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Smart cross-platform game deal tracker for Indian gamers. Never miss a price drop again.</p>
@@ -185,5 +185,7 @@
     <script src="js/auth.js"></script>
     <script src="js/savings.js"></script>
     <script>document.querySelectorAll('.copyright-year').forEach(el => el.textContent = new Date().getFullYear());</script>
+<script src="https://unpkg.com/lucide"></script>
+<script>if (window.lucide) window.lucide.createIcons();</script>
 </body>
 </html>

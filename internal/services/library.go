@@ -117,22 +117,36 @@ func (s *LibraryService) IsGameOwned(ctx context.Context, userID int64, gameID i
 
 // FindMissingDLCs finds DLCs for owned base games that are not owned
 func (s *LibraryService) FindMissingDLCs(ctx context.Context, userID int64) ([]int64, error) {
-	// Get owned game IDs
-	ownedGameIDs, err := s.libraryRepo.GetOwnedGameIDs(ctx, userID)
+	ownedTitles, err := s.libraryRepo.GetOwnedGameTitles(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-
-	if len(ownedGameIDs) == 0 {
+	if len(ownedTitles) == 0 {
 		return []int64{}, nil
 	}
-
-	// For MVP: Return empty list
-	// In production, this would:
-	// 1. Query external API (Steam) to get DLC list for each owned game
-	// 2. Check if DLC games exist in our database
-	// 3. Filter out DLCs that are already owned
-	// 4. Return list of missing DLC game IDs
-
-	return []int64{}, nil
+	ownedSet := map[int64]struct{}{}
+	for id := range ownedTitles {
+		ownedSet[id] = struct{}{}
+	}
+	var missing []int64
+	seen := map[int64]struct{}{}
+	for _, title := range ownedTitles {
+		for _, suffix := range []string{"DLC", "Season Pass", "Expansion"} {
+			matches, err := s.catalogRepo.FindGamePricesByTitle(ctx, title+" "+suffix, 20)
+			if err != nil {
+				continue
+			}
+			for _, game := range matches {
+				if _, owned := ownedSet[game.ID]; owned {
+					continue
+				}
+				if _, ok := seen[game.ID]; ok {
+					continue
+				}
+				seen[game.ID] = struct{}{}
+				missing = append(missing, game.ID)
+			}
+		}
+	}
+	return missing, nil
 }

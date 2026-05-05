@@ -75,8 +75,8 @@ function displayResults(data) {
     const verdictClass = data.verdict === 'buy_bundle' ? 'buy_bundle' : 
                         data.verdict === 'buy_separately' ? 'buy_separately' : 'mixed';
     
-    const verdictText = data.verdict === 'buy_bundle' ? 'BUY THE BUNDLE! 💰' :
-                       data.verdict === 'buy_separately' ? 'BUY SEPARATELY 🛒' : 'MIXED DECISION 🤔';
+    const verdictText = data.verdict === 'buy_bundle' ? 'BUY THE BUNDLE' :
+                       data.verdict === 'buy_separately' ? 'BUY SEPARATELY' : 'MIXED DECISION';
     
     verdictBanner.className = `verdict-banner ${verdictClass}`;
     verdictBanner.textContent = verdictText;

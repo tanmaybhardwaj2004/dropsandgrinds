@@ -37,13 +37,34 @@ func SetSteamAPIKey(apiKey string) {
 
 // HealthHandler reports basic process health.
 // @Summary      Health Check
-// @Description  Check if the server is running
+// @Description  Check if the server and core dependencies are reachable
 // @Tags         system
 // @Produce      json
 // @Success      200  {string}  string  "ok"
 // @Router       /health [get]
 func HealthHandler(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+	status := map[string]string{"status": "ok", "database": "up", "redis": "up"}
+	if dbPool == nil {
+		status["database"] = "not_initialized"
+		status["status"] = "degraded"
+	} else if err := dbPool.Ping(ctx); err != nil {
+		status["database"] = "down"
+		status["status"] = "degraded"
+	}
+	if redisClient == nil {
+		status["redis"] = "not_initialized"
+		status["status"] = "degraded"
+	} else if err := redisClient.Ping(ctx).Err(); err != nil {
+		status["redis"] = "down"
+		status["status"] = "degraded"
+	}
+	if status["status"] != "ok" {
+		writeJSON(w, http.StatusServiceUnavailable, status)
+		return
+	}
+	writeJSON(w, http.StatusOK, status)
 }
 
 // HealthDepsHandler checks critical infrastructure dependencies.

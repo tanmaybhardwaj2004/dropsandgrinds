@@ -895,3 +895,270 @@ main {
 footer {
   margin-top: auto;
 }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root,
+:root[data-theme="dark"] {
+  --color-bg-primary: #0f0f13;
+  --color-bg-secondary: #0f0f13;
+  --color-bg-tertiary: #1a1a24;
+  --color-surface: #1a1a24;
+  --color-card: #1a1a24;
+  --color-border: rgba(148, 163, 184, 0.18);
+  --color-border-accent: rgba(108, 99, 255, 0.42);
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-tertiary: #64748b;
+  --color-text-muted: #64748b;
+  --color-accent-primary: #6c63ff;
+  --color-accent-success: #22c55e;
+  --color-accent-warning: #f59e0b;
+  --color-accent-danger: #ef4444;
+  --gradient-primary: #6c63ff;
+  --gradient-glow: rgba(108, 99, 255, 0.12);
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 8px;
+  --radius-full: 999px;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.42);
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-display: 'Inter', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #0f0f13;
+  color: #f1f5f9;
+  font-family: 'Inter', system-ui, sans-serif;
+  letter-spacing: 0;
+}
+
+a {
+  color: inherit;
+}
+
+svg,
+.lucide {
+  width: 18px;
+  height: 18px;
+  vertical-align: middle;
+}
+
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(15, 15, 19, 0.86);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.nav-link {
+  position: relative;
+  color: var(--color-text-secondary);
+  border-radius: 0;
+  transition: all 0.2s ease;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  color: var(--color-text-primary);
+  background: transparent;
+}
+
+.nav-link.active::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -14px;
+  height: 2px;
+  background: var(--color-accent-primary);
+}
+
+.card,
+.game-card,
+.deal-card,
+.metric-card,
+.stat-card,
+.bundle-input-card,
+.wishlist-card,
+.summary-card {
+  background: #1a1a24;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.deal-card,
+.game-card,
+.wishlist-card {
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.deal-card:hover,
+.game-card:hover,
+.wishlist-card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.48);
+  border-color: rgba(108, 99, 255, 0.5);
+}
+
+.btn,
+button,
+input,
+select,
+textarea {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.btn,
+button.btn {
+  padding: 10px 20px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: #6c63ff;
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: #7c74ff;
+  transform: translateY(-1px);
+}
+
+.btn-secondary,
+.btn-ghost {
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+.form-input,
+input,
+select,
+textarea {
+  background: #111118;
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.form-input:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #6c63ff;
+  box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.2);
+}
+
+.badge,
+.discount,
+.lowest-badge {
+  border-radius: 999px;
+}
+
+.badge-success,
+.discount {
+  background: rgba(34, 197, 94, 0.16);
+  color: #22c55e;
+}
+
+.skeleton,
+.skeleton-cover,
+.skeleton-line {
+  background: linear-gradient(90deg, #1a1a24 25%, #242434 37%, #1a1a24 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+.empty-state,
+.state-container {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #1a1a24;
+}
+
+.toast-error,
+.state-error,
+.error-state {
+  border-color: rgba(239, 68, 68, 0.55);
+}
+
+@media (max-width: 900px) {
+  .grid-cols-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  main.container > div,
+  .container > div[style*="grid-template-columns: 280px 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .grid-cols-4,
+  #deals-container,
+  #results-grid,
+  #wishlist-container {
+    grid-template-columns: 1fr !important;
+  }
+  #nav-links {
+    display: none;
+  }
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.data-table th {
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.status-pill.success {
+  background: rgba(34, 197, 94, 0.14);
+  color: #22c55e;
+}
+
+.status-pill.neutral {
+  background: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+}

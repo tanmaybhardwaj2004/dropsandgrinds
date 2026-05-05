@@ -10,7 +10,7 @@ import (
 
 type CatalogStore interface {
 	ListGames(ctx context.Context, query, platform string, limit, offset int, excludeOwned bool, userID int64) ([]models.Game, int, error)
-	SearchGames(ctx context.Context, query string, platform string, minPrice, maxPrice float64, minDiscount, maxDiscount int, minReviewScore, maxReviewScore float64, limit, offset int) ([]models.Game, int, error)
+	SearchGames(ctx context.Context, query string, platform string, minPrice, maxPrice float64, minDiscount, maxDiscount int, minReviewScore, maxReviewScore float64, paymentMethod string, limit, offset int) ([]models.Game, int, error)
 	GetGameByID(ctx context.Context, id int64) (models.Game, bool, error)
 	ListDeals(ctx context.Context, limit, offset int) ([]models.Deal, int, error)
 	GetPriceHistory(ctx context.Context, gameID int64, limit, offset int) ([]models.PriceHistoryPoint, error)
@@ -89,6 +89,7 @@ func (s *GamesService) ListDeals(ctx context.Context, limit, offset int) (models
 
 	for i := range deals {
 		deals[i].DealStatus, deals[i].PotentialSavingsINR = evaluateDeal(deals[i])
+		deals[i].DealQuality = dealQuality(deals[i])
 	}
 
 	return models.DealListResponse{
@@ -97,6 +98,16 @@ func (s *GamesService) ListDeals(ctx context.Context, limit, offset int) (models
 		Limit:  limit,
 		Offset: offset,
 	}, nil
+}
+
+func dealQuality(deal models.Deal) string {
+	if deal.IsAllTimeLow || deal.DiscountPercent >= 70 {
+		return "hot"
+	}
+	if deal.DiscountPercent >= 30 {
+		return "good"
+	}
+	return "meh"
 }
 
 func evaluateDeal(deal models.Deal) (string, int) {
@@ -138,7 +149,7 @@ func (s *GamesService) GetPriceHistory(ctx context.Context, gameID int64, limit,
 		return models.PriceHistoryResponse{}, &ServiceError{StatusCode: 500, Message: "Failed to fetch price history"}
 	}
 
-	return models.PriceHistoryResponse{GameID: gameID, History: history}, nil
+	return models.PriceHistoryResponse{GameID: gameID, History: history, Prices: history}, nil
 }
 
 func (s *GamesService) GetIndiaArbitrage(ctx context.Context, gameID int64) (models.IndiaArbitrage, error) {
@@ -154,7 +165,7 @@ func (s *GamesService) GetIndiaArbitrage(ctx context.Context, gameID int64) (mod
 	return arbitrage, nil
 }
 
-func (s *GamesService) SearchGames(ctx context.Context, query string, platform string, minPrice, maxPrice float64, minDiscount, maxDiscount int, minReviewScore, maxReviewScore float64, limit, offset int) ([]models.Game, int, error) {
+func (s *GamesService) SearchGames(ctx context.Context, query string, platform string, minPrice, maxPrice float64, minDiscount, maxDiscount int, minReviewScore, maxReviewScore float64, paymentMethod string, limit, offset int) ([]models.Game, int, error) {
 	if limit <= 0 {
 		limit = 30
 	}
@@ -165,7 +176,7 @@ func (s *GamesService) SearchGames(ctx context.Context, query string, platform s
 		offset = 0
 	}
 
-	games, total, err := s.repo.SearchGames(ctx, query, platform, minPrice, maxPrice, minDiscount, maxDiscount, minReviewScore, maxReviewScore, limit, offset)
+	games, total, err := s.repo.SearchGames(ctx, query, platform, minPrice, maxPrice, minDiscount, maxDiscount, minReviewScore, maxReviewScore, strings.ToLower(strings.TrimSpace(paymentMethod)), limit, offset)
 	if err != nil {
 		return nil, 0, &ServiceError{StatusCode: 500, Message: "Failed to search games"}
 	}

@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/middleware"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/models"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/services"
 )
@@ -20,6 +21,34 @@ func SetGamesService(svc *services.GamesService) {
 // SetMeilisearchService wires the Meilisearch service into HTTP handlers at startup.
 func SetMeilisearchService(svc *services.MeilisearchService) {
 	meilisearchService = svc
+}
+
+func GameSubrouter(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/games/")
+	switch {
+	case strings.HasSuffix(path, "/redirect"):
+		GameRedirectHandler(w, r)
+	case strings.HasSuffix(path, "/reviews"):
+		ReviewHandler(w, r)
+	case strings.HasSuffix(path, "/buy-timing"):
+		BuyTimingHandler(w, r)
+	case strings.HasSuffix(path, "/buy-advice"):
+		BuyAdviceHandler(w, r)
+	default:
+		GameDetailHandler(w, r)
+	}
+}
+
+func PriceSubrouter(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/prices/")
+	switch {
+	case strings.HasSuffix(path, "/history"):
+		PriceHistoryHandler(w, r)
+	case strings.HasSuffix(path, "/india"):
+		IndiaArbitrageHandler(w, r)
+	default:
+		writeJSON(w, http.StatusNotFound, models.APIError{Error: "Price route not found"})
+	}
 }
 
 // SearchGamesHandler returns games matching search criteria with filters.
@@ -53,6 +82,7 @@ func SearchGamesHandler(w http.ResponseWriter, r *http.Request) {
 	maxDiscount := parseQueryInt(r.URL.Query().Get("max_discount"), 0)
 	minReviewScore := parseQueryFloat(r.URL.Query().Get("min_review_score"), 0)
 	maxReviewScore := parseQueryFloat(r.URL.Query().Get("max_review_score"), 0)
+	paymentMethod := r.URL.Query().Get("payment_method")
 	limit := parseQueryInt(r.URL.Query().Get("limit"), 30)
 	offset := parseQueryInt(r.URL.Query().Get("offset"), 0)
 
@@ -66,7 +96,11 @@ func SearchGamesHandler(w http.ResponseWriter, r *http.Request) {
 		filters := buildMeilisearchFilters(platform, minPrice, maxPrice, minDiscount, maxDiscount, minReviewScore, maxReviewScore)
 		games, total, err = meilisearchService.SearchGames(r.Context(), query, filters, limit, offset)
 	} else {
-		games, total, err = gamesService.SearchGames(r.Context(), query, platform, minPrice, maxPrice, minDiscount, maxDiscount, minReviewScore, maxReviewScore, limit, offset)
+		if gamesService == nil {
+			writeJSON(w, http.StatusInternalServerError, models.APIError{Error: "Games service not initialized"})
+			return
+		}
+		games, total, err = gamesService.SearchGames(r.Context(), query, platform, minPrice, maxPrice, minDiscount, maxDiscount, minReviewScore, maxReviewScore, paymentMethod, limit, offset)
 	}
 
 	if err != nil {
@@ -148,8 +182,8 @@ func GamesListHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get user_id from context if authenticated
 	var userID int64
-	if uid := r.Context().Value("user_id"); uid != nil {
-		userID = uid.(int64)
+	if uid, ok := middleware.UserIDFromContext(r.Context()); ok {
+		userID = uid
 	}
 
 	response, err := gamesService.ListGames(r.Context(), services.GameFilter{

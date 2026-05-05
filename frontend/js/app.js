@@ -57,7 +57,7 @@ async function loadActiveSales() {
             const endDate = new Date(sale.end_date);
             const daysRemaining = Math.ceil((endDate - new Date()) / (1000 * 60 * 60 * 24));
             
-            title.textContent = `🔴 LIVE: ${sale.name}`;
+            title.textContent = `LIVE: ${sale.name}`;
             message.textContent = `Ending in ${daysRemaining} days. Don't miss out on great deals!`;
             banner.style.display = 'block';
         } else {
@@ -73,7 +73,7 @@ async function loadActiveSales() {
 }
 
 function initSearch() {
-    const searchInput = document.getElementById('search-input');
+    const searchInput = document.getElementById('sidebar-search');
     const searchBtn = document.getElementById('search-btn');
 
     if (!searchInput || !searchBtn) return;
@@ -231,7 +231,7 @@ function renderSkeletons(count = 6) {
 function renderEmptyState(message = 'No deals found matching your criteria.') {
     return `
         <div class="state-container state-empty">
-            <div class="state-icon">📭</div>
+            <div class="state-icon"><i data-lucide="inbox"></i></div>
             <div class="state-title">No Deals Found</div>
             <div class="state-message">${message}</div>
         </div>
@@ -241,7 +241,7 @@ function renderEmptyState(message = 'No deals found matching your criteria.') {
 function renderErrorState(message = 'Failed to load deals.', onRetry) {
     return `
         <div class="state-container state-error">
-            <div class="state-icon">⚠️</div>
+            <div class="state-icon"><i data-lucide="triangle-alert"></i></div>
             <div class="state-title">Oops!</div>
             <div class="state-message">${message}</div>
             <button class="retry-btn" onclick="${onRetry}()">Try Again</button>
@@ -374,15 +374,15 @@ function renderDealsForYou(deals) {
             </div>
         </div>
     `).join('') + '</div>';
+    if (window.lucide) window.lucide.createIcons();
 }
 
 function updateFilters() {
-    const steamChecked = document.getElementById('store-steam').checked;
-    const epicChecked = document.getElementById('store-epic').checked;
-    const gogChecked = document.getElementById('store-gog').checked;
-    const maxPrice = parseInt(document.getElementById('price-slider').value);
-    const searchTerm = document.getElementById('search-input').value.toLowerCase();
-    const hideOwned = document.getElementById('hide-owned')?.checked || false;
+    const steamChecked = document.getElementById('store-steam')?.checked ?? true;
+    const epicChecked = document.getElementById('store-epic')?.checked ?? true;
+    const gogChecked = document.getElementById('store-gog')?.checked ?? true;
+    const maxPrice = parseInt(document.getElementById('price-slider')?.value || '5000');
+    const searchTerm = (document.getElementById('sidebar-search')?.value || '').toLowerCase();
 
     const filtered = allDeals.filter(deal => {
         // Store filter
@@ -423,7 +423,7 @@ function renderDeals(dealsArray) {
             <div class="deal-info">
                 <div class="meta-row">
                     <span>${deal.store} ${deal.isGSTAdded ? '(Inc. GST)' : ''}</span>
-                    <span class="score-badge">★ ${deal.score}</span>
+                    <span class="score-badge">${deal.score}</span>
                 </div>
                 <div class="deal-title">${deal.title}</div>
                 <div class="deal-price-row">
@@ -450,4 +450,5 @@ function renderDeals(dealsArray) {
         `;
         container.appendChild(card);
     });
+    if (window.lucide) window.lucide.createIcons();
 }

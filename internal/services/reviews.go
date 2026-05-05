@@ -24,13 +24,13 @@ func NewReviewService(repo *repositories.ReviewRepository, steamAPIKey, gameSpot
 
 // AggregatedReview represents the aggregated review data
 type AggregatedReview struct {
-	GameID       int64                      `json:"game_id"`
-	Score        int                        `json:"score"`
-	Label        string                     `json:"label"`
-	Color        string                     `json:"color"`
-	SourceCount  int                        `json:"source_count"`
-	Sources      []reviews.ReviewScore      `json:"sources"`
-	Reason       string                     `json:"reason,omitempty"`
+	GameID      int64                 `json:"game_id"`
+	Score       int                   `json:"score"`
+	Label       string                `json:"label"`
+	Color       string                `json:"color"`
+	SourceCount int                   `json:"source_count"`
+	Sources     []reviews.ReviewScore `json:"sources"`
+	Reason      string                `json:"reason,omitempty"`
 }
 
 // GetAggregatedReview fetches and aggregates review scores for a game
@@ -40,18 +40,18 @@ func (s *ReviewService) GetAggregatedReview(ctx context.Context, gameID int64) (
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch review scores: %w", err)
 	}
-	
+
 	// If we have enough cached scores, return them
 	if len(scores) >= 2 {
 		return s.calculateAggregation(gameID, scores)
 	}
-	
+
 	// Otherwise, fetch fresh scores from all sources
 	freshScores, err := s.aggregator.FetchAllScores(ctx, fmt.Sprintf("%d", gameID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch fresh review scores: %w", err)
 	}
-	
+
 	// Store fresh scores in database
 	for _, score := range freshScores {
 		if err := s.repo.StoreReviewScore(ctx, gameID, score); err != nil {
@@ -59,7 +59,7 @@ func (s *ReviewService) GetAggregatedReview(ctx context.Context, gameID int64) (
 			continue
 		}
 	}
-	
+
 	return s.calculateAggregation(gameID, freshScores)
 }
 
@@ -78,7 +78,7 @@ func (s *ReviewService) calculateAggregation(gameID int64, scores []reviews.Revi
 			Reason:      reason,
 		}, nil
 	}
-	
+
 	return &AggregatedReview{
 		GameID:      gameID,
 		Score:       average,
@@ -96,14 +96,14 @@ func (s *ReviewService) RefreshReviewScores(ctx context.Context, gameID int64) e
 	if err != nil {
 		return fmt.Errorf("failed to fetch fresh review scores: %w", err)
 	}
-	
+
 	// Store fresh scores in database
 	for _, score := range freshScores {
 		if err := s.repo.StoreReviewScore(ctx, gameID, score); err != nil {
 			return fmt.Errorf("failed to store review score: %w", err)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -114,7 +114,7 @@ func (s *ReviewService) RefreshAllStaleReviews(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to get stale reviews: %w", err)
 	}
-	
+
 	// Refresh each game
 	for _, gameID := range staleGameIDs {
 		if err := s.RefreshReviewScores(ctx, gameID); err != nil {
@@ -122,6 +122,6 @@ func (s *ReviewService) RefreshAllStaleReviews(ctx context.Context) error {
 			continue
 		}
 	}
-	
+
 	return nil
 }

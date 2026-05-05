@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/middleware"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/models"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/services"
 )
@@ -37,8 +38,8 @@ func LibraryImportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := r.Context().Value("user_id")
-	if userID == nil {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
 		writeJSON(w, http.StatusUnauthorized, models.APIError{Error: "Unauthorized"})
 		return
 	}
@@ -55,7 +56,7 @@ func LibraryImportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := libraryService.ImportLibrary(r.Context(), userID.(int64), req.SteamID)
+	result, err := libraryService.ImportLibrary(r.Context(), userID, req.SteamID)
 	if err != nil {
 		writeServiceError(w, err, "Failed to import library")
 		return
@@ -83,13 +84,13 @@ func LibraryListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := r.Context().Value("user_id")
-	if userID == nil {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
 		writeJSON(w, http.StatusUnauthorized, models.APIError{Error: "Unauthorized"})
 		return
 	}
 
-	gameIDs, err := libraryService.GetLibrary(r.Context(), userID.(int64))
+	gameIDs, err := libraryService.GetLibrary(r.Context(), userID)
 	if err != nil {
 		writeServiceError(w, err, "Failed to get library")
 		return

@@ -65,8 +65,8 @@ function displayRecommendation(data) {
     const recClass = data.recommendation === 'buy_now' ? 'buy_now' : 
                      data.recommendation === 'wait_soon' ? 'wait_soon' : 'wait_next';
     
-    const recText = data.recommendation === 'buy_now' ? 'BUY NOW! 🎉' :
-                    data.recommendation === 'wait_soon' ? 'WAIT - SALE SOON ⏳' : 'WAIT FOR NEXT SALE 📅';
+    const recText = data.recommendation === 'buy_now' ? 'BUY NOW' :
+                    data.recommendation === 'wait_soon' ? 'WAIT - SALE SOON' : 'WAIT FOR NEXT SALE';
     
     recommendationBanner.className = `recommendation-banner ${recClass}`;
     recommendationBanner.textContent = recText;

@@ -5,7 +5,7 @@ const navbarTemplate = `
 <nav class="nav">
     <div class="container flex items-center justify-between" style="height: 64px;">
         <a href="index.html" class="flex items-center gap-2" style="text-decoration: none;">
-            <div style="width: 36px; height: 36px; background: var(--gradient-primary); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">🎮</div>
+            <div style="width: 36px; height: 36px; background: var(--gradient-primary); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;"><i data-lucide="gamepad-2"></i></div>
             <span style="font-family: var(--font-display); font-size: var(--text-xl); font-weight: 700; color: var(--color-text-primary);">DropsAndGrinds</span>
         </a>
         

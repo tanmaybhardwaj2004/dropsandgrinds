@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
+	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -25,9 +29,9 @@ func NewCatalogRepository(db *pgxpool.Pool, redis *redis.Client) *CatalogReposit
 	return &CatalogRepository{db: db, redis: redis}
 }
 
-func (r *CatalogRepository) SearchGames(ctx context.Context, query string, platform string, minPrice, maxPrice float64, minDiscount, maxDiscount int, minReviewScore, maxReviewScore float64, limit, offset int) ([]models.Game, int, error) {
+func (r *CatalogRepository) SearchGames(ctx context.Context, query string, platform string, minPrice, maxPrice float64, minDiscount, maxDiscount int, minReviewScore, maxReviewScore float64, paymentMethod string, limit, offset int) ([]models.Game, int, error) {
 	// Try cache first if Redis is available
-	cacheKey := fmt.Sprintf("search:%s:%s:%f:%f:%d:%d:%f:%f:%d:%d", query, platform, minPrice, maxPrice, minDiscount, maxDiscount, minReviewScore, maxReviewScore, limit, offset)
+	cacheKey := fmt.Sprintf("search:%s:%s:%f:%f:%d:%d:%f:%f:%s:%d:%d", query, platform, minPrice, maxPrice, minDiscount, maxDiscount, minReviewScore, maxReviewScore, paymentMethod, limit, offset)
 	if r.redis != nil {
 		cached, err := r.redis.Get(ctx, cacheKey).Result()
 		if err == nil {
@@ -96,6 +100,18 @@ func (r *CatalogRepository) SearchGames(ctx context.Context, query string, platf
 		args = append(args, maxReviewScore)
 		argIndex++
 	}
+	if paymentMethod != "" {
+		platforms := platformsForPaymentMethod(paymentMethod)
+		if len(platforms) > 0 {
+			placeholders := make([]string, 0, len(platforms))
+			for _, p := range platforms {
+				placeholders = append(placeholders, fmt.Sprintf("LOWER($%d)", argIndex))
+				args = append(args, p)
+				argIndex++
+			}
+			whereClause += " AND LOWER(g.platform) IN (" + strings.Join(placeholders, ",") + ")"
+		}
+	}
 
 	// Count query
 	countQuery := `
@@ -134,6 +150,7 @@ func (r *CatalogRepository) SearchGames(ctx context.Context, query string, platf
 			g.title,
 			g.platform,
 			g.cover_url,
+			g.store_url,
 			COALESCE(p.price_inr, 0) AS price_inr,
 			COALESCE(p_low.lowest_price_inr, COALESCE(p.price_inr, 0), 0) AS lowest_price_inr,
 			(COALESCE(p.price_inr, 0) > 0 AND COALESCE(p.price_inr, 0) = COALESCE(p_low.lowest_price_inr, COALESCE(p.price_inr, 0), 0)) AS is_all_time_low,
@@ -185,6 +202,7 @@ func (r *CatalogRepository) SearchGames(ctx context.Context, query string, platf
 			&g.Title,
 			&g.Platform,
 			&g.CoverURL,
+			&g.StoreURL,
 			&g.PriceINR,
 			&g.LowestPriceINR,
 			&g.IsAllTimeLow,
@@ -262,6 +280,7 @@ func (r *CatalogRepository) ListGames(ctx context.Context, query, platform strin
 			g.title,
 			g.platform,
 			g.cover_url,
+			g.store_url,
 			COALESCE(p.price_inr, 0) AS price_inr,
 			COALESCE(p_low.lowest_price_inr, COALESCE(p.price_inr, 0), 0) AS lowest_price_inr,
 			(COALESCE(p.price_inr, 0) > 0 AND COALESCE(p.price_inr, 0) = COALESCE(p_low.lowest_price_inr, COALESCE(p.price_inr, 0), 0)) AS is_all_time_low,
@@ -316,6 +335,7 @@ func (r *CatalogRepository) ListGames(ctx context.Context, query, platform strin
 			&g.Title,
 			&g.Platform,
 			&g.CoverURL,
+			&g.StoreURL,
 			&g.PriceINR,
 			&g.LowestPriceINR,
 			&g.IsAllTimeLow,
@@ -371,6 +391,7 @@ func (r *CatalogRepository) GetGameByID(ctx context.Context, id int64) (models.G
 			g.title,
 			g.platform,
 			g.cover_url,
+			g.store_url,
 			COALESCE(p.price_inr, 0) AS price_inr,
 			COALESCE(p_low.lowest_price_inr, COALESCE(p.price_inr, 0), 0) AS lowest_price_inr,
 			(COALESCE(p.price_inr, 0) > 0 AND COALESCE(p.price_inr, 0) = COALESCE(p_low.lowest_price_inr, COALESCE(p.price_inr, 0), 0)) AS is_all_time_low,
@@ -406,6 +427,7 @@ func (r *CatalogRepository) GetGameByID(ctx context.Context, id int64) (models.G
 		&g.Title,
 		&g.Platform,
 		&g.CoverURL,
+		&g.StoreURL,
 		&g.PriceINR,
 		&g.LowestPriceINR,
 		&g.IsAllTimeLow,
@@ -458,6 +480,7 @@ func (r *CatalogRepository) ListDeals(ctx context.Context, limit, offset int) ([
 			g.title,
 			g.platform,
 			g.cover_url,
+			g.store_url,
 			COALESCE(p.price_inr, 0) AS price_inr,
 			COALESCE(p_low.lowest_price_inr, COALESCE(p.price_inr, 0), 0) AS lowest_price_inr,
 			(COALESCE(p.price_inr, 0) > 0 AND COALESCE(p.price_inr, 0) = COALESCE(p_low.lowest_price_inr, COALESCE(p.price_inr, 0), 0)) AS is_all_time_low,
@@ -498,6 +521,7 @@ func (r *CatalogRepository) ListDeals(ctx context.Context, limit, offset int) ([
 			&d.Title,
 			&d.Platform,
 			&d.CoverURL,
+			&d.StoreURL,
 			&d.PriceINR,
 			&d.LowestPriceINR,
 			&d.IsAllTimeLow,
@@ -533,9 +557,84 @@ func (r *CatalogRepository) ListDeals(ctx context.Context, limit, offset int) ([
 	return deals, total, nil
 }
 
+func (r *CatalogRepository) ListPersonalizedDeals(ctx context.Context, userID int64, limit, offset int) ([]models.Deal, int, error) {
+	if userID <= 0 {
+		return r.ListDeals(ctx, limit, offset)
+	}
+	base := `
+		FROM deals d
+		JOIN games g ON g.id = d.game_id
+		LEFT JOIN LATERAL (
+			SELECT price_inr
+			FROM prices p
+			WHERE p.game_id = g.id
+			ORDER BY p.fetched_at DESC
+			LIMIT 1
+		) p ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT MIN(price_inr) AS lowest_price_inr
+			FROM prices p_low
+			WHERE p_low.game_id = g.id
+		) p_low ON TRUE
+		WHERE d.is_active = TRUE
+		  AND (
+			d.game_id IN (SELECT game_id FROM wishlists WHERE user_id = $1)
+			OR d.game_id IN (SELECT game_id FROM clicks WHERE user_id = $1)
+		  )
+	`
+	var total int
+	if err := r.db.QueryRow(ctx, `SELECT COUNT(*) `+base, userID).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	if total == 0 {
+		return []models.Deal{}, 0, nil
+	}
+	query := `
+		SELECT
+			g.id, g.title, g.platform, g.cover_url, g.store_url,
+			COALESCE(p.price_inr, 0) AS price_inr,
+			COALESCE(p_low.lowest_price_inr, COALESCE(p.price_inr, 0), 0) AS lowest_price_inr,
+			(COALESCE(p.price_inr, 0) > 0 AND COALESCE(p.price_inr, 0) = COALESCE(p_low.lowest_price_inr, COALESCE(p.price_inr, 0), 0)) AS is_all_time_low,
+			d.original_inr, d.discount_percent, 0 AS review_score, d.cached_at::text
+	` + base + `
+		ORDER BY
+			CASE WHEN d.game_id IN (SELECT game_id FROM wishlists WHERE user_id = $1) THEN 0 ELSE 1 END,
+			d.discount_percent DESC,
+			g.title ASC
+		LIMIT $2 OFFSET $3
+	`
+	rows, err := r.db.Query(ctx, query, userID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	deals := make([]models.Deal, 0, limit)
+	for rows.Next() {
+		var d models.Deal
+		if err := rows.Scan(&d.ID, &d.Title, &d.Platform, &d.CoverURL, &d.StoreURL, &d.PriceINR, &d.LowestPriceINR, &d.IsAllTimeLow, &d.OriginalINR, &d.DiscountPercent, &d.ReviewScore, &d.CachedAt); err != nil {
+			return nil, 0, err
+		}
+		deals = append(deals, d)
+	}
+	return deals, total, rows.Err()
+}
+
+func (r *CatalogRepository) GetStoreURL(ctx context.Context, gameID int64, platform string) (string, bool, error) {
+	var storeURL string
+	err := r.db.QueryRow(ctx, `
+		SELECT store_url
+		FROM games
+		WHERE id = $1 AND ($2 = '' OR LOWER(platform) = LOWER($2))
+	`, gameID, strings.TrimSpace(platform)).Scan(&storeURL)
+	if err != nil {
+		return "", false, err
+	}
+	return storeURL, strings.TrimSpace(storeURL) != "", nil
+}
+
 func (r *CatalogRepository) GetPriceHistory(ctx context.Context, gameID int64, limit, offset int) ([]models.PriceHistoryPoint, error) {
 	query := `
-		SELECT price_inr, fetched_at::text
+		SELECT price_inr, is_historical_low, fetched_at::text
 		FROM prices
 		WHERE game_id = $1
 		ORDER BY fetched_at DESC
@@ -550,7 +649,7 @@ func (r *CatalogRepository) GetPriceHistory(ctx context.Context, gameID int64, l
 	history := make([]models.PriceHistoryPoint, 0, limit)
 	for rows.Next() {
 		var p models.PriceHistoryPoint
-		if err := rows.Scan(&p.PriceINR, &p.FetchedAt); err != nil {
+		if err := rows.Scan(&p.PriceINR, &p.IsHistoricalLow, &p.FetchedAt); err != nil {
 			return nil, err
 		}
 		history = append(history, p)
@@ -565,11 +664,14 @@ func (r *CatalogRepository) GetPriceHistory(ctx context.Context, gameID int64, l
 
 // InsertPrice adds a new price entry for a game
 func (r *CatalogRepository) InsertPrice(ctx context.Context, gameID int64, priceINR int, store string) error {
+	var previousLow int
+	_ = r.db.QueryRow(ctx, `SELECT COALESCE(MIN(price_inr), 0) FROM prices WHERE game_id = $1`, gameID).Scan(&previousLow)
+	isHistoricalLow := previousLow == 0 || priceINR <= previousLow
 	query := `
-		INSERT INTO prices (game_id, price_inr, store, fetched_at)
-		VALUES ($1, $2, $3, NOW())
+		INSERT INTO prices (game_id, price_inr, store, is_historical_low, fetched_at)
+		VALUES ($1, $2, $3, $4, NOW())
 	`
-	_, err := r.db.Exec(ctx, query, gameID, priceINR, store)
+	_, err := r.db.Exec(ctx, query, gameID, priceINR, strings.ToLower(strings.TrimSpace(store)), isHistoricalLow)
 	return err
 }
 
@@ -617,6 +719,36 @@ func (r *CatalogRepository) FindGameByTitle(ctx context.Context, title string) (
 	return gameID, nil
 }
 
+func (r *CatalogRepository) FindGamePricesByTitle(ctx context.Context, title string, limit int) ([]models.Game, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+	rows, err := r.db.Query(ctx, `
+		SELECT g.id, g.title, g.platform, g.cover_url, g.store_url,
+		       COALESCE(p.price_inr, 0), 0, FALSE, 0, 0, 0
+		FROM games g
+		LEFT JOIN LATERAL (
+			SELECT price_inr FROM prices p WHERE p.game_id = g.id ORDER BY p.fetched_at DESC LIMIT 1
+		) p ON TRUE
+		WHERE LOWER(g.title) LIKE '%' || LOWER($1) || '%'
+		ORDER BY g.title
+		LIMIT $2
+	`, strings.TrimSpace(title), limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var games []models.Game
+	for rows.Next() {
+		var g models.Game
+		if err := rows.Scan(&g.ID, &g.Title, &g.Platform, &g.CoverURL, &g.StoreURL, &g.PriceINR, &g.LowestPriceINR, &g.IsAllTimeLow, &g.OriginalINR, &g.DiscountPercent, &g.ReviewScore); err != nil {
+			return nil, err
+		}
+		games = append(games, g)
+	}
+	return games, rows.Err()
+}
+
 // GetIndiaArbitrage calculates India vs Global pricing with GST
 func (r *CatalogRepository) GetIndiaArbitrage(ctx context.Context, gameID int64) (models.IndiaArbitrage, error) {
 	// Get current price from database
@@ -639,12 +771,10 @@ func (r *CatalogRepository) GetIndiaArbitrage(ctx context.Context, gameID int64)
 		return models.IndiaArbitrage{}, err
 	}
 
-	// For MVP: use current price as India price, simulate global price
-	// In production: fetch actual Steam India and Global prices from API
 	steamIndiaPrice := currentPrice
-	steamGlobalPrice := currentPrice * 8 // Simulate global price in USD
-	usdToINR := 83.0
-	steamGlobalINR := int(float64(steamGlobalPrice) * usdToINR)
+	rate := r.usdToINR(ctx)
+	steamGlobalINR := r.steamGlobalINR(ctx, gameID, currentPrice)
+	steamGlobalPrice := int(math.Round(float64(steamGlobalINR) / rate))
 	gstRate := 0.18
 	gstAmount := int(float64(steamGlobalINR) * gstRate)
 	totalWithGST := steamGlobalINR + gstAmount
@@ -675,4 +805,65 @@ func (r *CatalogRepository) GetIndiaArbitrage(ctx context.Context, gameID int64)
 		CheapestRegion:   cheapestRegion,
 		Verdict:          verdict,
 	}, nil
+}
+
+func (r *CatalogRepository) usdToINR(ctx context.Context) float64 {
+	const fallback = 83.0
+	if r.redis != nil {
+		if cached, err := r.redis.Get(ctx, "fx:usd_inr").Float64(); err == nil && cached > 0 {
+			return cached
+		}
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.frankfurter.app/latest?from=USD&to=INR", nil)
+	if err != nil {
+		return fallback
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fallback
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fallback
+	}
+	var payload struct {
+		Rates map[string]float64 `json:"rates"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return fallback
+	}
+	rate := payload.Rates["INR"]
+	if rate <= 0 {
+		return fallback
+	}
+	if r.redis != nil {
+		_ = r.redis.Set(ctx, "fx:usd_inr", strconv.FormatFloat(rate, 'f', -1, 64), 24*time.Hour).Err()
+	}
+	return rate
+}
+
+func (r *CatalogRepository) steamGlobalINR(ctx context.Context, gameID int64, fallback int) int {
+	var price int
+	err := r.db.QueryRow(ctx, `
+		SELECT price_inr
+		FROM prices
+		WHERE game_id = $1 AND LOWER(store) LIKE '%steam%'
+		ORDER BY fetched_at DESC
+		LIMIT 1
+	`, gameID).Scan(&price)
+	if err != nil || price <= 0 {
+		return fallback
+	}
+	return price
+}
+
+func platformsForPaymentMethod(method string) []string {
+	switch strings.ToLower(strings.TrimSpace(method)) {
+	case "upi", "wallet":
+		return []string{"steam", "epic games", "gog"}
+	case "card":
+		return []string{"steam", "epic games", "gog"}
+	default:
+		return nil
+	}
 }

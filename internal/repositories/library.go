@@ -142,3 +142,26 @@ func (r *LibraryRepository) GetLibraryCount(ctx context.Context, userID int64) (
 	}
 	return count, nil
 }
+
+func (r *LibraryRepository) GetOwnedGameTitles(ctx context.Context, userID int64) (map[int64]string, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT g.id, g.title
+		FROM user_steam_library l
+		JOIN games g ON g.id = l.game_id
+		WHERE l.user_id = $1 AND l.game_id IS NOT NULL
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[int64]string{}
+	for rows.Next() {
+		var id int64
+		var title string
+		if err := rows.Scan(&id, &title); err != nil {
+			return nil, err
+		}
+		out[id] = title
+	}
+	return out, rows.Err()
+}

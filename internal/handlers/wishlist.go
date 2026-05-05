@@ -72,7 +72,7 @@ func WishlistCollectionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// WishlistItemHandler handles PATCH/DELETE on /api/wishlist/{id}.
+// WishlistItemHandler handles PATCH /api/wishlist/{id}/threshold and DELETE /api/wishlist/{id}.
 // @Summary      Update or remove wishlist item
 // @Description  PATCH: Update target price for wishlist item | DELETE: Remove item from wishlist
 // @Tags         wishlist
@@ -86,7 +86,7 @@ func WishlistCollectionHandler(w http.ResponseWriter, r *http.Request) {
 // @Failure      401      {object}  models.APIError
 // @Failure      404      {object}  models.APIError
 // @Failure      500      {object}  models.APIError
-// @Router       /api/wishlist/{id} [patch]
+// @Router       /api/wishlist/{id}/threshold [patch]
 // @Router       /api/wishlist/{id} [delete]
 func WishlistItemHandler(w http.ResponseWriter, r *http.Request) {
 	if wishlistService == nil {
@@ -106,7 +106,15 @@ func WishlistItemHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	wishlistID, err := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, prefix), 10, 64)
+	rest := strings.Trim(strings.TrimPrefix(r.URL.Path, prefix), "/")
+	if r.Method == http.MethodPatch {
+		if !strings.HasSuffix(rest, "/threshold") {
+			writeJSON(w, http.StatusNotFound, models.APIError{Error: "Threshold route not found"})
+			return
+		}
+		rest = strings.TrimSuffix(rest, "/threshold")
+	}
+	wishlistID, err := strconv.ParseInt(rest, 10, 64)
 	if err != nil || wishlistID <= 0 {
 		writeJSON(w, http.StatusBadRequest, models.APIError{Error: "Invalid wishlist id"})
 		return

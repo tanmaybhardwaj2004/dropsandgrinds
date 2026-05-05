@@ -13,7 +13,7 @@
     <nav class="nav">
         <div class="container flex items-center justify-between" style="height: 64px;">
             <a href="index.html" class="flex items-center gap-2" style="text-decoration: none;">
-                <div style="width: 36px; height: 36px; background: var(--gradient-primary); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">🎮</div>
+                <div style="width: 36px; height: 36px; background: var(--gradient-primary); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;"><i data-lucide="gamepad-2"></i></div>
                 <span style="font-family: var(--font-display); font-size: var(--text-xl); font-weight: 700; color: var(--color-text-primary);">DropsAndGrinds</span>
             </a>
             
@@ -131,7 +131,7 @@
             
             <!-- Geo Arbitrage Breakdown -->
             <div class="metric-card arbitrage-card">
-                <h3>🌍 India Arbitrage Engine</h3>
+                <h3><i data-lucide="globe-2"></i> India Arbitrage Engine</h3>
                 <p class="metric-sub">Calculated vs current Global Base Cost ($29.99 USD)</p>
                 
                 <div class="receipt">
@@ -161,7 +161,7 @@
 
             <!-- Predictive Timeline -->
             <div class="metric-card timeline-card">
-                <h3>⏳ Best Time to Buy</h3>
+                <h3><i data-lucide="clock"></i> Best Time to Buy</h3>
                 <p class="metric-sub">Algorithm based on historic sales and publisher cycles.</p>
 
                 <div class="timeline">
@@ -204,7 +204,7 @@
         <!-- Price History Chart Section (Phase 5) -->
         <section class="metrics-grid" style="margin-top: 32px;">
             <div class="metric-card full-width">
-                <h3>📈 Price History</h3>
+                <h3><i data-lucide="chart-line"></i> Price History</h3>
                 <p class="metric-sub">Track price changes over time to find the best deal</p>
                 <div id="price-chart-container" class="chart-container">
                     <canvas id="priceChart"></canvas>
@@ -215,7 +215,7 @@
         <!-- Review Scores Section (Phase 6) -->
         <section class="metrics-grid" style="margin-top: 32px;">
             <div class="metric-card review-card full-width">
-                <h3>🎮 Review Scores</h3>
+                <h3><i data-lucide="gamepad-2"></i> Review Scores</h3>
                 <p class="metric-sub">Aggregated from multiple review sources</p>
                 
                 <div class="review-aggregate" id="review-aggregate">
@@ -240,5 +240,7 @@
     <script src="js/auth.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="js/game.js"></script>
+<script src="https://unpkg.com/lucide"></script>
+<script>if (window.lucide) window.lucide.createIcons();</script>
 </body>
 </html>

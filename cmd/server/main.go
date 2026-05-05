@@ -122,6 +122,7 @@ func main() {
 	wishlistRepo := repositories.NewWishlistRepository(conn)
 	wishlistService := services.NewWishlistService(wishlistRepo)
 	handlers.SetWishlistService(wishlistService)
+	alertService := services.NewAlertService(wishlistRepo, catalogRepo, logger.Logger)
 
 	authService, err := services.NewAuthService(conn, services.AuthServiceConfig{
 		JWTSecret:             cfg.JWTSecret,
@@ -198,6 +199,13 @@ func main() {
 		Name:     "review-refresh",
 		Interval: 24 * time.Hour,
 		Run:      scheduler.ReviewRefreshJob(reviewService, logger.Logger),
+	})
+	sched.AddJob(scheduler.Job{
+		Name:     "price-alerts",
+		Interval: 15 * time.Minute,
+		Run: func(ctx context.Context) error {
+			return alertService.CheckAndTriggerAlerts(ctx)
+		},
 	})
 
 	// Start Meilisearch sync if configured

@@ -25,7 +25,7 @@ func NormalizeScore(score int, min, max int) int {
 	if max == min {
 		return 50 // Return middle value if range is zero
 	}
-	
+
 	normalized := float64(score-min) / float64(max-min) * 100
 	return int(math.Round(normalized))
 }
@@ -36,13 +36,13 @@ func CalculateWeightedAverage(scores []ReviewScore, weights []Weight) (int, stri
 	if len(scores) < 2 {
 		return 0, "not enough reviews", fmt.Errorf("require at least 2 review sources")
 	}
-	
+
 	// Create a map of available scores
 	scoreMap := make(map[ReviewSource]int)
 	for _, score := range scores {
 		scoreMap[score.Source] = score.Score
 	}
-	
+
 	// Calculate total weight of available sources
 	var totalWeight float64
 	for _, w := range weights {
@@ -50,11 +50,11 @@ func CalculateWeightedAverage(scores []ReviewScore, weights []Weight) (int, stri
 			totalWeight += w.Weight
 		}
 	}
-	
+
 	if totalWeight == 0 {
 		return 0, "no valid sources", fmt.Errorf("no valid review sources available")
 	}
-	
+
 	// Calculate weighted sum with proportional redistribution
 	var weightedSum float64
 	for _, w := range weights {
@@ -64,17 +64,16 @@ func CalculateWeightedAverage(scores []ReviewScore, weights []Weight) (int, stri
 			weightedSum += float64(score) * redistributedWeight
 		}
 	}
-	
-	// Final average (multiply by 100 because we redistributed proportionally)
-	average := int(math.Round(weightedSum * 100))
-	
+
+	average := int(math.Round(weightedSum))
+
 	// Clamp to 0-100
 	if average < 0 {
 		average = 0
 	} else if average > 100 {
 		average = 100
 	}
-	
+
 	return average, "", nil
 }
 

@@ -99,7 +99,10 @@ function clearFilters() {
     document.getElementById('filter-min-discount').value = '';
     document.getElementById('filter-max-discount').value = '';
     document.getElementById('filter-min-score').value = '';
-    document.getElementById('filter-max-score').value = '';
+    const maxScore = document.getElementById('filter-max-score');
+    if (maxScore) maxScore.value = '';
+    const payment = document.getElementById('filter-payment');
+    if (payment) payment.value = '';
     currentPage = 0;
     performSearch();
 }
@@ -112,7 +115,9 @@ async function performSearch() {
     const minDiscount = parseInt(document.getElementById('filter-min-discount').value) || 0;
     const maxDiscount = parseInt(document.getElementById('filter-max-discount').value) || 0;
     const minReviewScore = parseFloat(document.getElementById('filter-min-score').value) || 0;
-    const maxReviewScore = parseFloat(document.getElementById('filter-max-score').value) || 0;
+    const maxScoreEl = document.getElementById('filter-max-score');
+    const maxReviewScore = maxScoreEl ? parseFloat(maxScoreEl.value) || 0 : 0;
+    const paymentMethod = document.getElementById('filter-payment')?.value || '';
 
     const loadingState = document.getElementById('loading-state');
     const emptyState = document.getElementById('empty-state');
@@ -137,6 +142,7 @@ async function performSearch() {
     if (maxDiscount > 0) params.append('max_discount', maxDiscount);
     if (minReviewScore > 0) params.append('min_review_score', minReviewScore);
     if (maxReviewScore > 0) params.append('max_review_score', maxReviewScore);
+    if (paymentMethod) params.append('payment_method', paymentMethod);
     params.append('limit', limit);
     params.append('offset', currentPage * limit);
 
@@ -196,7 +202,7 @@ function createGameCard(game) {
         : '';
 
     const lowestBadge = game.is_all_time_low
-        ? `<div class="lowest-badge">🔥 All-time low</div>`
+        ? `<div class="lowest-badge">All-time low</div>`
         : '';
 
     return `

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -65,7 +64,7 @@ func DealsListHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	deals, total, err := dealsService.GetDealsForYou(r.Context(), 0, limit, offset)
+	deals, total, err := dealsService.ListDeals(r.Context(), limit, offset)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.APIError{Error: "Failed to fetch deals"})
 		return
@@ -126,8 +125,11 @@ func DealsForYouHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// For MVP: user ID from auth context (to be implemented)
-	userID := int64(0)
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, models.APIError{Error: "Unauthorized"})
+		return
+	}
 
 	deals, total, err := dealsService.GetDealsForYou(r.Context(), userID, limit, offset)
 	if err != nil {
@@ -202,8 +204,11 @@ func GameRedirectHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// For MVP: return Steam store URL
-	storeURL := fmt.Sprintf("https://store.steampowered.com/app/%d", gameID)
+	storeURL, ok, err := dealsService.StoreURL(r.Context(), gameID, platform)
+	if err != nil || !ok {
+		writeJSON(w, http.StatusNotFound, models.APIError{Error: "Store URL not found"})
+		return
+	}
 
 	response := struct {
 		URL string `json:"url"`

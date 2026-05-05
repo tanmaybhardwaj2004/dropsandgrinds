@@ -11,14 +11,14 @@ import (
 
 // BuyTimingRecommendation represents a buy timing recommendation
 type BuyTimingRecommendation struct {
-	GameID          int64               `json:"game_id"`
-	Recommendation  string              `json:"recommendation"` // "buy_now", "wait_soon", "wait_next"
-	Reason          string              `json:"reason"`
-	ActiveSale      *repositories.SaleEvent `json:"active_sale,omitempty"`
-	NextSale        *repositories.SaleEvent `json:"next_sale,omitempty"`
-	DaysUntilSale   int                 `json:"days_until_sale,omitempty"`
-	SaleCalendar    []repositories.SaleEvent `json:"sale_calendar"`
-	CheckedAt       time.Time           `json:"checked_at"`
+	GameID         int64                    `json:"game_id"`
+	Recommendation string                   `json:"recommendation"` // "buy_now", "wait_soon", "wait_next"
+	Reason         string                   `json:"reason"`
+	ActiveSale     *repositories.SaleEvent  `json:"active_sale,omitempty"`
+	NextSale       *repositories.SaleEvent  `json:"next_sale,omitempty"`
+	DaysUntilSale  int                      `json:"days_until_sale,omitempty"`
+	SaleCalendar   []repositories.SaleEvent `json:"sale_calendar"`
+	CheckedAt      time.Time                `json:"checked_at"`
 }
 
 // BuyTimingService handles buy timing recommendations
@@ -38,7 +38,7 @@ func NewBuyTimingService(salesRepo *repositories.SalesCalendarRepository, logger
 // GetBuyTiming returns a buy timing recommendation for a game
 func (s *BuyTimingService) GetBuyTiming(ctx context.Context, gameID int64) (*BuyTimingRecommendation, error) {
 	now := time.Now()
-	
+
 	// Get active sales
 	activeSales, err := s.salesRepo.GetActiveSales(ctx)
 	if err != nil {

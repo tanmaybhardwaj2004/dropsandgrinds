@@ -5,6 +5,7 @@ type Game struct {
 	Title           string `json:"title" example:"Cyberpunk 2077"`
 	Platform        string `json:"platform" example:"Steam"`
 	CoverURL        string `json:"cover_url" example:"https://example.com/cover.jpg"`
+	StoreURL        string `json:"store_url" example:"https://store.steampowered.com/app/1091500"`
 	PriceINR        int    `json:"price_inr" example:"1499"`
 	LowestPriceINR  int    `json:"lowest_price_inr" example:"999"`
 	IsAllTimeLow    bool   `json:"is_all_time_low" example:"false"`
@@ -24,6 +25,7 @@ type Deal struct {
 	Game
 	CachedAt            string `json:"cached_at" example:"2026-04-21T09:30:00Z"`
 	DealStatus          string `json:"deal_status" example:"good"`
+	DealQuality         string `json:"deal_quality" example:"hot"`
 	PotentialSavingsINR int    `json:"potential_savings_inr" example:"500"`
 }
 
@@ -35,13 +37,15 @@ type DealListResponse struct {
 }
 
 type PriceHistoryPoint struct {
-	PriceINR  int    `json:"price_inr" example:"1499"`
-	FetchedAt string `json:"fetched_at" example:"2026-04-21T09:30:00Z"`
+	PriceINR        int    `json:"price_inr" example:"1499"`
+	IsHistoricalLow bool   `json:"is_historical_low" example:"true"`
+	FetchedAt       string `json:"fetched_at" example:"2026-04-21T09:30:00Z"`
 }
 
 type PriceHistoryResponse struct {
 	GameID  int64               `json:"game_id" example:"1"`
 	History []PriceHistoryPoint `json:"history"`
+	Prices  []PriceHistoryPoint `json:"prices"`
 }
 
 type IndiaArbitrage struct {
