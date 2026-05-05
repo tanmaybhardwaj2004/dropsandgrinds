@@ -19,6 +19,54 @@ function registerServiceWorker() {
     }
 }
 
+// PWA Install Prompt Handling
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    console.log('PWA install prompt available');
+    e.preventDefault();
+    deferredPrompt = e;
+    showInstallButton();
+});
+
+function showInstallButton() {
+    const installBtn = document.getElementById('pwa-install-btn');
+    if (installBtn) {
+        installBtn.style.display = 'block';
+        installBtn.addEventListener('click', handleInstallClick);
+    }
+}
+
+async function handleInstallClick() {
+    if (!deferredPrompt) {
+        console.log('Install prompt not available');
+        return;
+    }
+
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log('User choice:', outcome);
+
+    if (outcome === 'accepted') {
+        console.log('PWA installed successfully');
+        const installBtn = document.getElementById('pwa-install-btn');
+        if (installBtn) {
+            installBtn.style.display = 'none';
+        }
+    }
+
+    deferredPrompt = null;
+}
+
+window.addEventListener('appinstalled', () => {
+    console.log('PWA was installed');
+    deferredPrompt = null;
+    const installBtn = document.getElementById('pwa-install-btn');
+    if (installBtn) {
+        installBtn.style.display = 'none';
+    }
+});
+
 let allDeals = [];
 
 // Transform external image URLs to use local proxy (bypasses hotlink protection)

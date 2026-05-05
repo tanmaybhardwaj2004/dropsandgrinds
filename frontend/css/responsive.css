@@ -7,6 +7,14 @@
    Mobile First Base Styles (< 576px)
    ========================================================================== */
 
+/* Safe area support for notched phones */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
 /* Container adjustments */
 .container {
   padding: 0 16px;
@@ -25,6 +33,7 @@
   padding: 20px;
   gap: 8px;
   z-index: 100;
+  padding-top: max(20px, env(safe-area-inset-top));
 }
 
 .nav-links.active {
@@ -186,6 +195,33 @@
   min-width: 600px;
 }
 
+/* India Arbitrage table mobile improvements */
+.arbitrage-table {
+  font-size: 0.875rem;
+}
+
+.arbitrage-table th,
+.arbitrage-table td {
+  padding: 8px;
+}
+
+.cheapest-region-badge {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+}
+
+/* Review score badges on mobile */
+.deal-score-badge {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  min-width: 48px;
+}
+
+.review-source-link {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+}
+
 /* Library/Wishlist cards */
 .library-card,
 .wishlist-card {
@@ -206,6 +242,31 @@
   left: 16px;
   right: 16px;
   max-width: none;
+}
+
+/* PWA install button on mobile */
+#pwa-install-btn {
+  font-size: 0.875rem;
+  padding: 8px 12px;
+}
+
+/* Mobile button sizing */
+.btn-sm {
+  padding: 8px 12px;
+  font-size: 0.875rem;
+}
+
+.btn-lg {
+  padding: 14px 20px;
+  font-size: 1rem;
+}
+
+/* Touch-friendly spacing for interactive elements */
+.btn,
+.nav-link,
+.deal-card,
+.game-card {
+  min-height: 44px;
 }
 
 /* Modal/dialogs */

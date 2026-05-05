@@ -1,16 +1,17 @@
 package models
 
 type Game struct {
-	ID              int64  `json:"id" example:"1"`
-	Title           string `json:"title" example:"Cyberpunk 2077"`
-	Platform        string `json:"platform" example:"Steam"`
-	CoverURL        string `json:"cover_url" example:"https://example.com/cover.jpg"`
-	PriceINR        int    `json:"price_inr" example:"1499"`
-	LowestPriceINR  int    `json:"lowest_price_inr" example:"999"`
-	IsAllTimeLow    bool   `json:"is_all_time_low" example:"false"`
-	OriginalINR     int    `json:"original_inr" example:"2999"`
-	DiscountPercent int    `json:"discount_percent" example:"50"`
-	ReviewScore     int    `json:"review_score" example:"86"`
+	ID              int64          `json:"id" example:"1"`
+	Title           string         `json:"title" example:"Cyberpunk 2077"`
+	Platform        string         `json:"platform" example:"Steam"`
+	CoverURL        string         `json:"cover_url" example:"https://example.com/cover.jpg"`
+	PriceINR        int            `json:"price_inr" example:"1499"`
+	LowestPriceINR  int            `json:"lowest_price_inr" example:"999"`
+	IsAllTimeLow    bool           `json:"is_all_time_low" example:"false"`
+	OriginalINR     int            `json:"original_inr" example:"2999"`
+	DiscountPercent int            `json:"discount_percent" example:"50"`
+	ReviewScore     int            `json:"review_score" example:"86"`
+	Arbitrage       *ArbitrageData `json:"arbitrage,omitempty"`
 }
 
 type GameListResponse struct {
@@ -44,13 +45,13 @@ type PriceHistoryResponse struct {
 	History []PriceHistoryPoint `json:"history"`
 }
 
-type IndiaArbitrage struct {
-	GameID           int64  `json:"game_id" example:"1"`
-	SteamIndiaPrice  int    `json:"steam_india_price" example:"1499"`
-	SteamGlobalPrice int    `json:"steam_global_price" example:"1499"`
-	SteamGlobalINR   int    `json:"steam_global_inr" example:"12500"`
-	GSTAmount        int    `json:"gst_amount" example:"225"`
-	TotalWithGST     int    `json:"total_with_gst" example:"12725"`
-	CheapestRegion   string `json:"cheapest_region" example:"India"`
-	Verdict          string `json:"verdict" example:"Buy from India - saves ₹11225"`
+type ArbitrageData struct {
+	IndiaBaseINR   float64 `json:"india_base_inr" example:"1499"`
+	IndiaGSTINR    float64 `json:"india_gst_inr" example:"270"`
+	IndiaTotalINR  float64 `json:"india_total_inr" example:"1769"`
+	GlobalBaseINR  float64 `json:"global_base_inr" example:"12500"`
+	GlobalGSTINR   float64 `json:"global_gst_inr" example:"2250"`
+	GlobalTotalINR float64 `json:"global_total_inr" example:"14750"`
+	CheapestRegion string  `json:"cheapest_region" example:"India"`
+	Verdict        string  `json:"verdict" example:"Buy from India - saves ₹12981"`
 }

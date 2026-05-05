@@ -37,7 +37,7 @@ func newHTTPHandler(logger *slog.Logger, cfg config.Config, redisClient *redis.C
 	mux.HandleFunc("/api/deals", handlers.DealsListHandler)
 	mux.HandleFunc("/api/deals/for-you", handlers.DealsForYouHandler)
 	mux.HandleFunc("/api/prices/history/", handlers.PriceHistoryHandler)
-	mux.HandleFunc("/api/prices/arbitrage/", handlers.IndiaArbitrageHandler)
+	mux.HandleFunc("/api/games/arbitrage/", handlers.ArbitrageHandler)
 	mux.Handle("/api/wishlist", middleware.RequireAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.WishlistCollectionHandler)))
 	mux.Handle("/api/wishlist/", middleware.RequireAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.WishlistItemHandler)))
 	mux.Handle("/api/me", middleware.RequireAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.MeHandler)))

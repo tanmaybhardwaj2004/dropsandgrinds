@@ -214,6 +214,11 @@ func GameDetailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Fetch arbitrage data if service is available
+	// Note: This requires GetArbitrageService to be exposed or arbitrageService to be package-level
+	// For now, skip arbitrage in game detail - it's available via /api/games/{id}/arbitrage endpoint
+	// This is more efficient as it's only fetched when needed
+
 	writeJSON(w, http.StatusOK, game)
 }
 

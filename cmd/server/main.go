@@ -163,6 +163,10 @@ func main() {
 	buyTimingService := services.NewBuyTimingService(salesCalendarRepo, logger.Logger)
 	handlers.SetBuyTimingService(buyTimingService)
 
+	// Initialize arbitrage service
+	arbitrageService := services.NewArbitrageService(catalogRepo, logger.Logger, 83.0, 0.18) // USD to INR exchange rate, 18% GST
+	handlers.SetArbitrageService(arbitrageService)
+
 	// Initialize OAuth service (optional)
 	var oauthService *services.OAuthService
 	if cfg.GoogleClientID != "" && cfg.GoogleClientSecret != "" {
