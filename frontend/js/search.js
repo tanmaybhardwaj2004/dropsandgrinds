@@ -11,6 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (query) {
         document.getElementById('search-input').value = query;
         performSearch();
+    } else {
+        // Load initial results when no query is provided
+        performSearch();
     }
 });
 

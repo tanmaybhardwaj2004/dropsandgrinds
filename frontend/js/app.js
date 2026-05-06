@@ -68,6 +68,8 @@ window.addEventListener('appinstalled', () => {
 });
 
 let allDeals = [];
+let currentDealsOffset = 0;
+const dealsPerPage = 20;
 
 // Transform external image URLs to use local proxy (bypasses hotlink protection)
 function getProxiedImageUrl(originalUrl) {
@@ -121,10 +123,10 @@ async function loadActiveSales() {
 }
 
 function initSearch() {
-    const searchInput = document.getElementById('search-input');
+    const searchInput = document.getElementById('sidebar-search');
     const searchBtn = document.getElementById('search-btn');
 
-    if (!searchInput || !searchBtn) return;
+    if (!searchInput) return;
 
     const performSearch = () => {
         const query = searchInput.value.trim();
@@ -133,7 +135,12 @@ function initSearch() {
         }
     };
 
-    searchBtn.addEventListener('click', performSearch);
+    // Try to find search button if it exists
+    if (searchBtn) {
+        searchBtn.addEventListener('click', performSearch);
+    }
+    
+    // Add enter key support for search input
     searchInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             performSearch();
@@ -172,6 +179,14 @@ async function initApp() {
     const hideOwnedCheckbox = document.getElementById('hide-owned');
     if (hideOwnedCheckbox) {
         hideOwnedCheckbox.addEventListener('change', loadDeals);
+    }
+
+    // Attach Event Listener for Load More button
+    const loadMoreBtn = document.getElementById('load-more-btn');
+    if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', () => {
+            loadDeals(true); // true means load more
+        });
     }
 }
 
@@ -304,13 +319,24 @@ function getScoreColorClass(score) {
     return 'red';
 }
 
-async function loadDeals() {
+async function loadDeals(loadMore = false) {
     const container = document.getElementById('deals-container');
-    renderSkeletons();
+    const loadMoreBtn = document.getElementById('load-more-btn');
+    
+    if (loadMore) {
+        // Show loading on load more button
+        if (loadMoreBtn) {
+            loadMoreBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 16 12 12 8 12"/></svg> Loading...';
+            loadMoreBtn.disabled = true;
+        }
+    } else {
+        renderSkeletons();
+        currentDealsOffset = 0; // Reset offset for fresh load
+    }
 
     try {
         const hideOwned = document.getElementById('hide-owned')?.checked || false;
-        let url = '/api/deals?limit=100&offset=0';
+        let url = `/api/deals?limit=${dealsPerPage}&offset=${currentDealsOffset}`;
         
         if (hideOwned) {
             url += '&exclude_owned=true';
@@ -322,7 +348,7 @@ async function loadDeals() {
             throw new Error(payload.error || 'Failed to fetch deals');
         }
 
-        allDeals = (payload.deals || []).map((deal) => ({
+        const newDeals = (payload.deals || []).map((deal) => ({
             id: deal.id,
             title: deal.title,
             cover: getProxiedImageUrl(deal.cover_url) || '',
@@ -337,13 +363,29 @@ async function loadDeals() {
             isGSTAdded: true
         }));
 
+        if (loadMore) {
+            // Append new deals to existing ones
+            allDeals = [...allDeals, ...newDeals];
+            currentDealsOffset += dealsPerPage;
+        } else {
+            // Initial load
+            allDeals = newDeals;
+            currentDealsOffset = dealsPerPage;
+        }
+
         // DEBUG: Log deal IDs to verify correct mapping
         console.log('Loaded deals:', allDeals.map(d => ({ id: d.id, title: d.title })));
 
-        renderDeals(allDeals);
+        renderDeals(allDeals, loadMore);
     } catch (error) {
         container.innerHTML = renderErrorState('Failed to load deals from API. Please try again.', 'loadDeals');
         console.error(error);
+    } finally {
+        // Restore load more button
+        if (loadMoreBtn) {
+            loadMoreBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 16 12 12 8 12"/></svg> Load More Deals';
+            loadMoreBtn.disabled = false;
+        }
     }
 }
 
@@ -453,12 +495,17 @@ function updateFilters() {
     renderDeals(filtered);
 }
 
-function renderDeals(dealsArray) {
+function renderDeals(dealsArray, loadMore = false) {
     const container = document.getElementById('deals-container');
-    container.innerHTML = ''; // clear grid
-
+    const loadMoreBtn = document.getElementById('load-more-btn');
+    
+    if (!loadMore) {
+        container.innerHTML = ''; // clear grid for fresh load
+    }
+    
     if(dealsArray.length === 0) {
         container.innerHTML = renderEmptyState();
+        if (loadMoreBtn) loadMoreBtn.style.display = 'none';
         return;
     }
 
@@ -516,4 +563,13 @@ function renderDeals(dealsArray) {
             img.src = img.dataset.src;
         }
     });
+    
+    // Show/hide load more button
+    if (loadMoreBtn) {
+        if (dealsArray.length < dealsPerPage) {
+            loadMoreBtn.style.display = 'none';
+        } else {
+            loadMoreBtn.style.display = 'block';
+        }
+    }
 }
