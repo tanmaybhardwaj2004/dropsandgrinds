@@ -94,11 +94,30 @@ function initNavbarTheme() {
     const savedTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     
+    // Update theme icons based on current theme
+    updateThemeIcons(savedTheme);
+    
     themeToggle.addEventListener('click', () => {
         const currentTheme = document.documentElement.getAttribute('data-theme');
         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
         
         document.documentElement.setAttribute('data-theme', newTheme);
         localStorage.setItem('theme', newTheme);
+        updateThemeIcons(newTheme);
     });
+}
+
+function updateThemeIcons(theme) {
+    const moonIcon = themeToggle.querySelector('.theme-icon-moon');
+    const sunIcon = themeToggle.querySelector('.theme-icon-sun');
+    
+    if (!moonIcon || !sunIcon) return;
+    
+    if (theme === 'dark') {
+        moonIcon.style.display = 'none';
+        sunIcon.style.display = 'block';
+    } else {
+        moonIcon.style.display = 'block';
+        sunIcon.style.display = 'none';
+    }
 }
