@@ -199,3 +199,33 @@ function handleLogout() {
 
     window.location.href = 'login.html';
 }
+
+function initAuthButton() {
+    const btn = document.getElementById('auth-btn');
+    if (!btn) return;
+
+    const token = getAccessToken();
+    if (!token) {
+        btn.textContent = 'Login';
+        btn.onclick = () => {
+            window.location.href = 'login.html';
+        };
+        return;
+    }
+
+    btn.textContent = 'Logout';
+    btn.onclick = () => {
+        sessionStorage.removeItem('dropsandgrinds_access_token');
+        sessionStorage.removeItem('dropsandgrinds_refresh_token');
+        sessionStorage.removeItem('dropsandgrinds_user_id');
+        sessionStorage.removeItem('dropsandgrinds_is_authenticated');
+        window.location.href = 'login.html';
+    };
+}
+
+function getAccessToken() {
+    if (window.authState?.accessToken) {
+        return window.authState.accessToken;
+    }
+    return sessionStorage.getItem('dropsandgrinds_access_token');
+}

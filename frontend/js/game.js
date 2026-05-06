@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initGamePage();
 });
 
-let priceChart = null;
+window.priceChart = null;
 
 // Transform external image URLs to use local proxy (bypasses hotlink protection)
 function getProxiedImageUrl(originalUrl) {
@@ -47,7 +47,6 @@ async function initGamePage() {
     initWishlistButton(gameID);
 }
 
-let priceChart = null;
 let currentGameID = null;
 
 async function loadPriceHistory(gameID, days = 30) {

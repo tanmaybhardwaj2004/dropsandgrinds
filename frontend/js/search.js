@@ -75,6 +75,15 @@ function initFilters() {
         clearBtn.addEventListener('click', clearFilters);
     }
 
+    // Add score slider event listener
+    const minScoreInput = document.getElementById('filter-min-score');
+    const scoreDisplay = document.getElementById('score-display');
+    if (minScoreInput && scoreDisplay) {
+        minScoreInput.addEventListener('input', (e) => {
+            scoreDisplay.textContent = e.target.value + '+';
+        });
+    }
+
     if (prevBtn) {
         prevBtn.addEventListener('click', () => {
             if (currentPage > 0) {
@@ -96,26 +105,43 @@ function initFilters() {
 }
 
 function clearFilters() {
-    document.getElementById('filter-platform').value = '';
-    document.getElementById('filter-min-price').value = '';
-    document.getElementById('filter-max-price').value = '';
-    document.getElementById('filter-min-discount').value = '';
-    document.getElementById('filter-max-discount').value = '';
-    document.getElementById('filter-min-score').value = '';
-    document.getElementById('filter-max-score').value = '';
+    const platformSelect = document.getElementById('filter-platform');
+    const minPriceInput = document.getElementById('filter-min-price');
+    const maxPriceInput = document.getElementById('filter-max-price');
+    const minDiscountInput = document.getElementById('filter-min-discount');
+    const maxDiscountInput = document.getElementById('filter-max-discount');
+    const minScoreInput = document.getElementById('filter-min-score');
+    const maxScoreInput = document.getElementById('filter-max-score');
+
+    if (platformSelect) platformSelect.value = '';
+    if (minPriceInput) minPriceInput.value = '';
+    if (maxPriceInput) maxPriceInput.value = '';
+    if (minDiscountInput) minDiscountInput.value = '';
+    if (maxDiscountInput) maxDiscountInput.value = '';
+    if (minScoreInput) minScoreInput.value = '';
+    if (maxScoreInput) maxScoreInput.value = '';
     currentPage = 0;
     performSearch();
 }
 
 async function performSearch() {
-    const query = document.getElementById('search-input').value.trim();
-    const platform = document.getElementById('filter-platform').value;
-    const minPrice = parseFloat(document.getElementById('filter-min-price').value) || 0;
-    const maxPrice = parseFloat(document.getElementById('filter-max-price').value) || 0;
-    const minDiscount = parseInt(document.getElementById('filter-min-discount').value) || 0;
-    const maxDiscount = parseInt(document.getElementById('filter-max-discount').value) || 0;
-    const minReviewScore = parseFloat(document.getElementById('filter-min-score').value) || 0;
-    const maxReviewScore = parseFloat(document.getElementById('filter-max-score').value) || 0;
+    const searchInput = document.getElementById('search-input');
+    const platformSelect = document.getElementById('filter-platform');
+    const minPriceInput = document.getElementById('filter-min-price');
+    const maxPriceInput = document.getElementById('filter-max-price');
+    const minDiscountInput = document.getElementById('filter-min-discount');
+    const maxDiscountInput = document.getElementById('filter-max-discount');
+    const minScoreInput = document.getElementById('filter-min-score');
+    const maxScoreInput = document.getElementById('filter-max-score');
+
+    const query = searchInput ? searchInput.value.trim() : '';
+    const platform = platformSelect ? platformSelect.value : '';
+    const minPrice = minPriceInput ? parseFloat(minPriceInput.value) || 0 : 0;
+    const maxPrice = maxPriceInput ? parseFloat(maxPriceInput.value) || 0 : 0;
+    const minDiscount = minDiscountInput ? parseInt(minDiscountInput.value) || 0 : 0;
+    const maxDiscount = maxDiscountInput ? parseInt(maxDiscountInput.value) || 0 : 0;
+    const minReviewScore = minScoreInput ? parseFloat(minScoreInput.value) || 0 : 0;
+    const maxReviewScore = maxScoreInput ? parseFloat(maxScoreInput.value) || 0 : 0;
 
     const loadingState = document.getElementById('loading-state');
     const emptyState = document.getElementById('empty-state');

@@ -14,7 +14,7 @@ permissions:
   security-events: write
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION }}
+  AWS_REGION: ap-south-1
   ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'dropsandgrinds' }}
   IMAGE_NAME: dropsandgrinds-backend
   ACTIONS_FAILURE_WEBHOOK_URL: ${{ secrets.ACTIONS_FAILURE_WEBHOOK_URL }}

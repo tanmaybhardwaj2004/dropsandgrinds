@@ -97,27 +97,49 @@ async function getCachedGameMeta(gameId) {
 }
 
 /**
+ * Transform external image URLs to use local proxy (bypasses hotlink protection)
+ */
+function getProxiedImageUrl(originalUrl) {
+    if (!originalUrl) return '';
+    
+    if (originalUrl.includes('shared.cloudflare.steamstatic.com')) {
+        return originalUrl.replace('https://shared.cloudflare.steamstatic.com/', '/img/steam/');
+    }
+    if (originalUrl.includes('images.gog-statics.com')) {
+        return originalUrl.replace('https://images.gog-statics.com/', '/img/gog/');
+    }
+    if (originalUrl.includes('cdn2.unrealengine.com')) {
+        return originalUrl.replace('https://cdn2.unrealengine.com/', '/img/epic/');
+    }
+    
+    return originalUrl;
+}
+
+/**
  * Fetch an image URL, caching the blob for reuse.
  * Returns an object URL suitable for img.src.
  */
 async function fetchCachedImage(url) {
     if (!url) return '';
 
-    // Check IndexedDB cache first
+    // Use proxy URL for external images
+    const proxyUrl = getProxiedImageUrl(url);
+
+    // Check IndexedDB cache first (use original URL as cache key)
     const cached = await getCachedImage(url);
     if (cached && cached.blob) {
         return URL.createObjectURL(cached.blob);
     }
 
-    // Fetch from network
+    // Fetch from network using proxy URL
     try {
-        const response = await fetch(url);
+        const response = await fetch(proxyUrl);
         if (!response.ok) throw new Error('Failed to fetch image');
         const blob = await response.blob();
-        cacheImage(url, blob); // Fire and forget
+        cacheImage(url, blob); // Fire and forget (cache with original URL as key)
         return URL.createObjectURL(blob);
     } catch (e) {
-        console.warn('Image fetch failed, falling back to proxy:', e);
+        console.warn('Image fetch failed, returning original URL:', e);
         return url;
     }
 }

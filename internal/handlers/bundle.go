@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/models"
+	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/repositories"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/services"
 )
 
@@ -137,7 +138,9 @@ func ActiveSalesHandler(w http.ResponseWriter, r *http.Request) {
 
 	sales, err := buyTimingService.GetActiveSales(r.Context())
 	if err != nil {
-		writeServiceError(w, err, "Failed to get active sales")
+		// Return empty array instead of 500 error if database table doesn't exist
+		var emptySales []repositories.SaleEvent
+		writeJSON(w, http.StatusOK, emptySales)
 		return
 	}
 

@@ -179,7 +179,7 @@
                     
                     <!-- Search -->
                     <div class="form-group">
-                        <label class="form-label">Search Games</label>
+                        <label for="sidebar-search" class="form-label">Search Games</label>
                         <div style="position: relative;">
                             <input type="text" id="sidebar-search" class="form-input" placeholder="Search..." style="padding-left: 40px;">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; left: var(--space-3); top: 50%; transform: translateY(-50%); color: var(--color-text-muted);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -188,18 +188,18 @@
 
                     <!-- Store Filters -->
                     <div class="form-group" id="store-filters">
-                        <label class="form-label">Platforms</label>
+                        <label for="store-filters" class="form-label">Platforms</label>
                         <div style="display: flex; flex-direction: column; gap: var(--space-2);">
                             <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer; padding: var(--space-2); border-radius: var(--radius-md); transition: all var(--transition-fast);" class="filter-checkbox">
-                                <input type="checkbox" value="Steam" checked style="accent-color: var(--color-accent-primary);">
+                                <input type="checkbox" id="store-steam" value="Steam" checked style="accent-color: var(--color-accent-primary);">
                                 <span>Steam</span>
                             </label>
                             <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer; padding: var(--space-2); border-radius: var(--radius-md);" class="filter-checkbox">
-                                <input type="checkbox" value="Epic Games" checked style="accent-color: var(--color-accent-primary);">
+                                <input type="checkbox" id="store-epic" value="Epic Games" checked style="accent-color: var(--color-accent-primary);">
                                 <span>Epic Games</span>
                             </label>
                             <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer; padding: var(--space-2); border-radius: var(--radius-md);" class="filter-checkbox">
-                                <input type="checkbox" value="GOG" checked style="accent-color: var(--color-accent-primary);">
+                                <input type="checkbox" id="store-gog" value="GOG" checked style="accent-color: var(--color-accent-primary);">
                                 <span>GOG</span>
                             </label>
                         </div>
@@ -208,7 +208,7 @@
                     <!-- Price Slider -->
                     <div class="form-group">
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-2);">
-                            <label class="form-label">Max Price</label>
+                            <label for="price-slider" class="form-label">Max Price</label>
                             <span id="price-display" style="font-family: var(--font-display); font-weight: 600; color: var(--color-accent-primary);">₹5000</span>
                         </div>
                         <input type="range" id="price-slider" min="0" max="5000" value="5000" aria-label="Maximum price range" style="width: 100%; accent-color: var(--color-accent-primary);">
@@ -224,7 +224,7 @@
 
                     <!-- Wishlist Preview -->
                     <div style="border-top: 1px solid var(--color-border); padding-top: var(--space-4);">
-                        <label class="form-label">Wishlist</label>
+                        <label for="wishlist-preview" class="form-label">Wishlist</label>
                         <div id="wishlist-preview" style="padding: var(--space-4); background: var(--color-bg-tertiary); border-radius: var(--radius-md); text-align: center;">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--color-text-muted); margin-bottom: var(--space-2);"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                             <p style="font-size: var(--text-sm); color: var(--color-text-muted);">Sign in to view your wishlist</p>
