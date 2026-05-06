@@ -87,6 +87,7 @@
         </p>
     </div>
 
+    <script src="js/navbar.js"></script>
     <script>
         function togglePassword() {
             const passwordInput = document.getElementById('password');
@@ -100,6 +101,10 @@
             document.getElementById('req-length').classList.toggle('met', val.length >= 8);
             document.getElementById('req-upper').classList.toggle('met', /[A-Z]/.test(val));
             document.getElementById('req-number').classList.toggle('met', /[0-9]/.test(val));
+        });
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initNavbar();
         });
     </script>
     <script src="js/auth.js"></script>

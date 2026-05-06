@@ -185,8 +185,15 @@
         </div>
     </footer>
 
+    <script src="js/navbar.js"></script>
     <script src="js/theme.js"></script>
     <script src="js/auth.js"></script>
+    <script>
+        document.querySelectorAll('.copyright-year').forEach(el => el.textContent = new Date().getFullYear());
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initNavbar();
+        });
+    </script>
     <script src="js/library.js"></script>
     <script>document.querySelectorAll('.copyright-year').forEach(el => el.textContent = new Date().getFullYear());</script>
 </body>
