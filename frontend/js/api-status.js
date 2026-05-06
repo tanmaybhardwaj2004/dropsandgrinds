@@ -5,21 +5,21 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 const apis = [
-    { name: 'Steam', slug: 'steam', endpoint: '/api/health/steam' },
-    { name: 'Epic Games', slug: 'epic', endpoint: '/api/health/epic' },
-    { name: 'GOG', slug: 'gog', endpoint: '/api/health/gog' },
-    { name: 'Xbox', slug: 'xbox', endpoint: '/api/health/xbox' },
-    { name: 'PlayStation', slug: 'playstation', endpoint: '/api/health/playstation' },
-    { name: 'Nintendo', slug: 'nintendo', endpoint: '/api/health/nintendo' },
-    { name: 'GreenManGaming', slug: 'greenmangaming', endpoint: '/api/health/greenmangaming' },
-    { name: 'Fanatical', slug: 'fanatical', endpoint: '/api/health/fanatical' },
-    { name: 'Humble Bundle', slug: 'humble', endpoint: '/api/health/humble' },
-    { name: 'Instant Gaming', slug: 'instantgaming', endpoint: '/api/health/instantgaming' },
-    { name: 'Gamivo', slug: 'gamivo', endpoint: '/api/health/gamivo' },
-    { name: 'Eneba', slug: 'eneba', endpoint: '/api/health/eneba' },
-    { name: 'Database', slug: 'database', endpoint: '/api/health/database' },
-    { name: 'Redis', slug: 'redis', endpoint: '/api/health/redis' },
-    { name: 'Meilisearch', slug: 'meilisearch', endpoint: '/api/health/meilisearch' }
+    { name: 'Steam', slug: 'steam', endpoint: '/health/stores/steam' },
+    { name: 'Epic Games', slug: 'epic', endpoint: '/health/stores/epic' },
+    { name: 'GOG', slug: 'gog', endpoint: '/health/stores/gog' },
+    { name: 'Xbox', slug: 'xbox', endpoint: '/health/stores/xbox' },
+    { name: 'PlayStation', slug: 'playstation', endpoint: '/health/stores/playstation' },
+    { name: 'Nintendo', slug: 'nintendo', endpoint: '/health/stores/nintendo' },
+    { name: 'GreenManGaming', slug: 'greenmangaming', endpoint: '/health/stores/greenmangaming' },
+    { name: 'Fanatical', slug: 'fanatical', endpoint: '/health/stores/fanatical' },
+    { name: 'Humble Bundle', slug: 'humble', endpoint: '/health/stores/humble' },
+    { name: 'Instant Gaming', slug: 'instantgaming', endpoint: '/health/stores/instantgaming' },
+    { name: 'Gamivo', slug: 'gamivo', endpoint: '/health/stores/gamivo' },
+    { name: 'Eneba', slug: 'eneba', endpoint: '/health/stores/eneba' },
+    { name: 'Database', slug: 'database', endpoint: '/health/deps' },
+    { name: 'Redis', slug: 'redis', endpoint: '/health/deps' },
+    { name: 'Meilisearch', slug: 'meilisearch', endpoint: '/health/deps' }
 ];
 
 async function checkAllStatus() {
@@ -83,11 +83,25 @@ async function checkAPIStatus(api) {
         const response = await fetch(api.endpoint);
         if (response.ok) {
             const data = await response.json();
-            if (data.status === 'healthy') {
-                return 'healthy';
-            } else if (data.status === 'degraded') {
-                return 'degraded';
+            
+            // Handle different response formats
+            let status = 'down';
+            
+            // Store health endpoints return StoreHealthStatus with status field
+            if (data.status) {
+                if (data.status === 'up') status = 'healthy';
+                else if (data.status === 'degraded') status = 'degraded';
+                else status = 'down';
             }
+            // Dependency health endpoint returns different format
+            else if (api.endpoint === '/health/deps') {
+                // Check if database, redis, etc. are up
+                if (data.database === 'up' || data.redis === 'up') status = 'healthy';
+                else if (data.database === 'down' || data.redis === 'down') status = 'down';
+                else status = 'degraded';
+            }
+            
+            return status;
         }
         return 'down';
     } catch (error) {
