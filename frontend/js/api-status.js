@@ -34,7 +34,16 @@ async function checkAllStatus() {
     overallIndicator.style.background = 'var(--color-warning)';
     overallText.textContent = 'Checking...';
     
+    // Show checking status for all APIs first
+    apis.forEach((api, index) => {
+        createAPICard(api, 'checking');
+    });
+    
+    // Then perform actual checks
     const results = await Promise.allSettled(apis.map(api => checkAPIStatus(api)));
+    
+    // Clear grid and show actual results
+    grid.innerHTML = '';
     
     let healthyCount = 0;
     let degradedCount = 0;
@@ -98,19 +107,22 @@ function createAPICard(api, status) {
     const statusColors = {
         healthy: 'var(--color-success)',
         degraded: 'var(--color-warning)',
-        down: 'var(--color-error)'
+        down: 'var(--color-error)',
+        checking: 'var(--color-warning)'
     };
     
     const statusText = {
         healthy: 'Operational',
         degraded: 'Degraded',
-        down: 'Down'
+        down: 'Down',
+        checking: 'Checking...'
     };
     
     const statusBadges = {
         healthy: '<span style="display: inline-flex; align-items: center; gap: var(--space-1);"><span style="width: 8px; height: 8px; background: var(--color-success); border-radius: 50%;"></span><span style="color: var(--color-success); font-weight: 600;">Operational</span></span>',
         degraded: '<span style="display: inline-flex; align-items: center; gap: var(--space-1);"><span style="width: 8px; height: 8px; background: var(--color-warning); border-radius: 50%;"></span><span style="color: var(--color-warning); font-weight: 600;">Degraded</span></span>',
-        down: '<span style="display: inline-flex; align-items: center; gap: var(--space-1);"><span style="width: 8px; height: 8px; background: var(--color-error); border-radius: 50%;"></span><span style="color: var(--color-error); font-weight: 600;">Down</span></span>'
+        down: '<span style="display: inline-flex; align-items: center; gap: var(--space-1);"><span style="width: 8px; height: 8px; background: var(--color-error); border-radius: 50%;"></span><span style="color: var(--color-error); font-weight: 600;">Down</span></span>',
+        checking: '<span style="display: inline-flex; align-items: center; gap: var(--space-1);"><span style="width: 8px; height: 8px; background: var(--color-warning); border-radius: 50%; animation: pulse 1s infinite;"></span><span style="color: var(--color-warning); font-weight: 600;">Checking...</span></span>'
     };
     
     card.innerHTML = `
