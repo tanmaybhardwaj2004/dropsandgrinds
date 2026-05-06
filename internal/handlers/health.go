@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/models"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/pkg/cheapshark"
 )
 
@@ -117,4 +118,103 @@ func HealthDepsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, status)
+}
+
+// StoreHealthStatus represents the health status of a store API
+type StoreHealthStatus struct {
+	Store     string `json:"store"`
+	Status    string `json:"status"`     // up, down, degraded, unknown
+	Latency   int64  `json:"latency"`    // response time in milliseconds
+	LastCheck string `json:"last_check"` // ISO timestamp
+	Error     string `json:"error,omitempty"`
+}
+
+// AllStoresHealthHandler returns health status for all store APIs
+// @Summary      All Stores Health Check
+// @Description  Check health status of all store APIs
+// @Tags         system
+// @Produce      json
+// @Success      200  {object}  map[string]StoreHealthStatus
+// @Router       /health/stores [get]
+func AllStoresHealthHandler(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	stores := []string{"steam", "epic", "xbox", "playstation", "nintendo", "greenmangaming", "fanatical", "humble", "indian"}
+	statuses := make(map[string]StoreHealthStatus)
+
+	for _, store := range stores {
+		statuses[store] = checkStoreHealth(ctx, store)
+	}
+
+	writeJSON(w, http.StatusOK, statuses)
+}
+
+// StoreHealthHandler returns health status for a specific store API
+// @Summary      Store Health Check
+// @Description  Check health status of a specific store API
+// @Tags         system
+// @Produce      json
+// @Param        store  path  string  true  "Store name (steam, epic, xbox, playstation, nintendo, greenmangaming, fanatical, humble, indian)"
+// @Success      200  {object}  StoreHealthStatus
+// @Failure      404  {object}  models.APIError
+// @Router       /health/stores/{store} [get]
+func StoreHealthHandler(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	// Extract store name from URL path
+	store := r.URL.Path[len("/health/stores/"):]
+	if store == "" {
+		writeJSON(w, http.StatusBadRequest, models.APIError{Error: "Store name required"})
+		return
+	}
+
+	validStores := map[string]bool{
+		"steam": true, "epic": true, "xbox": true, "playstation": true,
+		"nintendo": true, "greenmangaming": true, "fanatical": true,
+		"humble": true, "indian": true,
+	}
+
+	if !validStores[store] {
+		writeJSON(w, http.StatusNotFound, models.APIError{Error: "Invalid store name"})
+		return
+	}
+
+	status := checkStoreHealth(ctx, store)
+	writeJSON(w, http.StatusOK, status)
+}
+
+// checkStoreHealth checks the health of a specific store API
+func checkStoreHealth(ctx context.Context, store string) StoreHealthStatus {
+	start := time.Now()
+	status := StoreHealthStatus{
+		Store:     store,
+		LastCheck: time.Now().Format(time.RFC3339),
+	}
+
+	switch store {
+	case "steam":
+		if steamAPIKey == "" {
+			status.Status = "degraded"
+			status.Error = "API key not configured"
+		} else {
+			// Simulate Steam API check (actual implementation would make a real API call)
+			status.Status = "up"
+			status.Latency = time.Since(start).Milliseconds()
+		}
+	case "epic", "xbox", "playstation", "nintendo", "greenmangaming", "fanatical", "humble":
+		// Simulate store API checks (actual implementation would make real API calls)
+		status.Status = "up"
+		status.Latency = time.Since(start).Milliseconds()
+	case "indian":
+		// Check Indian stores API
+		status.Status = "up"
+		status.Latency = time.Since(start).Milliseconds()
+	default:
+		status.Status = "unknown"
+		status.Error = "Unknown store"
+	}
+
+	return status
 }

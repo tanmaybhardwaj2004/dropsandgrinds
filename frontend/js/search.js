@@ -120,6 +120,11 @@ function clearFilters() {
     if (maxDiscountInput) maxDiscountInput.value = '';
     if (minScoreInput) minScoreInput.value = '';
     if (maxScoreInput) maxScoreInput.value = '';
+    
+    // Clear hardware platform checkboxes
+    const platformCheckboxes = document.querySelectorAll('.platform-checkbox');
+    platformCheckboxes.forEach(cb => cb.checked = false);
+    
     currentPage = 0;
     performSearch();
 }
@@ -133,6 +138,10 @@ async function performSearch() {
     const maxDiscountInput = document.getElementById('filter-max-discount');
     const minScoreInput = document.getElementById('filter-min-score');
     const maxScoreInput = document.getElementById('filter-max-score');
+
+    // Get hardware platform checkboxes
+    const platformCheckboxes = document.querySelectorAll('.platform-checkbox:checked');
+    const hardwarePlatforms = Array.from(platformCheckboxes).map(cb => cb.value);
 
     const query = searchInput ? searchInput.value.trim() : '';
     const platform = platformSelect ? platformSelect.value : '';
@@ -160,6 +169,7 @@ async function performSearch() {
     const params = new URLSearchParams();
     if (query) params.append('q', query);
     if (platform) params.append('platform', platform);
+    if (hardwarePlatforms.length > 0) params.append('hardware_platforms', hardwarePlatforms.join(','));
     if (minPrice > 0) params.append('min_price', minPrice);
     if (maxPrice > 0) params.append('max_price', maxPrice);
     if (minDiscount > 0) params.append('min_discount', minDiscount);

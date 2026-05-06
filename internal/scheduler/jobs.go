@@ -88,3 +88,19 @@ func ReviewRefreshJob(reviewService *services.ReviewService, logger *slog.Logger
 		return nil
 	}
 }
+
+// PriceDropNotificationJob checks for price drops and triggers notifications for wishlist items and deal alerts
+func PriceDropNotificationJob(priceNotificationService *services.PriceNotificationService, logger *slog.Logger) func(ctx context.Context) error {
+	return func(ctx context.Context) error {
+		logger.Info("starting price drop notification job")
+
+		notifications, err := priceNotificationService.CheckPriceDrops(ctx)
+		if err != nil {
+			logger.Error("failed to check price drops", "error", err)
+			return err
+		}
+
+		logger.Info("price drop notification job completed", "notifications_found", len(notifications))
+		return nil
+	}
+}

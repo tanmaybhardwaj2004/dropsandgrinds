@@ -137,6 +137,83 @@
             </div>
         </section>
 
+        <!-- Screenshots Gallery -->
+        <section style="margin-top: var(--space-8);">
+            <h3 style="font-size: var(--text-2xl); margin-bottom: var(--space-4);">Screenshots</h3>
+            <div id="screenshots-gallery" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-4);">
+                <div class="screenshot-placeholder skeleton" style="aspect-ratio: 16/9; border-radius: var(--radius-md);"></div>
+                <div class="screenshot-placeholder skeleton" style="aspect-ratio: 16/9; border-radius: var(--radius-md);"></div>
+                <div class="screenshot-placeholder skeleton" style="aspect-ratio: 16/9; border-radius: var(--radius-md);"></div>
+            </div>
+        </section>
+
+        <!-- Trailers Section -->
+        <section style="margin-top: var(--space-8);">
+            <h3 style="font-size: var(--text-2xl); margin-bottom: var(--space-4);">Trailers & Videos</h3>
+            <div id="trailers-section" style="display: grid; grid-template-columns: 1fr; gap: var(--space-4);">
+                <div class="trailer-placeholder skeleton" style="aspect-ratio: 16/9; border-radius: var(--radius-md);"></div>
+            </div>
+        </section>
+
+        <!-- System Requirements -->
+        <section style="margin-top: var(--space-8);">
+            <h3 style="font-size: var(--text-2xl); margin-bottom: var(--space-4);">System Requirements</h3>
+            <div class="card" style="padding: var(--space-5);">
+                <div id="system-requirements" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6);">
+                    <div>
+                        <h4 style="font-size: var(--text-lg); margin-bottom: var(--space-3); color: var(--color-accent-primary);">Minimum</h4>
+                        <div id="min-requirements">
+                            <div class="skeleton" style="width: 100%; height: 1em; margin-bottom: var(--space-2);"></div>
+                            <div class="skeleton" style="width: 80%; height: 1em; margin-bottom: var(--space-2);"></div>
+                            <div class="skeleton" style="width: 60%; height: 1em;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 style="font-size: var(--text-lg); margin-bottom: var(--space-3); color: var(--color-accent-success);">Recommended</h4>
+                        <div id="rec-requirements">
+                            <div class="skeleton" style="width: 100%; height: 1em; margin-bottom: var(--space-2);"></div>
+                            <div class="skeleton" style="width: 80%; height: 1em; margin-bottom: var(--space-2);"></div>
+                            <div class="skeleton" style="width: 60%; height: 1em;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Platform Support -->
+        <section style="margin-top: var(--space-8);">
+            <h3 style="font-size: var(--text-2xl); margin-bottom: var(--space-4);">Available Platforms</h3>
+            <div id="platform-badges" style="display: flex; gap: var(--space-3); flex-wrap: wrap;">
+                <div class="skeleton" style="width: 80px; height: 32px; border-radius: var(--radius-md);"></div>
+                <div class="skeleton" style="width: 80px; height: 32px; border-radius: var(--radius-md);"></div>
+                <div class="skeleton" style="width: 80px; height: 32px; border-radius: var(--radius-md);"></div>
+            </div>
+        </section>
+
+        <!-- Multi-Store Price Comparison -->
+        <section style="margin-top: var(--space-8);">
+            <h3 style="font-size: var(--text-2xl); margin-bottom: var(--space-4);">Price Comparison Across Stores</h3>
+            <div class="card" style="padding: var(--space-5); overflow-x: auto;">
+                <table id="price-comparison-table" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid var(--color-border);">
+                            <th style="text-align: left; padding: var(--space-3);">Store</th>
+                            <th style="text-align: right; padding: var(--space-3);">Price</th>
+                            <th style="text-align: right; padding: var(--space-3);">Discount</th>
+                            <th style="text-align: center; padding: var(--space-3);">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="price-comparison-body">
+                        <tr style="border-bottom: 1px solid var(--color-border);">
+                            <td colspan="4" style="text-align: center; padding: var(--space-4);">
+                                <div class="skeleton" style="width: 100%; height: 40px;"></div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
         <!-- Advanced Metrics Grid (Phase 4 Features) -->
         <section class="metrics-grid">
             
@@ -308,6 +385,52 @@
         </section>
     </main>
 
+    <!-- Footer -->
+    <footer style="border-top: 1px solid var(--color-border); padding: var(--space-8) 0; background: var(--color-bg-secondary); margin-top: auto;">
+        <div class="container">
+            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: var(--space-8);">
+                <div>
+                    <div style="display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3);">
+                        <div style="width: 32px; height: 32px; background: var(--gradient-primary); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;">🎮</div>
+                        <span style="font-family: var(--font-display); font-weight: 700;">DropsAndGrinds</span>
+                    </div>
+                    <p style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Smart cross-platform game deal tracker for Indian gamers. Never miss a price drop again.</p>
+                </div>
+                <div>
+                    <h4 style="font-size: var(--text-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-3); color: var(--color-text-muted);">Features</h4>
+                    <ul style="list-style: none; display: flex; flex-direction: column; gap: var(--space-2);">
+                        <li><a href="search.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Deal Search</a></li>
+                        <li><a href="library.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Game Library</a></li>
+                        <li><a href="bundle.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Bundle Analyzer</a></li>
+                        <li><a href="buy-timing.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Buy Timing</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 style="font-size: var(--text-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-3); color: var(--color-text-muted);">Tools</h4>
+                    <ul style="list-style: none; display: flex; flex-direction: column; gap: var(--space-2);">
+                        <li><a href="savings.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Savings Tracker</a></li>
+                        <li><a href="wishlist.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Wishlist Alerts</a></li>
+                        <li><a href="api-status.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">API Status Checker</a></li>
+                        <li><a href="timing.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Buy Timing</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 style="font-size: var(--text-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-3); color: var(--color-text-muted);">Connect</h4>
+                    <ul style="list-style: none; display: flex; flex-direction: column; gap: var(--space-2);">
+                        <li><a href="about.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">About</a></li>
+                        <li><a href="https://github.com/tanmaybhardwaj2004/dropsandgrinds" target="_blank" rel="noopener noreferrer" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">GitHub</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div style="border-top: 1px solid var(--color-border); margin-top: var(--space-6); padding-top: var(--space-6); text-align: center; color: var(--color-text-muted); font-size: var(--text-sm);">
+                © <span class="copyright-year">2025</span> DropsAndGrinds. Built for Indian gamers.
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.querySelectorAll('.copyright-year').forEach(el => el.textContent = new Date().getFullYear());
+    </script>
     <script src="js/auth.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="js/image-cache.js"></script>

@@ -43,7 +43,6 @@ type SteamAppData struct {
 	SupportedLanguages  []string              `json:"supported_languages"`
 	Reviews             string                `json:"reviews"`
 	DetailedDescription string                `json:"detailed_description"`
-	AboutTheGame        string                `json:"about_the_game"`
 	ShortDescription    string                `json:"short_description"`
 	Fullgame            *SteamFullgame        `json:"fullgame"`
 	LinuxRequirements   *SteamRequirements    `json:"linux_requirements"`
@@ -187,9 +186,12 @@ func (s *SteamAPIService) GetGameDetails(ctx context.Context, appID int) (*model
 		CoverURL:        data.HeaderImage,
 		Rating:          data.Reviews,
 		Platforms:       data.Platforms,
-		ReleaseDate:     parseSteamReleaseDate(data.ReleaseDate),
 		IsActive:        true,
-		LastPriceUpdate: &[]time.Time{time.Now()},
+		LastPriceUpdate: timePtr(time.Now()),
+	}
+	
+	if data.ReleaseDate != nil {
+		game.ReleaseDate = parseSteamReleaseDate(data.ReleaseDate.Date)
 	}
 
 	// Parse genres and system requirements
@@ -218,8 +220,8 @@ func (s *SteamAPIService) GetGameDetails(ctx context.Context, appID int) (*model
 			{
 				ID:          int64(data.Fullgame.AppID),
 				Name:        data.Fullgame.Title,
-				Description: data.Fullgame.Description,
-				PriceINR:    data.Fullgame.FinalPrice,
+				Description: "", // Not available in Fullgame
+				PriceINR:    float64(data.Fullgame.FinalPrice),
 				IsDLC:       false,
 				Features:    []string{"Base Game"},
 				ReleaseDate: parseSteamReleaseDate(data.Fullgame.ReleaseDate),
@@ -254,11 +256,11 @@ func (s *SteamAPIService) GetGamePrice(ctx context.Context, appID int) (*models.
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	if len(response) == 0 || !response[0].Success || response[0].PriceOverview == nil {
+	if len(response) == 0 || !response[0].Success || response[0].Data.PriceOverview == nil {
 		return nil, fmt.Errorf("price information not available")
 	}
 
-	priceData := response[0].PriceOverview
+	priceData := response[0].Data.PriceOverview
 	price := &models.EnhancedPrice{
 		PriceINR:        float64(priceData.Final),
 		OriginalPrice:   float64(priceData.Initial),
@@ -325,7 +327,7 @@ func (s *SteamAPIService) SearchGames(ctx context.Context, query string, limit i
 			CoverURL:        item.HeaderImage,
 			ReleaseDate:     parseSteamReleaseDate(item.ReleaseDate),
 			IsActive:        true,
-			LastPriceUpdate: &[]time.Time{time.Now()},
+			LastPriceUpdate: timePtr(time.Now()),
 		}
 
 		if item.PriceOverview != nil {
@@ -391,7 +393,7 @@ func (s *SteamAPIService) GetFeaturedGames(ctx context.Context) ([]models.Enhanc
 			CoverURL:        item.HeaderImage,
 			ReleaseDate:     parseSteamReleaseDate(item.ReleaseDate),
 			IsActive:        true,
-			LastPriceUpdate: &[]time.Time{time.Now()},
+			LastPriceUpdate: timePtr(time.Now()),
 		}
 
 		if item.PriceOverview != nil {

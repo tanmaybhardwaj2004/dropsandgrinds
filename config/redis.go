@@ -9,11 +9,16 @@ import (
 )
 
 func NewRedisClient(redisURL string) (*redis.Client, error) {
-	client := redis.NewClient(&redis.Options{
-		Addr:     redisURL,
-		Password: "", // no password set
-		DB:       0,  // use default DB
-	})
+	opt, err := redis.ParseURL(redisURL)
+	if err != nil {
+		// Fallback to treating it as just an address if parsing fails
+		opt = &redis.Options{
+			Addr:     redisURL,
+			Password: "", // no password set
+			DB:       0,  // use default DB
+		}
+	}
+	client := redis.NewClient(opt)
 
 	ctx := context.Background()
 	if err := client.Ping(ctx).Err(); err != nil {

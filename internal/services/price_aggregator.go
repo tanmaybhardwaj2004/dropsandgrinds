@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/models"
@@ -10,38 +11,46 @@ import (
 )
 
 type PriceAggregatorService struct {
-	steamAPI      *SteamAPIService
-	epicAPI       *EpicGamesAPIService
-	catalogRepo   *repositories.EnhancedCatalogRepository
+	steamAPI        *SteamAPIService
+	epicAPI         *EpicGamesAPIService
+	bundleStoresAPI *BundleStoresAPIService
+	indianStoresAPI *IndianStoresAPIService
+	catalogRepo     *repositories.EnhancedCatalogRepository
 }
 
 func NewPriceAggregatorService(
 	steamAPI *SteamAPIService,
 	epicAPI *EpicGamesAPIService,
+	bundleStoresAPI *BundleStoresAPIService,
+	indianStoresAPI *IndianStoresAPIService,
 	catalogRepo *repositories.EnhancedCatalogRepository,
 ) *PriceAggregatorService {
 	return &PriceAggregatorService{
-		steamAPI:    steamAPI,
-		epicAPI:     epicAPI,
-		catalogRepo:  catalogRepo,
+		steamAPI:        steamAPI,
+		epicAPI:         epicAPI,
+		bundleStoresAPI: bundleStoresAPI,
+		indianStoresAPI: indianStoresAPI,
+		catalogRepo:     catalogRepo,
 	}
 }
 
 // GetComprehensiveGamePrice fetches prices from all supported stores and returns comparison
 func (p *PriceAggregatorService) GetComprehensiveGamePrice(ctx context.Context, externalID string, title string, region string) (*models.PriceComparisonResponse, error) {
 	// Try to get game by external ID first
-	game, err := p.catalogRepo.GetGameWithPriceComparison(ctx, 0, region)
-	if err == nil && game != nil {
-		return game, nil
+	compResult, err := p.catalogRepo.GetGameWithPriceComparison(ctx, 0, region)
+	if err == nil && compResult != nil {
+		return compResult, nil
 	}
+
+	var game *models.EnhancedGame
 
 	// If not found, search by title across platforms
 	if game == nil {
-		games, _, err := p.catalogRepo.SearchEnhancedGames(ctx, title, []string{}, []string{}, []string{}, 0, 0, 0, 0, "", 20, 0)
+		games, err := p.catalogRepo.SearchEnhancedGames(ctx, title, []string{}, []string{}, []string{}, 0.0, 0.0, 0, 0, 0.0, 0.0, "", 20, 0)
 		if err != nil {
 			return nil, fmt.Errorf("failed to search games: %w", err)
 		}
-		
+
 		if len(games.Games) > 0 {
 			// Use first matching game
 			game = &games.Games[0]
@@ -83,10 +92,109 @@ func (p *PriceAggregatorService) fetchPricesFromAllPlatforms(ctx context.Context
 		allPrices = append(allPrices, *epicPrice)
 	}
 
-	// TODO: Add other platforms (Xbox, PlayStation, Nintendo, GreenManGaming, etc.)
-	// For now, we'll use existing catalog data for other stores
+	// Fetch from bundle stores (GreenManGaming, Fanatical, Humble Bundle)
+	if p.bundleStoresAPI != nil {
+		if greenManGamingGames, err := p.bundleStoresAPI.GetGreenManGamingGames(ctx, game.Title, 5); err == nil {
+			for _, gmgGame := range greenManGamingGames {
+				if gmgGame.Title == game.Title {
+					gmgPrice := models.EnhancedPrice{
+						GameID:          game.ID,
+						StoreID:         4, // GreenManGaming store ID
+						Store:           models.Store{ID: 4, Name: "GreenManGaming", Slug: "greenmangaming"},
+						ExternalID:      gmgGame.ExternalID,
+						PriceINR:        float64(gmgGame.PriceINR),
+						OriginalPrice:   float64(gmgGame.OriginalINR),
+						DiscountPercent: gmgGame.DiscountPercent,
+						Region:          "IN",
+						Currency:        "INR",
+						IsAvailable:     true,
+						StockStatus:     "available",
+						DealType:        "regular",
+						UpdatedAt:       time.Now(),
+					}
+					allPrices = append(allPrices, gmgPrice)
+					break
+				}
+			}
+		}
 
-	// Get prices from existing catalog for other platforms
+		if fanaticalGames, err := p.bundleStoresAPI.GetFanaticalGames(ctx, game.Title, 5); err == nil {
+			for _, fanGame := range fanaticalGames {
+				if fanGame.Title == game.Title {
+					fanaticalPrice := models.EnhancedPrice{
+						GameID:          game.ID,
+						StoreID:         5, // Fanatical store ID
+						Store:           models.Store{ID: 5, Name: "Fanatical", Slug: "fanatical"},
+						ExternalID:      fanGame.ExternalID,
+						PriceINR:        float64(fanGame.PriceINR),
+						OriginalPrice:   float64(fanGame.OriginalINR),
+						DiscountPercent: fanGame.DiscountPercent,
+						Region:          "IN",
+						Currency:        "INR",
+						IsAvailable:     true,
+						StockStatus:     "available",
+						DealType:        "regular",
+						UpdatedAt:       time.Now(),
+					}
+					allPrices = append(allPrices, fanaticalPrice)
+					break
+				}
+			}
+		}
+
+		if humbleGames, err := p.bundleStoresAPI.GetHumbleBundleGames(ctx, game.Title, 5); err == nil {
+			for _, humbleGame := range humbleGames {
+				if humbleGame.Title == game.Title {
+					humblePrice := models.EnhancedPrice{
+						GameID:          game.ID,
+						StoreID:         6, // Humble Bundle store ID
+						Store:           models.Store{ID: 6, Name: "Humble Bundle", Slug: "humble"},
+						ExternalID:      humbleGame.ExternalID,
+						PriceINR:        float64(humbleGame.PriceINR),
+						OriginalPrice:   float64(humbleGame.OriginalINR),
+						DiscountPercent: humbleGame.DiscountPercent,
+						Region:          "IN",
+						Currency:        "INR",
+						IsAvailable:     true,
+						StockStatus:     "available",
+						DealType:        "regular",
+						UpdatedAt:       time.Now(),
+					}
+					allPrices = append(allPrices, humblePrice)
+					break
+				}
+			}
+		}
+	}
+
+	// Fetch from Indian stores
+	if p.indianStoresAPI != nil {
+		if indianGames, err := p.indianStoresAPI.GetIndianStoreGames(ctx, game.Title, 5); err == nil {
+			for _, indianGame := range indianGames {
+				if indianGame.Title == game.Title {
+					indianPrice := models.EnhancedPrice{
+						GameID:          game.ID,
+						StoreID:         7, // Indian stores store ID
+						Store:           models.Store{ID: 7, Name: "Indian Stores", Slug: "indian"},
+						ExternalID:      indianGame.ExternalID,
+						PriceINR:        indianGame.PriceINR,
+						OriginalPrice:   float64(indianGame.OriginalINR),
+						DiscountPercent: indianGame.DiscountPercent,
+						Region:          "IN",
+						Currency:        "INR",
+						IsAvailable:     true, // Indian games are typically available
+						StockStatus:     "available",
+						DealType:        "regular",
+						UpdatedAt:       time.Now(),
+					}
+					allPrices = append(allPrices, indianPrice)
+					break
+				}
+			}
+		}
+	}
+
+	// Get prices from existing catalog for other stores
 	existingPrices, err := p.getExistingCatalogPrices(ctx, game.ID, region)
 	if err == nil {
 		allPrices = append(allPrices, existingPrices...)
@@ -112,7 +220,7 @@ func (p *PriceAggregatorService) fetchSteamPrice(ctx context.Context, game *mode
 		if err != nil {
 			return nil, fmt.Errorf("failed to search Steam: %w", err)
 		}
-		
+
 		for _, steamGame := range steamGames {
 			if steamGame.Title == game.Title {
 				steamAppID = steamGame.ExternalID
@@ -131,18 +239,18 @@ func (p *PriceAggregatorService) fetchSteamPrice(ctx context.Context, game *mode
 	}
 
 	return &models.EnhancedPrice{
-		GameID:         game.ID,
-		StoreID:        1, // Steam store ID
-		Store:          models.Store{ID: 1, Name: "Steam", Slug: "steam"},
-		ExternalID:     steamAppID,
-		PriceINR:       steamPrice.PriceINR,
-		OriginalPrice:  steamPrice.OriginalPrice,
+		GameID:          game.ID,
+		StoreID:         1, // Steam store ID
+		Store:           models.Store{ID: 1, Name: "Steam", Slug: "steam"},
+		ExternalID:      steamAppID,
+		PriceINR:        steamPrice.PriceINR,
+		OriginalPrice:   steamPrice.OriginalPrice,
 		DiscountPercent: steamPrice.DiscountPercent,
-		Region:         "IN",
-		Currency:       "INR",
-		IsAvailable:    steamPrice.IsAvailable,
-		StockStatus:    steamPrice.StockStatus,
-		DealType:       steamPrice.DealType,
+		Region:          "IN",
+		Currency:        "INR",
+		IsAvailable:     steamPrice.IsAvailable,
+		StockStatus:     steamPrice.StockStatus,
+		DealType:        steamPrice.DealType,
 		UpdatedAt:       time.Now(),
 	}, nil
 }
@@ -156,7 +264,7 @@ func (p *PriceAggregatorService) fetchEpicPrice(ctx context.Context, game *model
 		if err != nil {
 			return nil, fmt.Errorf("failed to search Epic Games: %w", err)
 		}
-		
+
 		for _, epicGame := range epicGames {
 			if epicGame.Title == game.Title {
 				epicSlug = epicGame.ExternalID
@@ -175,18 +283,17 @@ func (p *PriceAggregatorService) fetchEpicPrice(ctx context.Context, game *model
 	}
 
 	return &models.EnhancedPrice{
-		GameID:         game.ID,
-		StoreID:        2, // Epic Games store ID
-		Store:          models.Store{ID: 2, Name: "Epic Games", Slug: "epic"},
-		ExternalID:     epicSlug,
-		PriceINR:       epicGame.PriceINR,
-		OriginalPrice:  float64(epicGame.OriginalINR),
+		GameID:          game.ID,
+		StoreID:         2, // Epic Games store ID
+		Store:           models.Store{ID: 2, Name: "Epic Games", Slug: "epic"},
+		ExternalID:      epicSlug,
+		PriceINR:        epicGame.PriceINR,
+		OriginalPrice:   float64(epicGame.OriginalINR),
 		DiscountPercent: epicGame.DiscountPercent,
-		Region:         "IN",
-		Currency:       "INR",
-		IsAvailable:    true, // Epic Games doesn't provide stock status
-		StockStatus:    "available",
-		DealType:       "regular",
+		Region:          "IN",
+		Currency:        "INR",
+		StockStatus:     "available",
+		DealType:        "regular",
 		UpdatedAt:       time.Now(),
 	}, nil
 }
@@ -222,7 +329,7 @@ func (p *PriceAggregatorService) GetTrendingDealsAggregated(ctx context.Context,
 // SyncAllPrices updates prices for all games across all platforms
 func (p *PriceAggregatorService) SyncAllPrices(ctx context.Context) error {
 	// Get all games from catalog
-	games, _, err := p.catalogRepo.SearchEnhancedGames(ctx, "", []string{}, []string{}, []string{}, 0, 0, 0, 0, "", 1000, 0)
+	games, err := p.catalogRepo.SearchEnhancedGames(ctx, "", []string{}, []string{}, []string{}, 0.0, 0.0, 0, 0, 0.0, 0.0, "", 1000, 0)
 	if err != nil {
 		return fmt.Errorf("failed to get games: %w", err)
 	}
@@ -259,45 +366,44 @@ func (p *PriceAggregatorService) GetPriceHistoryAggregated(ctx context.Context, 
 // CalculateBestValue calculates best value deals based on price per hour of gameplay
 func (p *PriceAggregatorService) CalculateBestValue(ctx context.Context, region string, limit int) (*models.TrendingDealsResponse, error) {
 	// Get all games with prices and calculate value scores
-	games, _, err := p.catalogRepo.SearchEnhancedGames(ctx, "", []string{}, []string{}, []string{}, 0, 0, 0, 0, "", 100, 0)
+	games, err := p.catalogRepo.SearchEnhancedGames(ctx, "", []string{}, []string{}, []string{}, 0.0, 0.0, 0, 0, 0.0, 0.0, "", 100, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get games: %w", err)
 	}
 
 	var trendingDeals []models.TrendingDeal
-	
+
 	for _, game := range games.Games {
 		if game.PriceINR > 0 {
 			// Simple value calculation: lower price = better value
 			// In a real implementation, this would consider review scores, playtime, etc.
-			valueScore := calculateValueScore(game)
-			
+			valueScore := calculateValueScore(&game)
+
 			deal := models.TrendingDeal{
-				GameID:        game.ID,
-				StoreID:       1, // Default to Steam
-				Store:         models.Store{ID: 1, Name: "Steam", Slug: "steam"},
-				TrendScore:    valueScore,
-				ViewCount:     0, // Would be tracked separately
-				ClickCount:    0, // Would be tracked separately
+				GameID:         game.ID,
+				StoreID:        1, // Default to Steam
+				Store:          models.Store{ID: 1, Name: "Steam", Slug: "steam"},
+				TrendScore:     valueScore,
+				ViewCount:      0, // Would be tracked separately
+				ClickCount:     0, // Would be tracked separately
 				ConversionRate: 0, // Would be calculated from analytics
-				TrendPeriod:   "7d",
-				IsActive:      true,
+				TrendPeriod:    "7d",
+				IsActive:       true,
 				CreatedAt:      time.Now(),
 				UpdatedAt:      time.Now(),
 			}
-			
+
 			// Add game to deal
-			deal.Game = *game
-			deal.Store.LogoURL = "" // Would be set from store data
-			
+			deal.Game = game
+
 			trendingDeals = append(trendingDeals, deal)
 		}
 	}
 
 	response := &models.TrendingDealsResponse{
-		Deals: trendingDeals,
-		Total: len(trendingDeals),
-		Limit: limit,
+		Deals:  trendingDeals,
+		Total:  len(trendingDeals),
+		Limit:  limit,
 		Offset: 0,
 	}
 
@@ -307,7 +413,7 @@ func (p *PriceAggregatorService) CalculateBestValue(ctx context.Context, region 
 // calculateValueScore calculates a value score for a game
 func calculateValueScore(game *models.EnhancedGame) float64 {
 	score := 50.0 // Base score
-	
+
 	// Adjust for price (lower is better)
 	if game.PriceINR > 0 {
 		if game.PriceINR < 500 {
@@ -318,17 +424,17 @@ func calculateValueScore(game *models.EnhancedGame) float64 {
 			score += 5 // Moderate price
 		}
 	}
-	
+
 	// Adjust for discount
 	if game.DiscountPercent > 0 {
 		score += float64(game.DiscountPercent) / 2 // Higher discount = better value
 	}
-	
+
 	// Adjust for rating
 	if game.UserRating > 0 {
 		score += game.UserRating * 2 // Higher rating = better value
 	}
-	
+
 	// Adjust for age (newer games might have more value)
 	if game.ReleaseDate != nil {
 		yearsSinceRelease := time.Since(*game.ReleaseDate).Hours() / 24 / 365
@@ -340,6 +446,11 @@ func calculateValueScore(game *models.EnhancedGame) float64 {
 			score += 5 // Moderately new
 		}
 	}
-	
+
 	return score
+}
+
+func parseInt(s string) int {
+	i, _ := strconv.Atoi(s)
+	return i
 }

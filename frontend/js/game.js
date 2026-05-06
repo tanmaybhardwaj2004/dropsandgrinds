@@ -42,9 +42,11 @@ async function initGamePage() {
         loadGameDetails(gameID),
         loadBuyAdvice(gameID),
         loadPriceHistory(gameID),
-        loadReviewScores(gameID)
+        loadReviewScores(gameID),
+        loadEnhancedGameData(gameID)
     ]);
     initWishlistButton(gameID);
+    initChartPeriodButtons();
 }
 
 let currentGameID = null;
@@ -579,4 +581,230 @@ function renderGameError(message) {
     if (desc) {
         desc.textContent = message;
     }
+}
+
+async function loadEnhancedGameData(gameID) {
+    try {
+        const response = await fetch(`/api/games/${gameID}/enhanced`);
+        if (!response.ok) {
+            throw new Error('Failed to load enhanced game data');
+        }
+        const data = await response.json();
+        
+        populateScreenshots(data.screenshots || []);
+        populateTrailers(data.trailers || []);
+        populateSystemRequirements(data.system_requirements);
+        populatePlatforms(data.platforms || []);
+        populatePriceComparison(data.prices || []);
+    } catch (error) {
+        console.error('Failed to load enhanced game data:', error);
+        // Hide skeleton loaders on error
+        document.getElementById('screenshots-gallery').innerHTML = '<p style="color: var(--color-text-muted);">Screenshots unavailable</p>';
+        document.getElementById('trailers-section').innerHTML = '<p style="color: var(--color-text-muted);">Trailers unavailable</p>';
+        document.getElementById('system-requirements').innerHTML = '<p style="color: var(--color-text-muted);">System requirements unavailable</p>';
+        document.getElementById('platform-badges').innerHTML = '<p style="color: var(--color-text-muted);">Platform info unavailable</p>';
+        document.getElementById('price-comparison-body').innerHTML = '<tr><td colspan="4" style="text-align: center; padding: var(--space-4); color: var(--color-text-muted);">Price comparison unavailable</td></tr>';
+    }
+}
+
+async function populateScreenshots(screenshots) {
+    const gallery = document.getElementById('screenshots-gallery');
+    if (!gallery) return;
+
+    if (!screenshots || screenshots.length === 0) {
+        gallery.innerHTML = '<p style="color: var(--color-text-muted);">No screenshots available</p>';
+        return;
+    }
+
+    gallery.innerHTML = '';
+    for (const screenshot of screenshots.slice(0, 6)) {
+        const proxiedUrl = getProxiedImageUrl(screenshot);
+        const img = document.createElement('img');
+        img.src = proxiedUrl || screenshot;
+        img.alt = 'Game screenshot';
+        img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-md); cursor: pointer; transition: transform 0.2s;';
+        img.onclick = () => openImageModal(screenshot);
+        
+        const container = document.createElement('div');
+        container.style.cssText = 'aspect-ratio: 16/9; border-radius: var(--radius-md); overflow: hidden; background: var(--color-surface-secondary);';
+        container.appendChild(img);
+        gallery.appendChild(container);
+    }
+}
+
+async function populateTrailers(trailers) {
+    const section = document.getElementById('trailers-section');
+    if (!section) return;
+
+    if (!trailers || trailers.length === 0) {
+        section.innerHTML = '<p style="color: var(--color-text-muted);">No trailers available</p>';
+        return;
+    }
+
+    section.innerHTML = '';
+    for (const trailer of trailers.slice(0, 3)) {
+        const videoContainer = document.createElement('div');
+        videoContainer.style.cssText = 'position: relative; aspect-ratio: 16/9; border-radius: var(--radius-md); overflow: hidden; background: var(--color-surface-secondary);';
+        
+        // Check if it's a YouTube URL
+        if (trailer.includes('youtube.com') || trailer.includes('youtu.be')) {
+            const videoId = extractYouTubeId(trailer);
+            if (videoId) {
+                const iframe = document.createElement('iframe');
+                iframe.src = `https://www.youtube.com/embed/${videoId}`;
+                iframe.style.cssText = 'width: 100%; height: 100%; border: none;';
+                iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+                iframe.allowFullscreen = true;
+                videoContainer.appendChild(iframe);
+            }
+        } else {
+            // Fallback for other video types
+            const link = document.createElement('a');
+            link.href = trailer;
+            link.target = '_blank';
+            link.style.cssText = 'display: flex; align-items: center; justify-content: center; height: 100%; text-decoration: none; color: var(--color-text-primary);';
+            link.innerHTML = `
+                <div style="text-align: center;">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor" style="margin-bottom: var(--space-2);"><path d="M8 5v14l11-7z"/></svg>
+                    <span>Watch Trailer</span>
+                </div>
+            `;
+            videoContainer.appendChild(link);
+        }
+        
+        section.appendChild(videoContainer);
+    }
+}
+
+function extractYouTubeId(url) {
+    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+}
+
+function populateSystemRequirements(requirements) {
+    const minContainer = document.getElementById('min-requirements');
+    const recContainer = document.getElementById('rec-requirements');
+    
+    if (!requirements) {
+        if (minContainer) minContainer.innerHTML = '<p style="color: var(--color-text-muted);">System requirements unavailable</p>';
+        if (recContainer) recContainer.innerHTML = '';
+        return;
+    }
+
+    if (minContainer && requirements.minimum) {
+        minContainer.innerHTML = formatRequirements(requirements.minimum);
+    }
+    
+    if (recContainer && requirements.recommended) {
+        recContainer.innerHTML = formatRequirements(requirements.recommended);
+    }
+}
+
+function formatRequirements(reqs) {
+    if (typeof reqs === 'string') {
+        return `<p style="line-height: 1.6; font-size: var(--text-sm);">${reqs}</p>`;
+    }
+    
+    let html = '';
+    if (reqs.os) html += `<p style="line-height: 1.6; font-size: var(--text-sm);"><strong>OS:</strong> ${reqs.os}</p>`;
+    if (reqs.processor) html += `<p style="line-height: 1.6; font-size: var(--text-sm);"><strong>Processor:</strong> ${reqs.processor}</p>`;
+    if (reqs.memory) html += `<p style="line-height: 1.6; font-size: var(--text-sm);"><strong>Memory:</strong> ${reqs.memory}</p>`;
+    if (reqs.graphics) html += `<p style="line-height: 1.6; font-size: var(--text-sm);"><strong>Graphics:</strong> ${reqs.graphics}</p>`;
+    if (reqs.storage) html += `<p style="line-height: 1.6; font-size: var(--text-sm);"><strong>Storage:</strong> ${reqs.storage}</p>`;
+    
+    return html || '<p style="color: var(--color-text-muted);">Requirements unavailable</p>';
+}
+
+function populatePlatforms(platforms) {
+    const container = document.getElementById('platform-badges');
+    if (!container) return;
+
+    if (!platforms || platforms.length === 0) {
+        container.innerHTML = '<p style="color: var(--color-text-muted);">Platform info unavailable</p>';
+        return;
+    }
+
+    const platformIcons = {
+        'PC': '💻',
+        'PlayStation': '🎮',
+        'Xbox': '🎯',
+        'Switch': '🔀',
+        'Mobile': '📱'
+    };
+
+    container.innerHTML = platforms.map(platform => {
+        const icon = platformIcons[platform] || '🎮';
+        return `<span class="badge badge-primary" style="font-size: var(--text-base); padding: var(--space-2) var(--space-4);">${icon} ${platform}</span>`;
+    }).join('');
+}
+
+function populatePriceComparison(prices) {
+    const tbody = document.getElementById('price-comparison-body');
+    if (!tbody) return;
+
+    if (!prices || prices.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: var(--space-4); color: var(--color-text-muted);">No price data available</td></tr>';
+        return;
+    }
+
+    // Sort by price (lowest first)
+    const sortedPrices = [...prices].sort((a, b) => a.price_inr - b.price_inr);
+    const lowestPrice = sortedPrices[0];
+
+    tbody.innerHTML = sortedPrices.map((price, index) => {
+        const isLowest = price.price_inr === lowestPrice.price_inr;
+        const discountBadge = price.discount_percent > 0 
+            ? `<span class="badge badge-success" style="font-size: var(--text-sm);">-${price.discount_percent}%</span>`
+            : '<span style="color: var(--color-text-muted); font-size: var(--text-sm);">No discount</span>';
+        
+        const storeIcon = getStoreIcon(price.store?.slug || 'store');
+        const rowStyle = isLowest ? 'background: var(--color-surface-highlight);' : '';
+        
+        return `
+            <tr style="border-bottom: 1px solid var(--color-border); ${rowStyle}">
+                <td style="padding: var(--space-3);">
+                    <div style="display: flex; align-items: center; gap: var(--space-2);">
+                        ${storeIcon}
+                        <span style="font-weight: 500;">${price.store?.name || 'Store'}</span>
+                        ${isLowest ? '<span class="badge badge-accent" style="font-size: var(--text-xs);">Best Price</span>' : ''}
+                    </div>
+                </td>
+                <td style="text-align: right; padding: var(--space-3);">
+                    <span style="font-family: var(--font-display); font-weight: 700; font-size: var(--text-lg);">${formatINR(price.price_inr)}</span>
+                </td>
+                <td style="text-align: right; padding: var(--space-3);">${discountBadge}</td>
+                <td style="text-align: center; padding: var(--space-3);">
+                    <a href="${price.store?.website_url || '#'}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary">
+                        Buy Now
+                    </a>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function getStoreIcon(slug) {
+    const icons = {
+        'steam': '⚡',
+        'epic': '🎮',
+        'greenmangaming': '🌿',
+        'fanatical': '🔥',
+        'humble': '📦',
+        'indian': '🇮🇳'
+    };
+    return `<span style="font-size: 1.2em;">${icons[slug] || '🛒'}</span>`;
+}
+
+function openImageModal(imageUrl) {
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 9999; cursor: pointer;';
+    modal.onclick = () => modal.remove();
+    
+    const img = document.createElement('img');
+    img.src = imageUrl;
+    img.style.cssText = 'max-width: 90%; max-height: 90%; object-fit: contain;';
+    
+    modal.appendChild(img);
+    document.body.appendChild(modal);
 }

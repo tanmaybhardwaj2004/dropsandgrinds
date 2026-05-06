@@ -37,14 +37,25 @@ func main() {
 	// Initialize Sentry
 	err := sentry.Init(sentry.ClientOptions{
 		Dsn: "https://ca3b71cc206fb5a094dca3953d3052bf@o4511301731811328.ingest.de.sentry.io/4511301742821456",
+		// Enable logs to be sent to Sentry
+		EnableLogs: true,
+		// Set TracesSampleRate to 1.0 to capture 100%
+		// of transactions for tracing.
+		// We recommend adjusting this value in production,
+		TracesSampleRate: 1.0,
 	})
 	if err != nil {
 		log.Fatalf("sentry.Init: %s", err)
 	}
 	defer sentry.Flush(2 * time.Second)
 
-	// Verify Sentry integration
-	sentry.CaptureMessage("Sentry integration verified - DropsAndGrinds backend started")
+	sentry.CaptureMessage("It works!")
+
+	// Emit metrics
+	meter := sentry.NewMeter(context.Background())
+	meter.Count("checkout.failed", 1)
+	meter.Gauge("queue.depth", 42)
+	meter.Distribution("cart.amount_usd", 187.5)
 
 	// Initialize file-based logger
 	logFormat := "text"
@@ -72,9 +83,7 @@ func main() {
 	// Set auth logger
 	middleware.SetAuthLogger(logger.Logger)
 
-	// Initialize Sentry
-	config.InitSentry(cfg.SentryDSN)
-	defer config.FlushSentry()
+	// Sentry is initialized above
 
 	logger.LogComponentStartup("database", map[string]string{"url": cfg.DatabaseURL})
 	conn, err := config.ConnectDB(cfg.DatabaseURL)
@@ -176,6 +185,25 @@ func main() {
 	buyTimingService := services.NewBuyTimingService(salesCalendarRepo, logger.Logger)
 	handlers.SetBuyTimingService(buyTimingService)
 
+	// Initialize enhanced catalog repository for multi-platform game data
+	enhancedCatalogRepo := repositories.NewEnhancedCatalogRepository(conn, redisClient)
+	handlers.SetEnhancedCatalogRepository(enhancedCatalogRepo)
+
+	// Initialize deal alerts repository for price drop notifications
+	dealAlertRepo := repositories.NewDealAlertRepository(conn)
+
+	// Initialize user repository for email fetching
+	userRepo := repositories.NewUserRepository(conn)
+
+	// Initialize Indian payment offers repository
+	indianPaymentRepo := repositories.NewIndianPaymentRepository(conn)
+	handlers.SetIndianPaymentRepository(indianPaymentRepo)
+
+	// Initialize price notification service
+	emailService := services.NewEmailService(logger.Logger)
+	priceNotificationService := services.NewPriceNotificationService(dealAlertRepo, enhancedCatalogRepo, wishlistRepo, userRepo, emailService, logger.Logger)
+	handlers.SetPriceNotificationService(priceNotificationService)
+
 	// Initialize arbitrage service
 	arbitrageService := services.NewArbitrageService(catalogRepo, logger.Logger, 83.0, 0.18) // USD to INR exchange rate, 18% GST
 	handlers.SetArbitrageService(arbitrageService)
@@ -215,6 +243,11 @@ func main() {
 		Name:     "review-refresh",
 		Interval: 24 * time.Hour,
 		Run:      scheduler.ReviewRefreshJob(reviewService, logger.Logger),
+	})
+	sched.AddJob(scheduler.Job{
+		Name:     "price-drop-notification",
+		Interval: 30 * time.Minute,
+		Run:      scheduler.PriceDropNotificationJob(priceNotificationService, logger.Logger),
 	})
 
 	// Start Meilisearch sync if configured

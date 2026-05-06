@@ -6,11 +6,13 @@ import (
 	"strings"
 
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/models"
+	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/repositories"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/services"
 )
 
 var gamesService *services.GamesService
 var meilisearchService *services.MeilisearchService
+var enhancedCatalogRepo *repositories.EnhancedCatalogRepository
 
 // SetGamesService wires the games service into HTTP handlers at startup.
 func SetGamesService(svc *services.GamesService) {
@@ -20,6 +22,11 @@ func SetGamesService(svc *services.GamesService) {
 // SetMeilisearchService wires the Meilisearch service into HTTP handlers at startup.
 func SetMeilisearchService(svc *services.MeilisearchService) {
 	meilisearchService = svc
+}
+
+// SetEnhancedCatalogRepository wires the enhanced catalog repository into HTTP handlers at startup.
+func SetEnhancedCatalogRepository(repo *repositories.EnhancedCatalogRepository) {
+	enhancedCatalogRepo = repo
 }
 
 // SearchGamesHandler returns games matching search criteria with filters.
@@ -187,6 +194,10 @@ func GameDetailHandler(w http.ResponseWriter, r *http.Request) {
 		BuyAdviceHandler(w, r)
 		return
 	}
+	if strings.HasSuffix(r.URL.Path, "/enhanced") {
+		EnhancedGameDataHandler(w, r)
+		return
+	}
 	if gamesService == nil {
 		writeJSON(w, http.StatusInternalServerError, models.APIError{Error: "Games service not initialized"})
 		return
@@ -327,6 +338,54 @@ func IndiaArbitrageHandler(w http.ResponseWriter, r *http.Request) {
 	response, err := gamesService.GetIndiaArbitrage(r.Context(), gameID)
 	if err != nil {
 		writeServiceError(w, err, "Failed to fetch India arbitrage data")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, response)
+}
+
+// EnhancedGameDataHandler returns enhanced game data including screenshots, trailers, system requirements, platforms, and price comparison.
+// @Summary      Get enhanced game data
+// @Description  Returns comprehensive game data including screenshots, trailers, system requirements, platforms, and multi-store price comparison
+// @Tags         games
+// @Produce      json
+// @Param        id   path  int  true  "Game ID"
+// @Success      200  {object}  models.PriceComparisonResponse
+// @Failure      400  {object}  models.APIError
+// @Failure      404  {object}  models.APIError
+// @Router       /api/games/{id}/enhanced [get]
+func EnhancedGameDataHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, models.APIError{Error: "Method not allowed"})
+		return
+	}
+	if enhancedCatalogRepo == nil {
+		writeJSON(w, http.StatusInternalServerError, models.APIError{Error: "Enhanced catalog repository not initialized"})
+		return
+	}
+
+	const prefix = "/api/games/"
+	const suffix = "/enhanced"
+	if !strings.HasPrefix(r.URL.Path, prefix) || !strings.HasSuffix(r.URL.Path, suffix) {
+		writeJSON(w, http.StatusBadRequest, models.APIError{Error: "Invalid enhanced game path"})
+		return
+	}
+
+	middle := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, prefix), suffix)
+	gameID, err := strconv.ParseInt(strings.Trim(middle, "/"), 10, 64)
+	if err != nil || gameID <= 0 {
+		writeJSON(w, http.StatusBadRequest, models.APIError{Error: "Invalid game id"})
+		return
+	}
+
+	region := r.URL.Query().Get("region")
+	if region == "" {
+		region = "IN" // Default to India region
+	}
+
+	response, err := enhancedCatalogRepo.GetGameWithPriceComparison(r.Context(), gameID, region)
+	if err != nil {
+		writeServiceError(w, err, "Failed to get enhanced game data")
 		return
 	}
 

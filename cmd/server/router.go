@@ -16,6 +16,8 @@ func newHTTPHandler(logger *slog.Logger, cfg config.Config, redisClient *redis.C
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", handlers.HealthHandler)
 	mux.HandleFunc("/health/deps", handlers.HealthDepsHandler)
+	mux.HandleFunc("/health/stores", handlers.AllStoresHealthHandler)
+	mux.HandleFunc("/health/stores/", handlers.StoreHealthHandler)
 	mux.HandleFunc("/metrics", handlers.MetricsHandler)
 
 	// Auth Routes
@@ -51,6 +53,9 @@ func newHTTPHandler(logger *slog.Logger, cfg config.Config, redisClient *redis.C
 	mux.HandleFunc("/api/sales/active", handlers.ActiveSalesHandler)
 	mux.HandleFunc("/api/sales/calendar", handlers.SalesCalendarHandler)
 	mux.HandleFunc("/api/analytics/events", handlers.AnalyticsEventsHandler)
+	mux.HandleFunc("/api/indian-offers", handlers.IndianOffersHandler)
+	mux.Handle("/api/deal-alerts", middleware.RequireAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.DealAlertsCollectionHandler)))
+	mux.Handle("/api/deal-alerts/", middleware.RequireAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.DealAlertItemHandler)))
 
 	// Swagger UI
 	mux.Handle("/swagger/", httpSwagger.Handler(

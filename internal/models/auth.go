@@ -1,5 +1,19 @@
 package models
 
+import "time"
+
+type User struct {
+	ID            int64     `json:"id" example:"1"`
+	Email         string    `json:"email" example:"player@example.com"`
+	Username      string    `json:"username" example:"epicgamer"`
+	FirstName     string    `json:"first_name" example:"John"`
+	LastName      string    `json:"last_name" example:"Doe"`
+	IsActive      bool      `json:"is_active" example:"true"`
+	EmailVerified bool      `json:"email_verified" example:"true"`
+	CreatedAt     time.Time `json:"created_at" example:"2026-01-01T00:00:00Z"`
+	UpdatedAt     time.Time `json:"updated_at" example:"2026-01-01T00:00:00Z"`
+}
+
 type RegisterRequest struct {
 	Username         string `json:"username" binding:"required,min=3,max=50" example:"epicgamer"`
 	Email            string `json:"email" binding:"required,email" example:"player@example.com"`

@@ -1,15 +1,17 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/models"
 )
+
+func timePtr(t time.Time) *time.Time { return &t }
 
 type EpicGamesAPIService struct {
 	apiKey  string
@@ -160,7 +162,7 @@ func (e *EpicGamesAPIService) GetGameDetails(ctx context.Context, slug string) (
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", e.baseURL+"/graphql", nil)
+	req, err := http.NewRequestWithContext(ctx, "POST", e.baseURL+"/graphql", bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -200,13 +202,13 @@ func (e *EpicGamesAPIService) GetGameDetails(ctx context.Context, slug string) (
 		Title:           element.Title,
 		Description:     element.Description,
 		Developer:       extractEpicNames(element.Developer),
-		Publisher:       extractEpicNames(element.Publisher),
+		Publisher:       extractEpicPublisherNames(element.Publisher),
 		Genres:          extractEpicGenres(element.Genres),
 		Platforms:       element.Platforms,
 		CoverURL:        extractBestEpicImage(element.Images.Thumbnail),
 		ReleaseDate:     parseEpicDate(element.ReleaseDate),
 		IsActive:        true,
-		LastPriceUpdate:  &[]time.Time{time.Now()},
+		LastPriceUpdate:  timePtr(time.Now()),
 	}
 
 	// Extract price information
@@ -214,7 +216,7 @@ func (e *EpicGamesAPIService) GetGameDetails(ctx context.Context, slug string) (
 		offer := element.Offer.Offers[0]
 		game.PriceINR = convertToINR(offer.DiscountPrice, offer.Currency)
 		game.OriginalINR = int(convertToINR(offer.OriginalPrice, offer.Currency))
-		game.DiscountPercent = offer.DiscountPercentage
+		game.DiscountPercent = offer.DiscountPercent
 	}
 
 	// Extract screenshots from images
@@ -283,7 +285,7 @@ func (e *EpicGamesAPIService) SearchGames(ctx context.Context, query string, lim
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", e.baseURL+"/graphql", nil)
+	req, err := http.NewRequestWithContext(ctx, "POST", e.baseURL+"/graphql", bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -320,13 +322,13 @@ func (e *EpicGamesAPIService) SearchGames(ctx context.Context, query string, lim
 			Title:           element.Title,
 			Description:     element.Description,
 			Developer:       extractEpicNames(element.Developer),
-			Publisher:       extractEpicNames(element.Publisher),
+			Publisher:       extractEpicPublisherNames(element.Publisher),
 			Genres:          extractEpicGenres(element.Genres),
 			Platforms:       element.Platforms,
 			CoverURL:        extractBestEpicImage(element.Images.Thumbnail),
 			ReleaseDate:     parseEpicDate(element.ReleaseDate),
 			IsActive:        true,
-			LastPriceUpdate:  &[]time.Time{time.Now()},
+			LastPriceUpdate:  timePtr(time.Now()),
 		}
 
 		// Extract price information
@@ -334,7 +336,7 @@ func (e *EpicGamesAPIService) SearchGames(ctx context.Context, query string, lim
 			offer := element.Offer.Offers[0]
 			game.PriceINR = convertToINR(offer.DiscountPrice, offer.Currency)
 			game.OriginalINR = int(convertToINR(offer.OriginalPrice, offer.Currency))
-			game.DiscountPercent = offer.DiscountPercentage
+			game.DiscountPercent = offer.DiscountPercent
 		}
 
 		// Extract screenshots
@@ -405,7 +407,7 @@ func (e *EpicGamesAPIService) GetFeaturedGames(ctx context.Context, limit int) (
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", e.baseURL+"/graphql", nil)
+	req, err := http.NewRequestWithContext(ctx, "POST", e.baseURL+"/graphql", bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -442,13 +444,13 @@ func (e *EpicGamesAPIService) GetFeaturedGames(ctx context.Context, limit int) (
 			Title:           element.Title,
 			Description:     element.Description,
 			Developer:       extractEpicNames(element.Developer),
-			Publisher:       extractEpicNames(element.Publisher),
+			Publisher:       extractEpicPublisherNames(element.Publisher),
 			Genres:          extractEpicGenres(element.Genres),
 			Platforms:       element.Platforms,
 			CoverURL:        extractBestEpicImage(element.Images.Thumbnail),
 			ReleaseDate:     parseEpicDate(element.ReleaseDate),
 			IsActive:        true,
-			LastPriceUpdate:  &[]time.Time{time.Now()},
+			LastPriceUpdate:  timePtr(time.Now()),
 		}
 
 		// Extract price information
@@ -456,7 +458,7 @@ func (e *EpicGamesAPIService) GetFeaturedGames(ctx context.Context, limit int) (
 			offer := element.Offer.Offers[0]
 			game.PriceINR = convertToINR(offer.DiscountPrice, offer.Currency)
 			game.OriginalINR = int(convertToINR(offer.OriginalPrice, offer.Currency))
-			game.DiscountPercent = offer.DiscountPercentage
+			game.DiscountPercent = offer.DiscountPercent
 		}
 
 		// Extract screenshots
@@ -499,7 +501,7 @@ func extractEpicNames(developers []EpicDeveloper) string {
 	return fmt.Sprintf("%v", names)
 }
 
-func extractEpicNames(publishers []EpicPublisher) string {
+func extractEpicPublisherNames(publishers []EpicPublisher) string {
 	if len(publishers) == 0 {
 		return ""
 	}
@@ -562,17 +564,4 @@ func parseEpicDate(dateStr string) *time.Time {
 	return nil
 }
 
-func convertToINR(price float64, currency string) float64 {
-	// Simple conversion rates (in production, this should use real-time rates)
-	rates := map[string]float64{
-		"USD": 83.0,  // 1 USD = 83 INR
-		"EUR": 89.0,  // 1 EUR = 89 INR
-		"GBP": 105.0, // 1 GBP = 105 INR
-	}
-	
-	if rate, exists := rates[currency]; exists {
-		return price * rate
-	}
-	
-	return price // Default to INR if currency not found
-}
+// convertToINR is defined in bundle_stores_api.go — shared across the services package

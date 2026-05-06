@@ -115,15 +115,42 @@
                     
                     <!-- Platform Filter -->
                     <div class="form-group">
-                        <label for="filter-platform" class="form-label">Platform</label>
+                        <label for="filter-platform" class="form-label">Store</label>
                         <select id="filter-platform" class="form-input">
-                            <option value="">All Platforms</option>
+                            <option value="">All Stores</option>
                             <option value="steam">Steam</option>
                             <option value="epic">Epic Games</option>
                             <option value="gog">GOG</option>
                             <option value="xbox">Xbox</option>
                             <option value="playstation">PlayStation</option>
+                            <option value="greenmangaming">GreenManGaming</option>
+                            <option value="fanatical">Fanatical</option>
+                            <option value="humble">Humble Bundle</option>
+                            <option value="indian">Indian Stores</option>
                         </select>
+                    </div>
+
+                    <!-- Hardware Platform Filter -->
+                    <div class="form-group">
+                        <label class="form-label">Hardware Platform</label>
+                        <div style="display: flex; flex-direction: column; gap: var(--space-2);">
+                            <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer;">
+                                <input type="checkbox" id="platform-pc" value="PC" class="platform-checkbox">
+                                <span>💻 PC</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer;">
+                                <input type="checkbox" id="platform-xbox" value="Xbox" class="platform-checkbox">
+                                <span>🎯 Xbox</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer;">
+                                <input type="checkbox" id="platform-playstation" value="PlayStation" class="platform-checkbox">
+                                <span>🎮 PlayStation</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer;">
+                                <input type="checkbox" id="platform-switch" value="Switch" class="platform-checkbox">
+                                <span>🔀 Nintendo Switch</span>
+                            </label>
+                        </div>
                     </div>
 
                     <!-- Price Range -->
@@ -282,7 +309,8 @@
                     <ul style="list-style: none; display: flex; flex-direction: column; gap: var(--space-2);">
                         <li><a href="savings.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Savings Tracker</a></li>
                         <li><a href="wishlist.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Wishlist Alerts</a></li>
-                        <li><a href="search.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Price History</a></li>
+                        <li><a href="api-status.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">API Status Checker</a></li>
+                        <li><a href="timing.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Buy Timing</a></li>
                     </ul>
                 </div>
                 <div>
