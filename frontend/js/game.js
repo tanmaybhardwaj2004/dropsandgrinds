@@ -220,6 +220,9 @@ async function loadGameDetails(gameID) {
         document.title = `${game.title} - DropsAndGrinds`;
         document.getElementById('game-cover').src = getProxiedImageUrl(game.cover_url) || '';
         document.getElementById('game-cover').alt = `${game.title} cover`;
+        document.getElementById('game-cover').onerror = () => {
+            document.getElementById('game-cover').src = '/images/game-placeholder.svg';
+        };
         currentGame = game;
 
         document.getElementById('main-price').textContent = formatINR(game.price_inr);
@@ -232,19 +235,86 @@ async function loadGameDetails(gameID) {
             savingsBadge.textContent = savings > 0 ? `Save ${formatINR(savings)}` : 'Live price';
         }
         document.getElementById('store-badge').textContent = game.platform || 'Store';
+        renderGenreBadges(game);
         const desc = document.querySelector('.description');
         if (desc) {
-            desc.textContent = `${game.title} is tracked on ${game.platform || 'this store'} with current price, historical low, India pricing, and review data from DropsAndGrinds.`;
+            desc.textContent = game.description || `${game.title} is tracked on ${game.platform || 'this store'} with current price, historical low, India pricing, and review data from DropsAndGrinds.`;
         }
         const targetInput = document.getElementById('target-price-input');
         if (targetInput && game.lowest_price_inr > 0) {
             targetInput.value = game.lowest_price_inr;
         }
         initStoreLink(gameID, game.platform || 'steam');
+        renderLiveIntelligence(game);
 
         await loadIndiaArbitrage(gameID);
     } catch (error) {
         renderGameError(error.message);
+    }
+}
+
+function renderGenreBadges(game) {
+    const host = document.getElementById('genre-badges');
+    if (!host) return;
+    const badges = [...(game.genres || []), ...(game.supported_platforms || [])].slice(0, 5);
+    host.innerHTML = badges.map(label => `<span class="badge badge-primary">${label}</span>`).join('');
+    const discount = document.createElement('span');
+    discount.className = 'badge badge-success';
+    discount.id = 'discount-badge';
+    discount.textContent = game.discount_percent > 0 ? `-${game.discount_percent}%` : 'Current price';
+    host.appendChild(discount);
+}
+
+function renderLiveIntelligence(game) {
+    const comparisonHost = document.getElementById('price-comparison-list');
+    if (comparisonHost) {
+        const rows = game.price_comparisons || [];
+        comparisonHost.innerHTML = rows.length ? rows.map(row => `
+            <div class="source-item">
+                <span class="source-name">${row.store} (${row.region || 'India'})</span>
+                <div class="source-score">
+                    <span class="source-value">${formatINR(row.price_inr)}</span>
+                    <span class="badge badge-success">${row.discount_percent || 0}% off</span>
+                    <span class="badge badge-primary">${row.gst_inclusive ? 'GST included' : 'GST extra'}</span>
+                </div>
+            </div>
+        `).join('') : '<div class="source-item"><span class="source-name">No comparison data yet</span></div>';
+    }
+
+    const paymentHost = document.getElementById('payment-methods-list');
+    if (paymentHost) {
+        paymentHost.innerHTML = `
+            <div class="source-item"><span class="source-name">Cheapest region</span><span class="source-value">${game.cheapest_region || 'India'}</span></div>
+            <div class="source-item"><span class="source-name">GST amount</span><span class="source-value">${formatINR(game.gst_amount)}</span></div>
+            <div class="source-item"><span class="source-name">Payment filters</span><span class="source-value">${(game.payment_methods || ['Card']).join(', ')}</span></div>
+            <div class="source-item"><span class="source-name">Best time</span><span class="source-value">${game.best_time_to_buy || 'Wishlist for alerts'}</span></div>
+        `;
+    }
+
+    const systemHost = document.getElementById('system-requirements-list');
+    if (systemHost) {
+        const reqs = game.system_requirements || {};
+        systemHost.innerHTML = Object.keys(reqs).map(key => `
+            <div class="source-item"><span class="source-name">${capitalizeFirst(key)}</span><span class="source-value">${reqs[key]}</span></div>
+        `).join('') || '<div class="source-item"><span class="source-name">Requirements pending</span></div>';
+    }
+
+    const editionsHost = document.getElementById('editions-dlc-list');
+    if (editionsHost) {
+        editionsHost.innerHTML = `
+            <div class="source-item"><span class="source-name">Editions</span><span class="source-value">${(game.editions || ['Standard']).join(', ')}</span></div>
+            <div class="source-item"><span class="source-name">DLC tracking</span><span class="source-value">${(game.dlcs || ['No missing DLC detected']).join(', ')}</span></div>
+        `;
+    }
+
+    const platformHost = document.getElementById('platform-media-list');
+    if (platformHost) {
+        platformHost.innerHTML = `
+            <div class="source-item"><span class="source-name">Platforms</span><span class="source-value">${(game.supported_platforms || [game.platform || 'Store']).join(', ')}</span></div>
+            <div class="source-item"><span class="source-name">Screenshots</span><span class="source-value">${(game.screenshots || []).length}</span></div>
+            <div class="source-item"><span class="source-name">Trailers</span><span class="source-value">${(game.trailers || []).length}</span></div>
+            <div class="source-item"><span class="source-name">Live source</span><span class="source-value">${game.live_data_source || 'API'}</span></div>
+        `;
     }
 }
 

@@ -19,6 +19,7 @@ const (
 
 // Deal represents a game deal from CheapShark
 type Deal struct {
+	DealID      string  `json:"dealID"`
 	GameID      string  `json:"gameID"`
 	Title       string  `json:"title"`
 	StoreID     string  `json:"storeID"`

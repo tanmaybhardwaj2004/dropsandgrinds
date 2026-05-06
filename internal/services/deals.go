@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/models"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/repositories"
@@ -99,6 +100,10 @@ func (s *DealEvaluationService) GetDealsForYou(ctx context.Context, userID int64
 }
 
 func (s *DealEvaluationService) ListDeals(ctx context.Context, limit, offset int) ([]models.Deal, int, error) {
+	refreshCtx, cancel := context.WithTimeout(ctx, 6*time.Second)
+	_, _ = s.repo.SyncCheapSharkDeals(refreshCtx, limit)
+	cancel()
+
 	deals, total, err := s.repo.ListDeals(ctx, limit, offset)
 	if err != nil {
 		return nil, 0, err

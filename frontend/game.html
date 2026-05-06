@@ -76,10 +76,7 @@
                 
                 <h1 id="game-title" style="font-size: var(--text-3xl); margin-bottom: var(--space-3);">Loading game...</h1>
                 
-                <div style="display: flex; gap: var(--space-2); margin-bottom: var(--space-4); flex-wrap: wrap;">
-                    <span class="badge badge-primary">RPG</span>
-                    <span class="badge badge-primary">Sci-Fi</span>
-                    <span class="badge badge-primary">Open World</span>
+                <div id="genre-badges" style="display: flex; gap: var(--space-2); margin-bottom: var(--space-4); flex-wrap: wrap;">
                     <span class="badge badge-success" id="discount-badge">Loading</span>
                 </div>
                 
@@ -209,6 +206,39 @@
                 <div id="price-chart-container" class="chart-container">
                     <canvas id="priceChart"></canvas>
                 </div>
+            </div>
+        </section>
+
+        <!-- Store Comparison and Metadata -->
+        <section class="metrics-grid" style="margin-top: 32px;">
+            <div class="metric-card full-width">
+                <h3><i data-lucide="store"></i> Store Price Comparison</h3>
+                <p class="metric-sub">Live INR price, GST inclusion, payment support, and cheapest-region signal</p>
+                <div id="price-comparison-list" class="review-sources"></div>
+            </div>
+
+            <div class="metric-card">
+                <h3><i data-lucide="credit-card"></i> India Checkout Intelligence</h3>
+                <p class="metric-sub">Payment methods and regional buying context</p>
+                <div class="review-sources" id="payment-methods-list"></div>
+            </div>
+
+            <div class="metric-card">
+                <h3><i data-lucide="monitor-cog"></i> System Requirements</h3>
+                <p class="metric-sub">Official store requirements when available</p>
+                <div class="review-sources" id="system-requirements-list"></div>
+            </div>
+
+            <div class="metric-card">
+                <h3><i data-lucide="layers-3"></i> Editions and DLC</h3>
+                <p class="metric-sub">Purchase variants and add-on tracking</p>
+                <div class="review-sources" id="editions-dlc-list"></div>
+            </div>
+
+            <div class="metric-card">
+                <h3><i data-lucide="gamepad-2"></i> Platforms and Media</h3>
+                <p class="metric-sub">Supported platforms, screenshots, and trailers from live metadata</p>
+                <div class="review-sources" id="platform-media-list"></div>
             </div>
         </section>
 

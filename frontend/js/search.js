@@ -264,7 +264,7 @@ function createGameCard(game) {
             <img src="${getProxiedImageUrl(game.cover_url) || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22%3ENo Image%3C/text%3E%3C/svg%3E'}" 
                  alt="${game.title}" 
                  class="deal-cover"
-                 onerror="this.src='https://via.placeholder.com/400x600?text=No+Cover'">
+                 onerror="this.src='/images/game-placeholder.svg'">
             <div class="deal-info">
                 <h3 class="deal-title">${game.title}</h3>
                 <div class="deal-price-row">
@@ -274,6 +274,10 @@ function createGameCard(game) {
                 <div class="meta-row">
                     <span>${game.platform}</span>
                     ${reviewBadge}
+                </div>
+                <div class="meta-row">
+                    <span>${game.cheapest_region || 'India'}</span>
+                    <span>${(game.payment_methods || ['Card']).slice(0, 2).join(' / ')}</span>
                 </div>
                 ${lowestBadge}
             </div>

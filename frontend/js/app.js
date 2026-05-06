@@ -295,7 +295,10 @@ async function loadDeals() {
             discount: deal.discount_percent || 0,
             score: deal.review_score || 0,
             status: deal.deal_status || '',
+            quality: deal.deal_quality || deal.deal_status || '',
             savings: deal.potential_savings_inr || 0,
+            cheapestRegion: deal.cheapest_region || 'India',
+            paymentMethods: deal.payment_methods || [],
             isGSTAdded: true
         }));
 
@@ -394,7 +397,7 @@ function renderDealsForYou(deals) {
 
     container.innerHTML = '<div class="deals-for-you-grid">' + deals.map(deal => `
         <div class="deal-card-small" onclick="window.location.href='game.html?id=${deal.id}'">
-            <img src="${deal.cover}" class="deal-cover" alt="${deal.title} cover" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22%3ENo Image%3C/text%3E%3C/svg%3E'">
+            <img src="${deal.cover}" class="deal-cover" alt="${deal.title} cover" onerror="this.src='/images/game-placeholder.svg'">
             <div class="deal-info">
                 <span class="personalized-badge">${deal.reason}</span>
                 <div class="deal-title">${deal.title}</div>
@@ -477,7 +480,7 @@ function renderDeals(dealsArray) {
         const savingsAmount = deal.original - deal.price;
         
         card.innerHTML = `
-            <img src="${deal.cover}" class="deal-cover" alt="${deal.title} cover" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22%3ENo Image%3C/text%3E%3C/svg%3E'">
+            <img src="${deal.cover}" class="deal-cover" alt="${deal.title} cover" onerror="this.src='/images/game-placeholder.svg'">
             <div class="deal-info">
                 <div class="meta-row">
                     <span>${deal.store} ${deal.isGSTAdded ? '(Inc. GST)' : ''}</span>
@@ -493,7 +496,11 @@ function renderDeals(dealsArray) {
                 </div>
                 <div class="meta-row" style="margin-top: 10px;">
                     <span>Best: ₹${deal.lowestPrice}</span>
-                    <span>${deal.status ? deal.status.toUpperCase() : 'DEAL'}</span>
+                    <span>${deal.quality ? deal.quality.toUpperCase() : 'DEAL'}</span>
+                </div>
+                <div class="meta-row" style="margin-top: 8px;">
+                    <span>${deal.cheapestRegion}</span>
+                    <span>${deal.paymentMethods.slice(0, 2).join(' / ') || 'Card'}</span>
                 </div>
             </div>
             <div class="deal-overlay">
