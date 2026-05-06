@@ -74,7 +74,7 @@
                 Google
             </button>
             <button class="social-btn" onclick="socialLogin('steam')" title="Sign in with Steam">
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3l-.5 3H13v6.95c5.05-.5 9-4.76 9-9.95 0-5.52-4.48-10-10-10z"/></svg>
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15.1c.45.35.98.6 1.57.6h1.07c1.38 0 2.5-1.12 2.5-2.5s-1.12-2.5-2.5-2.5h-1.07c-.59 0-1.12.25-1.57.6l-4.79-3.86C4.08 6.38 7.32 4 11 4c4.41 0 8 3.59 8 8s-3.59 8-8 8z"/></svg>
                 Steam
             </button>
         </div>
@@ -85,6 +85,7 @@
         </p>
     </div>
 
+    <script src="js/navbar.js"></script>
     <script>
         function togglePassword() {
             const passwordInput = document.getElementById('password');
@@ -96,6 +97,10 @@
             // Placeholder for social login
             alert(`${provider} login coming soon!`);
         }
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initNavbar();
+        });
     </script>
     <script src="js/auth.js"></script>
 </body>
