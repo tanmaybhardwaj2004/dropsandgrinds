@@ -3,8 +3,12 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"reflect"
+	"strconv"
+	"strings"
 
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/models"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/services"
@@ -20,7 +24,115 @@ func SetAuthService(svc *services.AuthService) {
 func decodeJSONBody(r *http.Request, dst interface{}) error {
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
-	return decoder.Decode(dst)
+	if err := decoder.Decode(dst); err != nil {
+		return err
+	}
+	return validateRequestBody(dst)
+}
+
+func validateRequestBody(dst interface{}) error {
+	value := reflect.ValueOf(dst)
+	if value.Kind() != reflect.Pointer || value.IsNil() {
+		return nil
+	}
+	return validateStruct(value.Elem())
+}
+
+func validateStruct(value reflect.Value) error {
+	if value.Kind() == reflect.Pointer {
+		if value.IsNil() {
+			return nil
+		}
+		value = value.Elem()
+	}
+	if value.Kind() != reflect.Struct {
+		return nil
+	}
+
+	typ := value.Type()
+	for i := 0; i < value.NumField(); i++ {
+		field := value.Field(i)
+		structField := typ.Field(i)
+		if structField.PkgPath != "" {
+			continue
+		}
+		name := jsonFieldName(structField)
+		binding := structField.Tag.Get("binding")
+
+		if field.Kind() == reflect.Pointer {
+			if strings.Contains(binding, "required") && field.IsNil() {
+				return fmt.Errorf("%s is required", name)
+			}
+			if field.IsNil() {
+				continue
+			}
+			field = field.Elem()
+		}
+
+		switch field.Kind() {
+		case reflect.String:
+			value := strings.TrimSpace(field.String())
+			if strings.Contains(binding, "required") && value == "" {
+				return fmt.Errorf("%s is required", name)
+			}
+			if value == "" {
+				continue
+			}
+			min, hasMin := bindingLimit(binding, "min")
+			if hasMin && len(value) < min {
+				return fmt.Errorf("%s is too short", name)
+			}
+			max, hasMax := bindingLimit(binding, "max")
+			if !hasMax {
+				max = 4096
+			}
+			if len(value) > max {
+				return fmt.Errorf("%s is too long", name)
+			}
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			if strings.Contains(binding, "required") && field.Int() == 0 {
+				return fmt.Errorf("%s is required", name)
+			}
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			if strings.Contains(binding, "required") && field.Uint() == 0 {
+				return fmt.Errorf("%s is required", name)
+			}
+		case reflect.Float32, reflect.Float64:
+			if strings.Contains(binding, "required") && field.Float() == 0 {
+				return fmt.Errorf("%s is required", name)
+			}
+		case reflect.Struct:
+			if err := validateStruct(field); err != nil {
+				return err
+			}
+		case reflect.Slice, reflect.Array:
+			for j := 0; j < field.Len(); j++ {
+				if err := validateStruct(field.Index(j)); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func jsonFieldName(field reflect.StructField) string {
+	name := strings.Split(field.Tag.Get("json"), ",")[0]
+	if name == "" || name == "-" {
+		return field.Name
+	}
+	return name
+}
+
+func bindingLimit(binding, key string) (int, bool) {
+	for _, part := range strings.Split(binding, ",") {
+		prefix := key + "="
+		if strings.HasPrefix(part, prefix) {
+			limit, err := strconv.Atoi(strings.TrimPrefix(part, prefix))
+			return limit, err == nil
+		}
+	}
+	return 0, false
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload interface{}) {

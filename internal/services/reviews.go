@@ -46,8 +46,16 @@ func (s *ReviewService) GetAggregatedReview(ctx context.Context, gameID int64) (
 		return s.calculateAggregation(gameID, scores)
 	}
 
+	externalID, ok, err := s.externalReviewID(ctx, gameID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch review mapping: %w", err)
+	}
+	if !ok {
+		return s.calculateAggregation(gameID, scores)
+	}
+
 	// Otherwise, fetch fresh scores from all sources
-	freshScores, err := s.aggregator.FetchAllScores(ctx, fmt.Sprintf("%d", gameID))
+	freshScores, err := s.aggregator.FetchAllScores(ctx, externalID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch fresh review scores: %w", err)
 	}
@@ -92,7 +100,15 @@ func (s *ReviewService) calculateAggregation(gameID int64, scores []reviews.Revi
 
 // RefreshReviewScores refreshes review scores for a specific game
 func (s *ReviewService) RefreshReviewScores(ctx context.Context, gameID int64) error {
-	freshScores, err := s.aggregator.FetchAllScores(ctx, fmt.Sprintf("%d", gameID))
+	externalID, ok, err := s.externalReviewID(ctx, gameID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch review mapping: %w", err)
+	}
+	if !ok {
+		return nil
+	}
+
+	freshScores, err := s.aggregator.FetchAllScores(ctx, externalID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch fresh review scores: %w", err)
 	}
@@ -107,16 +123,15 @@ func (s *ReviewService) RefreshReviewScores(ctx context.Context, gameID int64) e
 	return nil
 }
 
-// RefreshAllStaleReviews refreshes review scores for all stale games
+// RefreshAllStaleReviews refreshes review scores for stale and never-scored games
 func (s *ReviewService) RefreshAllStaleReviews(ctx context.Context) error {
-	// Get games with stale review scores (older than 24 hours)
-	staleGameIDs, err := s.repo.GetStaleReviews(ctx, 24*60*60) // 24 hours
+	gameIDs, err := s.repo.GetReviewRefreshGameIDs(ctx, 24*60*60) // 24 hours
 	if err != nil {
-		return fmt.Errorf("failed to get stale reviews: %w", err)
+		return fmt.Errorf("failed to get reviews needing refresh: %w", err)
 	}
 
 	// Refresh each game
-	for _, gameID := range staleGameIDs {
+	for _, gameID := range gameIDs {
 		if err := s.RefreshReviewScores(ctx, gameID); err != nil {
 			// Log error but continue with other games
 			continue
@@ -124,4 +139,12 @@ func (s *ReviewService) RefreshAllStaleReviews(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (s *ReviewService) externalReviewID(ctx context.Context, gameID int64) (string, bool, error) {
+	steamAppID, ok, err := s.repo.GetSteamAppID(ctx, gameID)
+	if err != nil || !ok {
+		return "", ok, err
+	}
+	return fmt.Sprintf("%d", steamAppID), true, nil
 }

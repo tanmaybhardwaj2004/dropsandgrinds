@@ -9,10 +9,10 @@ CREATE TABLE IF NOT EXISTS user_steam_library (
 );
 
 -- Index for fast lookup of owned games by user
-CREATE INDEX idx_user_steam_library_user_id ON user_steam_library(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_steam_library_user_id ON user_steam_library(user_id);
 
 -- Index for checking if a specific game is owned by a user
-CREATE INDEX idx_user_steam_library_game_id ON user_steam_library(game_id);
+CREATE INDEX IF NOT EXISTS idx_user_steam_library_game_id ON user_steam_library(game_id);
 
 -- Index for DLC flagging (find base games owned by user)
-CREATE INDEX idx_user_steam_library_steam_app_id ON user_steam_library(steam_app_id);
+CREATE INDEX IF NOT EXISTS idx_user_steam_library_steam_app_id ON user_steam_library(steam_app_id);

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -45,10 +44,10 @@ func BundleAnalyzeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		URL         string  `json:"url"`
-		BundlePrice float64 `json:"bundle_price_inr"`
+		URL         string  `json:"url" binding:"required,max=2048"`
+		BundlePrice float64 `json:"bundle_price_inr" binding:"required"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := decodeJSONBody(r, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, models.APIError{Error: "Invalid request body"})
 		return
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/models"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/repositories"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/pkg/steam"
 )
@@ -117,18 +118,31 @@ func (s *LibraryService) IsGameOwned(ctx context.Context, userID int64, gameID i
 
 // FindMissingDLCs finds DLCs for owned base games that are not owned
 func (s *LibraryService) FindMissingDLCs(ctx context.Context, userID int64) ([]int64, error) {
+	dlcs, err := s.FindMissingDLCGames(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]int64, 0, len(dlcs))
+	for _, dlc := range dlcs {
+		ids = append(ids, dlc.ID)
+	}
+	return ids, nil
+}
+
+// FindMissingDLCGames returns DLC game records for owned base games that are not owned.
+func (s *LibraryService) FindMissingDLCGames(ctx context.Context, userID int64) ([]models.Game, error) {
 	ownedTitles, err := s.libraryRepo.GetOwnedGameTitles(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 	if len(ownedTitles) == 0 {
-		return []int64{}, nil
+		return []models.Game{}, nil
 	}
 	ownedSet := map[int64]struct{}{}
 	for id := range ownedTitles {
 		ownedSet[id] = struct{}{}
 	}
-	var missing []int64
+	var missing []models.Game
 	seen := map[int64]struct{}{}
 	for _, title := range ownedTitles {
 		for _, suffix := range []string{"DLC", "Season Pass", "Expansion"} {
@@ -144,7 +158,7 @@ func (s *LibraryService) FindMissingDLCs(ctx context.Context, userID int64) ([]i
 					continue
 				}
 				seen[game.ID] = struct{}{}
-				missing = append(missing, game.ID)
+				missing = append(missing, game)
 			}
 		}
 	}

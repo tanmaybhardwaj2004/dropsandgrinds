@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dropsandgrinds-v1';
+const CACHE_NAME = 'dropsandgrinds-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -35,29 +35,23 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - keep API and app shell fresh during active development/deploys.
 self.addEventListener('fetch', (event) => {
-  // Skip API calls - always go to network
-  if (event.request.url.includes('/api/')) {
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/') || url.pathname.startsWith('/health') || url.pathname.startsWith('/metrics')) {
     return;
   }
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-
-      return fetch(event.request).then((networkResponse) => {
-        // Cache successful responses
+    fetch(event.request).then((networkResponse) => {
         if (networkResponse.ok) {
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, networkResponse.clone());
           });
         }
-
         return networkResponse;
-      });
+    }).catch(() => {
+      return caches.match(event.request);
     })
   );
 });

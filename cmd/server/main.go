@@ -76,6 +76,12 @@ func main() {
 	handlers.SetDBPool(conn)
 	logger.LogInfo("database connected successfully", nil)
 
+	if err := config.RunMigrations(context.Background(), conn, "migrations"); err != nil {
+		logger.LogError("database migrations", err, nil)
+		log.Fatal("Failed to run database migrations:", err)
+	}
+	logger.LogInfo("database migrations applied", nil)
+
 	// Connect to read replica if configured
 	if cfg.DatabaseReadReplicaURL != "" {
 		logger.LogComponentStartup("read_replica", map[string]string{"url": cfg.DatabaseReadReplicaURL})
@@ -117,7 +123,7 @@ func main() {
 	handlers.SetDealsService(dealsService)
 
 	reviewRepo := repositories.NewReviewRepository(conn)
-	reviewService := services.NewReviewService(reviewRepo, "", "") // API keys from env in production
+	reviewService := services.NewReviewService(reviewRepo, cfg.SteamAPIKey, cfg.GameSpotAPIKey)
 	handlers.SetReviewService(reviewService)
 	wishlistRepo := repositories.NewWishlistRepository(conn)
 	wishlistService := services.NewWishlistService(wishlistRepo)

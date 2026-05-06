@@ -7,9 +7,11 @@ import (
 )
 
 func CORS(next http.Handler) http.Handler {
-	allowed := map[string]struct{}{
-		"http://localhost:3000": {},
-		"http://localhost:8080": {},
+	allowed := map[string]struct{}{}
+	appEnv := strings.ToLower(strings.TrimSpace(os.Getenv("APP_ENV")))
+	if appEnv == "" || appEnv == "development" {
+		allowed["http://localhost:3000"] = struct{}{}
+		allowed["http://localhost:8080"] = struct{}{}
 	}
 	for _, origin := range strings.Split(os.Getenv("CORS_ALLOWED_ORIGINS"), ",") {
 		origin = strings.TrimSpace(origin)

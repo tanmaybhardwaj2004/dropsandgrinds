@@ -112,3 +112,49 @@ func (r *ReviewRepository) GetStaleReviews(ctx context.Context, olderThan time.D
 
 	return gameIDs, rows.Err()
 }
+
+// GetReviewRefreshGameIDs returns games that need review refresh, including never-scored games.
+func (r *ReviewRepository) GetReviewRefreshGameIDs(ctx context.Context, olderThan time.Duration) ([]int64, error) {
+	query := `
+		SELECT g.id
+		FROM games g
+		LEFT JOIN (
+			SELECT game_id, MAX(fetched_at) AS last_fetched
+			FROM review_scores
+			GROUP BY game_id
+		) rs ON rs.game_id = g.id
+		WHERE rs.last_fetched IS NULL OR rs.last_fetched < $1
+		ORDER BY g.id
+	`
+
+	rows, err := r.db.Query(ctx, query, time.Now().Add(-olderThan))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var gameIDs []int64
+	for rows.Next() {
+		var gameID int64
+		if err := rows.Scan(&gameID); err != nil {
+			return nil, err
+		}
+		gameIDs = append(gameIDs, gameID)
+	}
+
+	return gameIDs, rows.Err()
+}
+
+// GetSteamAppID returns the external Steam app ID for a catalog game.
+func (r *ReviewRepository) GetSteamAppID(ctx context.Context, gameID int64) (int64, bool, error) {
+	var steamAppID int64
+	err := r.db.QueryRow(ctx, `
+		SELECT COALESCE(steam_app_id, 0)
+		FROM games
+		WHERE id = $1
+	`, gameID).Scan(&steamAppID)
+	if err != nil {
+		return 0, false, err
+	}
+	return steamAppID, steamAppID > 0, nil
+}

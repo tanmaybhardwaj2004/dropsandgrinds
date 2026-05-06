@@ -11,10 +11,10 @@ CREATE TABLE IF NOT EXISTS user_savings (
 );
 
 -- Index for user's savings history
-CREATE INDEX idx_user_savings_user_id ON user_savings(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_savings_user_id ON user_savings(user_id);
 
 -- Index for game_id lookups
-CREATE INDEX idx_user_savings_game_id ON user_savings(game_id);
+CREATE INDEX IF NOT EXISTS idx_user_savings_game_id ON user_savings(game_id);
 
 -- Index for purchased_at for monthly breakdown queries
-CREATE INDEX idx_user_savings_purchased_at ON user_savings(purchased_at);
+CREATE INDEX IF NOT EXISTS idx_user_savings_purchased_at ON user_savings(purchased_at);

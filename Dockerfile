@@ -22,6 +22,7 @@ RUN apk add --no-cache ca-certificates wget \
 WORKDIR /app
 
 COPY --from=builder --chown=app:app /out/server /app/server
+COPY --chown=app:app migrations /app/migrations
 
 USER app
 

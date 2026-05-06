@@ -40,3 +40,13 @@ type LibraryListResponse struct {
 	GameIDs []int64 `json:"game_ids" example:"[1,2,3,4,5]"`
 	Count   int     `json:"count" example:"5"`
 }
+
+type LibraryDLCResponse struct {
+	DLCs  []Game `json:"dlcs"`
+	Count int    `json:"count" example:"3"`
+}
+
+type ConsentUpdateRequest struct {
+	ConsentAnalytics bool `json:"consent_analytics"`
+	ConsentAlerts    bool `json:"consent_alerts"`
+}

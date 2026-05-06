@@ -12,8 +12,6 @@ import (
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/pkg/cheapshark"
 )
 
-const usdToINR = 83.0
-
 // PriceRefreshJob fetches current CheapShark deals and updates matching catalog prices.
 func PriceRefreshJob(repo *repositories.CatalogRepository, logger *slog.Logger) func(ctx context.Context) error {
 	return func(ctx context.Context) error {
@@ -28,6 +26,7 @@ func PriceRefreshJob(repo *repositories.CatalogRepository, logger *slog.Logger) 
 			return err
 		}
 
+		rate := repo.USDToINR(ctx)
 		var matched int
 		var skipped int
 		for _, deal := range deals {
@@ -41,8 +40,8 @@ func PriceRefreshJob(repo *repositories.CatalogRepository, logger *slog.Logger) 
 				continue
 			}
 
-			currentPriceINR := dollarsToINR(deal.SalePrice)
-			normalPriceINR := dollarsToINR(deal.NormalPrice)
+			currentPriceINR := dollarsToINR(float64(deal.SalePrice), rate)
+			normalPriceINR := dollarsToINR(float64(deal.NormalPrice), rate)
 			if currentPriceINR <= 0 {
 				skipped++
 				continue
@@ -53,7 +52,7 @@ func PriceRefreshJob(repo *repositories.CatalogRepository, logger *slog.Logger) 
 				continue
 			}
 
-			discountPercent := int(math.Round(deal.Savings))
+			discountPercent := int(math.Round(float64(deal.Savings)))
 			if normalPriceINR > 0 && discountPercent > 0 {
 				if err := repo.UpdateDeal(ctx, gameID, normalPriceINR, discountPercent); err != nil {
 					logger.Error("failed to update CheapShark deal", "game_id", gameID, "title", deal.Title, "error", err)
@@ -67,11 +66,11 @@ func PriceRefreshJob(repo *repositories.CatalogRepository, logger *slog.Logger) 
 	}
 }
 
-func dollarsToINR(price float64) int {
+func dollarsToINR(price float64, rate float64) int {
 	if price <= 0 {
 		return 0
 	}
-	return int(math.Round(price * usdToINR))
+	return int(math.Round(price * rate))
 }
 
 // ReviewRefreshJob refreshes review scores for all games with stale data

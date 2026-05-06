@@ -91,6 +91,29 @@ body {
   padding: 0 24px;
 }
 
+.brand-mark {
+  width: 36px;
+  height: 36px;
+  background: var(--gradient-primary);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brand-mark svg,
+.brand-mark i {
+  width: 20px;
+  height: 20px;
+}
+
+.hero-subtitle {
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+
 /* Selection styling */
 ::selection {
   background-color: rgba(37, 99, 235, 0.3);

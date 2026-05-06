@@ -125,6 +125,11 @@ async function initApp() {
     if (hideOwnedCheckbox) {
         hideOwnedCheckbox.addEventListener('change', loadDeals);
     }
+
+    const sortSelect = document.getElementById('sort-select');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', updateFilters);
+    }
 }
 
 function initAuthButton() {
@@ -212,6 +217,7 @@ async function checkHealth() {
 
 function renderSkeletons(count = 6) {
     const container = document.getElementById('deals-container');
+    if (!container) return;
     container.innerHTML = '';
     for (let i = 0; i < count; i++) {
         const skeleton = document.createElement('div');
@@ -262,19 +268,23 @@ async function loadDeals() {
 
     try {
         const hideOwned = document.getElementById('hide-owned')?.checked || false;
-        let url = '/api/deals?limit=100&offset=0';
-        
-        if (hideOwned) {
-            url += '&exclude_owned=true';
-        }
+        const url = hideOwned
+            ? '/api/games?limit=100&offset=0&exclude_owned=true'
+            : '/api/deals?limit=100&offset=0';
 
-        const response = await fetch(url);
+        const headers = {};
+        const token = typeof getAccessToken === 'function' ? getAccessToken() : null;
+        if (token) {
+            headers.Authorization = `Bearer ${token}`;
+        }
+        const response = await fetch(url, { headers });
         const payload = await response.json();
         if (!response.ok) {
             throw new Error(payload.error || 'Failed to fetch deals');
         }
 
-        allDeals = (payload.deals || []).map((deal) => ({
+        const rows = hideOwned ? (payload.games || []) : (payload.deals || []);
+        allDeals = rows.map((deal) => ({
             id: deal.id,
             title: deal.title,
             cover: getProxiedImageUrl(deal.cover_url) || '',
@@ -289,11 +299,32 @@ async function loadDeals() {
             isGSTAdded: true
         }));
 
+        updateDealStats(allDeals, payload.total || allDeals.length);
+        updateDealsHeading(hideOwned, payload.total || allDeals.length);
         renderDeals(allDeals);
     } catch (error) {
         container.innerHTML = renderErrorState('Failed to load deals from API. Please try again.', 'loadDeals');
         console.error(error);
     }
+}
+
+function updateDealStats(deals, total) {
+    const statDeals = document.getElementById('stat-deals');
+    const statSavings = document.getElementById('stat-savings');
+    if (statDeals) statDeals.textContent = total;
+    if (statSavings) {
+        const discounted = deals.filter((deal) => deal.discount > 0);
+        const avg = discounted.length
+            ? Math.round(discounted.reduce((sum, deal) => sum + deal.discount, 0) / discounted.length)
+            : 0;
+        statSavings.textContent = `${avg}%`;
+    }
+}
+
+function updateDealsHeading(hideOwned, total) {
+    const heading = document.getElementById('deals-heading');
+    if (!heading) return;
+    heading.textContent = hideOwned ? `Games You Do Not Own (${total})` : `Live Deals (${total})`;
 }
 
 async function loadDealsForYou() {
@@ -399,6 +430,21 @@ function updateFilters() {
         return true;
     });
 
+    const sort = document.getElementById('sort-select')?.value || 'discount';
+    filtered.sort((a, b) => {
+        switch (sort) {
+            case 'price-low':
+                return a.price - b.price;
+            case 'price-high':
+                return b.price - a.price;
+            case 'rating':
+                return b.score - a.score;
+            case 'discount':
+            default:
+                return b.discount - a.discount;
+        }
+    });
+
     renderDeals(filtered);
 }
 
@@ -414,6 +460,18 @@ function renderDeals(dealsArray) {
     dealsArray.forEach(deal => {
         const card = document.createElement('div');
         card.className = 'deal-card';
+        card.tabIndex = 0;
+        card.setAttribute('role', 'link');
+        card.setAttribute('aria-label', `View ${deal.title}`);
+        card.addEventListener('click', () => {
+            window.location.href = `game.html?id=${deal.id}`;
+        });
+        card.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                window.location.href = `game.html?id=${deal.id}`;
+            }
+        });
         
         const scoreColor = getScoreColorClass(deal.score);
         const savingsAmount = deal.original - deal.price;
@@ -423,11 +481,11 @@ function renderDeals(dealsArray) {
             <div class="deal-info">
                 <div class="meta-row">
                     <span>${deal.store} ${deal.isGSTAdded ? '(Inc. GST)' : ''}</span>
-                    <span class="score-badge">${deal.score}</span>
+                    ${deal.score > 0 ? `<span class="score-badge">${deal.score}</span>` : '<span class="score-badge muted">No score</span>'}
                 </div>
                 <div class="deal-title">${deal.title}</div>
                 <div class="deal-price-row">
-                    <span class="discount">-${deal.discount}%</span>
+                    ${deal.discount > 0 ? `<span class="discount">-${deal.discount}%</span>` : '<span class="discount muted">Deal</span>'}
                     <div style="text-align: right;">
                         <span style="text-decoration: line-through; color: var(--text-muted); font-size: 0.8rem; display: block;">₹${deal.original}</span>
                         <span class="price">₹${deal.price}</span>
@@ -445,7 +503,7 @@ function renderDeals(dealsArray) {
                     <span>Review Score</span>
                 </div>
                 <div class="overlay-savings">Save ₹${savingsAmount}</div>
-                <a href="game.html?id=${deal.id}" class="overlay-btn">View Deal</a>
+                <a href="game.html?id=${deal.id}" class="overlay-btn" onclick="event.stopPropagation()">View Details</a>
             </div>
         `;
         container.appendChild(card);

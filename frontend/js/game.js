@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 let priceChart = null;
+let currentGame = null;
 
 // Transform external image URLs to use local proxy (bypasses hotlink protection)
 function getProxiedImageUrl(originalUrl) {
@@ -216,19 +217,58 @@ async function loadGameDetails(gameID) {
         }
 
         document.getElementById('game-title').textContent = game.title;
+        document.title = `${game.title} - DropsAndGrinds`;
         document.getElementById('game-cover').src = getProxiedImageUrl(game.cover_url) || '';
         document.getElementById('game-cover').alt = `${game.title} cover`;
+        currentGame = game;
 
         document.getElementById('main-price').textContent = formatINR(game.price_inr);
         document.getElementById('original-price').textContent = formatINR(game.original_inr);
         const discountBadge = document.getElementById('discount-badge');
-        if (discountBadge) discountBadge.textContent = `-${game.discount_percent || 0}%`;
+        if (discountBadge) discountBadge.textContent = game.discount_percent > 0 ? `-${game.discount_percent}%` : 'Current price';
+        const savingsBadge = document.getElementById('savings-badge');
+        if (savingsBadge) {
+            const savings = Math.max(0, (game.original_inr || 0) - (game.price_inr || 0));
+            savingsBadge.textContent = savings > 0 ? `Save ${formatINR(savings)}` : 'Live price';
+        }
         document.getElementById('store-badge').textContent = game.platform || 'Store';
+        const desc = document.querySelector('.description');
+        if (desc) {
+            desc.textContent = `${game.title} is tracked on ${game.platform || 'this store'} with current price, historical low, India pricing, and review data from DropsAndGrinds.`;
+        }
+        const targetInput = document.getElementById('target-price-input');
+        if (targetInput && game.lowest_price_inr > 0) {
+            targetInput.value = game.lowest_price_inr;
+        }
+        initStoreLink(gameID, game.platform || 'steam');
 
         await loadIndiaArbitrage(gameID);
     } catch (error) {
         renderGameError(error.message);
     }
+}
+
+function initStoreLink(gameID, platform) {
+    const link = document.getElementById('store-link');
+    if (!link) return;
+    link.textContent = '';
+    link.innerHTML = `<i data-lucide="external-link"></i> Open in ${platform || 'Store'}`;
+    link.onclick = async (event) => {
+        event.preventDefault();
+        try {
+            const token = getAccessToken();
+            const headers = token ? { Authorization: `Bearer ${token}` } : {};
+            const response = await fetch(`/api/games/${gameID}/redirect?platform=${encodeURIComponent(platform || '')}`, { headers });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.error || 'Store URL unavailable');
+            }
+            window.location.href = payload.url;
+        } catch (error) {
+            alert(error.message || 'Store URL unavailable');
+        }
+    };
+    if (window.lucide) window.lucide.createIcons();
 }
 
 async function loadIndiaArbitrage(gameID) {
@@ -255,7 +295,7 @@ async function loadIndiaArbitrage(gameID) {
 
 async function loadBuyAdvice(gameID) {
     try {
-        const response = await fetch(`/api/games/${gameID}/buy-advice`);
+        const response = await fetch(`/api/games/${gameID}/buy-timing`);
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.error || 'Failed to load buy advice');
@@ -266,20 +306,18 @@ async function loadBuyAdvice(gameID) {
         const recommendation = (advice.recommendation || 'unknown').toUpperCase();
         verdict.textContent = `${recommendation}: ${advice.reason || 'No recommendation available.'}`;
 
+        const activeTitle = document.querySelector('.time-node.active h4');
         const activeCost = document.querySelector('.current-node-cost');
-        if (activeCost) {
-            activeCost.textContent = formatINR(advice.current_price_inr);
-        }
+        if (activeTitle) activeTitle.textContent = advice.active_sale ? advice.active_sale.name : 'Current price';
+        if (activeCost) activeCost.textContent = currentGame ? formatINR(currentGame.price_inr) : 'Live API';
 
+        const futureTitle = document.querySelector('.time-node.future h4');
         const futureNode = document.querySelector('.time-node.future .node-cost');
-        if (futureNode) {
-            futureNode.textContent = `Predicted: ${formatINR(advice.lowest_price_inr)}`;
-        }
+        if (futureTitle) futureTitle.textContent = advice.next_sale ? advice.next_sale.name : 'Next sale window';
+        if (futureNode) futureNode.textContent = advice.days_until_sale ? `Starts in ${advice.days_until_sale} days` : 'No scheduled sale';
 
         const confidence = document.querySelector('.time-node.future .confidence');
-        if (confidence) {
-            confidence.textContent = `${advice.confidence_percent || 0}% Confidence`;
-        }
+        if (confidence) confidence.textContent = 'Sale calendar signal';
     } catch (error) {
         const verdict = document.getElementById('timeline-verdict');
         verdict.textContent = `UNKNOWN: ${error.message}`;

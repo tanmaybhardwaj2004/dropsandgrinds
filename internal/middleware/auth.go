@@ -143,6 +143,47 @@ func RequireAuth(secret []byte, next http.Handler) http.Handler {
 	})
 }
 
+// OptionalAuth injects a user ID when a valid bearer token is present.
+func OptionalAuth(secret []byte, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authorization := strings.TrimSpace(r.Header.Get("Authorization"))
+		if authorization == "" || !strings.HasPrefix(strings.ToLower(authorization), "bearer ") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		tokenString := strings.TrimSpace(authorization[len("Bearer "):])
+		if tokenString == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		claims := jwt.MapClaims{}
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, errors.New("unexpected signing method")
+			}
+			return secret, nil
+		}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
+		if err != nil || !token.Valid {
+			next.ServeHTTP(w, r)
+			return
+		}
+		subject, ok := claims["sub"].(string)
+		if !ok || subject == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		userID, err := strconv.ParseInt(subject, 10, 64)
+		if err != nil || userID <= 0 {
+			next.ServeHTTP(w, r)
+			return
+		}
+		ctx := context.WithValue(r.Context(), authContextKey{}, userID)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
 // UserIDFromContext returns the authenticated user ID if present.
 func UserIDFromContext(ctx context.Context) (int64, bool) {
 	value, ok := ctx.Value(authContextKey{}).(int64)

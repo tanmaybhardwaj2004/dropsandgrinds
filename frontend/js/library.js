@@ -13,6 +13,7 @@ function checkAuthAndLoadLibrary() {
         return;
     }
     loadLibraryStats();
+    loadFlaggedDLCs();
 }
 
 function initImportForm() {
@@ -60,6 +61,7 @@ function initImportForm() {
             
             // Reload library stats
             loadLibraryStats();
+            loadFlaggedDLCs();
             
             // Reset form
             form.reset();
@@ -72,6 +74,47 @@ function initImportForm() {
             importBtn.textContent = 'Import Library';
         }
     });
+}
+
+async function loadFlaggedDLCs() {
+    try {
+        const token = getAccessToken();
+        const response = await fetch('/api/library/dlc', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to load DLCs');
+        }
+        renderFlaggedDLCs(data.dlcs || []);
+    } catch (error) {
+        console.error('Failed to load DLC recommendations:', error);
+    }
+}
+
+function renderFlaggedDLCs(dlcs) {
+    const host = document.getElementById('dlc-list');
+    const section = document.getElementById('dlc-section');
+    if (!host || !section) return;
+
+    if (dlcs.length === 0) {
+        section.style.display = 'none';
+        host.innerHTML = '';
+        return;
+    }
+
+    section.style.display = 'block';
+    host.innerHTML = dlcs.map(dlc => `
+        <div class="dlc-item">
+            <div>
+                <div class="dlc-title">${dlc.title}</div>
+                <div class="dlc-meta">${dlc.platform || 'Store'} · ₹${dlc.price_inr || 0}</div>
+            </div>
+            <a class="btn btn-secondary btn-sm" href="game.html?id=${dlc.id}">View</a>
+        </div>
+    `).join('');
 }
 
 async function loadLibraryStats() {

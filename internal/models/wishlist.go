@@ -1,12 +1,12 @@
 package models
 
 type WishlistCreateRequest struct {
-	GameID         int64 `json:"game_id"`
-	TargetPriceINR int   `json:"target_price_inr"`
+	GameID         int64 `json:"game_id" binding:"required"`
+	TargetPriceINR int   `json:"target_price_inr" binding:"required"`
 }
 
 type WishlistUpdateRequest struct {
-	TargetPriceINR int `json:"target_price_inr"`
+	TargetPriceINR int `json:"target_price_inr" binding:"required"`
 }
 
 type WishlistItem struct {

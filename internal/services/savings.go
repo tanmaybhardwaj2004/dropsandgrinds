@@ -124,12 +124,12 @@ func calculateEquivalentGames(totalSavings int) string {
 	case equivalent == 0:
 		return "You're on your way to your first free game!"
 	case equivalent == 1:
-		return "You saved enough for 1 free game! 🎮"
+		return "You saved enough for 1 free game."
 	case equivalent < 5:
-		return fmt.Sprintf("You saved enough for %d free games! 🎮", equivalent)
+		return fmt.Sprintf("You saved enough for %d free games.", equivalent)
 	case equivalent < 10:
-		return fmt.Sprintf("You saved enough for %d free games! That's impressive! 🎮🎮", equivalent)
+		return fmt.Sprintf("You saved enough for %d free games. That's impressive.", equivalent)
 	default:
-		return fmt.Sprintf("You saved enough for %d free games! You're a deal-hunting legend! 🏆", equivalent)
+		return fmt.Sprintf("You saved enough for %d free games. Excellent deal tracking.", equivalent)
 	}
 }

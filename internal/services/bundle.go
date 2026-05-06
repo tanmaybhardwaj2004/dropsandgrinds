@@ -139,21 +139,66 @@ func (s *BundleService) extractGamesFromPage(ctx context.Context, pageURL string
 	if err != nil {
 		return nil, err
 	}
-	re := regexp.MustCompile(`(?i)(?:data-title|title|alt)=["']([^"']{3,120})["']`)
 	seen := map[string]struct{}{}
 	var games []string
-	for _, match := range re.FindAllStringSubmatch(string(body), -1) {
-		title := cleanBundleTitle(match[1])
+	addTitle := func(raw string) {
+		title := cleanBundleTitle(raw)
 		if title == "" {
-			continue
+			return
 		}
-		if _, ok := seen[strings.ToLower(title)]; ok {
-			continue
+		key := strings.ToLower(title)
+		if _, ok := seen[key]; ok {
+			return
 		}
-		seen[strings.ToLower(title)] = struct{}{}
+		seen[key] = struct{}{}
 		games = append(games, title)
 	}
+	html := string(body)
+	for _, title := range extractJSONLDTitles(html) {
+		addTitle(title)
+	}
+	if len(games) == 0 {
+		for _, title := range extractBundleSelectorTitles(html) {
+			addTitle(title)
+		}
+	}
 	return games, nil
+}
+
+func extractJSONLDTitles(html string) []string {
+	scriptRe := regexp.MustCompile(`(?is)<script[^>]+type=["']application/ld\+json["'][^>]*>(.*?)</script>`)
+	nameRe := regexp.MustCompile(`(?i)"name"\s*:\s*"([^"]{3,120})"`)
+	var titles []string
+	for _, script := range scriptRe.FindAllStringSubmatch(html, -1) {
+		for _, match := range nameRe.FindAllStringSubmatch(script[1], -1) {
+			titles = append(titles, htmlUnescape(match[1]))
+		}
+	}
+	return titles
+}
+
+func extractBundleSelectorTitles(html string) []string {
+	patterns := []*regexp.Regexp{
+		regexp.MustCompile(`(?is)<[^>]+class=["'][^"']*(?:product-title|game-title|bundle-item-title|entity-title|product-name)[^"']*["'][^>]*>(.*?)</[^>]+>`),
+		regexp.MustCompile(`(?is)<[^>]+(?:data-title|data-game-name|aria-label)=["']([^"']{3,120})["'][^>]*>`),
+	}
+	var titles []string
+	for _, pattern := range patterns {
+		for _, match := range pattern.FindAllStringSubmatch(html, -1) {
+			titles = append(titles, htmlUnescape(stripTags(match[1])))
+		}
+	}
+	return titles
+}
+
+func stripTags(value string) string {
+	tagRe := regexp.MustCompile(`(?is)<[^>]+>`)
+	return tagRe.ReplaceAllString(value, " ")
+}
+
+func htmlUnescape(value string) string {
+	replacer := strings.NewReplacer("&amp;", "&", "&#39;", "'", "&quot;", `"`, "&nbsp;", " ")
+	return replacer.Replace(value)
 }
 
 func (s *BundleService) allowedByRobots(ctx context.Context, rawURL string) error {

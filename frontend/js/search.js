@@ -10,8 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (query) {
         document.getElementById('search-input').value = query;
-        performSearch();
     }
+    performSearch();
 });
 
 let currentPage = 0;
@@ -90,6 +90,22 @@ function initFilters() {
             }
         });
     }
+
+    const sortSelect = document.getElementById('sort-select');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', () => {
+            currentPage = 0;
+            performSearch();
+        });
+    }
+
+    const scoreSlider = document.getElementById('filter-min-score');
+    const scoreDisplay = document.getElementById('score-display');
+    if (scoreSlider && scoreDisplay) {
+        scoreSlider.addEventListener('input', () => {
+            scoreDisplay.textContent = `${scoreSlider.value}+`;
+        });
+    }
 }
 
 function clearFilters() {
@@ -103,6 +119,25 @@ function clearFilters() {
     if (maxScore) maxScore.value = '';
     const payment = document.getElementById('filter-payment');
     if (payment) payment.value = '';
+    currentPage = 0;
+    performSearch();
+}
+
+function quickSearch(label) {
+    const searchInput = document.getElementById('search-input');
+    const maxPrice = document.getElementById('filter-max-price');
+    const minDiscount = document.getElementById('filter-min-discount');
+
+    if (label === 'Under ₹500') {
+        if (searchInput) searchInput.value = '';
+        if (maxPrice) maxPrice.value = '500';
+    } else if (label === '90% off') {
+        if (searchInput) searchInput.value = '';
+        if (minDiscount) minDiscount.value = '90';
+    } else if (searchInput) {
+        searchInput.value = label;
+    }
+
     currentPage = 0;
     performSearch();
 }
@@ -172,7 +207,7 @@ async function performSearch() {
         }
 
         if (data.games && data.games.length > 0) {
-            renderResults(data.games);
+            renderResults(sortGames(data.games));
             updatePagination();
         } else {
             if (emptyState) emptyState.style.display = 'flex';
@@ -185,11 +220,30 @@ async function performSearch() {
     }
 }
 
+function sortGames(games) {
+    const sort = document.getElementById('sort-select')?.value || 'relevance';
+    return [...games].sort((a, b) => {
+        switch (sort) {
+            case 'price-low':
+                return (a.price_inr || 0) - (b.price_inr || 0);
+            case 'price-high':
+                return (b.price_inr || 0) - (a.price_inr || 0);
+            case 'discount':
+                return (b.discount_percent || 0) - (a.discount_percent || 0);
+            case 'rating':
+                return (b.review_score || 0) - (a.review_score || 0);
+            default:
+                return 0;
+        }
+    });
+}
+
 function renderResults(games) {
     const resultsGrid = document.getElementById('results-grid');
     if (!resultsGrid) return;
 
     resultsGrid.innerHTML = games.map(game => createGameCard(game)).join('');
+    if (window.lucide) window.lucide.createIcons();
 }
 
 function createGameCard(game) {

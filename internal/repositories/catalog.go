@@ -772,8 +772,11 @@ func (r *CatalogRepository) GetIndiaArbitrage(ctx context.Context, gameID int64)
 	}
 
 	steamIndiaPrice := currentPrice
-	rate := r.usdToINR(ctx)
-	steamGlobalINR := r.steamGlobalINR(ctx, gameID, currentPrice)
+	rate := r.USDToINR(ctx)
+	steamGlobalINR, globalAvailable := r.steamGlobalINR(ctx, gameID)
+	if !globalAvailable {
+		steamGlobalINR = r.cheapSharkINR(ctx, gameID, currentPrice)
+	}
 	steamGlobalPrice := int(math.Round(float64(steamGlobalINR) / rate))
 	gstRate := 0.18
 	gstAmount := int(float64(steamGlobalINR) * gstRate)
@@ -794,6 +797,9 @@ func (r *CatalogRepository) GetIndiaArbitrage(ctx context.Context, gameID int64)
 		savings := steamIndiaPrice - totalWithGST
 		verdict = fmt.Sprintf("Buy from Global - saves ₹%d", savings)
 	}
+	if !globalAvailable {
+		verdict += " (global price unavailable)"
+	}
 
 	return models.IndiaArbitrage{
 		GameID:           gameID,
@@ -807,7 +813,7 @@ func (r *CatalogRepository) GetIndiaArbitrage(ctx context.Context, gameID int64)
 	}, nil
 }
 
-func (r *CatalogRepository) usdToINR(ctx context.Context) float64 {
+func (r *CatalogRepository) USDToINR(ctx context.Context) float64 {
 	const fallback = 83.0
 	if r.redis != nil {
 		if cached, err := r.redis.Get(ctx, "fx:usd_inr").Float64(); err == nil && cached > 0 {
@@ -842,12 +848,27 @@ func (r *CatalogRepository) usdToINR(ctx context.Context) float64 {
 	return rate
 }
 
-func (r *CatalogRepository) steamGlobalINR(ctx context.Context, gameID int64, fallback int) int {
+func (r *CatalogRepository) steamGlobalINR(ctx context.Context, gameID int64) (int, bool) {
 	var price int
 	err := r.db.QueryRow(ctx, `
 		SELECT price_inr
 		FROM prices
-		WHERE game_id = $1 AND LOWER(store) LIKE '%steam%'
+		WHERE game_id = $1 AND LOWER(store) = 'steam' AND LOWER(region) = 'global'
+		ORDER BY fetched_at DESC
+		LIMIT 1
+	`, gameID).Scan(&price)
+	if err != nil || price <= 0 {
+		return 0, false
+	}
+	return price, true
+}
+
+func (r *CatalogRepository) cheapSharkINR(ctx context.Context, gameID int64, fallback int) int {
+	var price int
+	err := r.db.QueryRow(ctx, `
+		SELECT price_inr
+		FROM prices
+		WHERE game_id = $1 AND LOWER(store) LIKE 'cheapshark:%'
 		ORDER BY fetched_at DESC
 		LIMIT 1
 	`, gameID).Scan(&price)
