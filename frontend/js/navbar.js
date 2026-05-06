@@ -1,91 +1,41 @@
 // Shared Navbar Component
 // Usage: Include this script in your HTML and call initNavbar() in DOMContentLoaded
 
-const navbarTemplate = `
-<nav class="nav">
-    <div class="container flex items-center justify-between" style="height: 64px;">
-        <a href="index.html" class="flex items-center gap-2" style="text-decoration: none;">
-            <div style="width: 36px; height: 36px; background: var(--gradient-primary); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">🎮</div>
-            <span style="font-family: var(--font-display); font-size: var(--text-xl); font-weight: 700; color: var(--color-text-primary);">DropsAndGrinds</span>
-        </a>
-        
-        <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle menu">
-            <span></span>
-            <span></span>
-            <span></span>
-        </button>
-        
-        <div class="flex items-center gap-1 nav-links" id="nav-links">
-            <a href="index.html" class="nav-link" data-page="index">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                Deals
-            </a>
-            <a href="search.html" class="nav-link" data-page="search">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                Search
-            </a>
-            <a href="library.html" class="nav-link" data-page="library">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-                Library
-            </a>
-            <a href="wishlist.html" class="nav-link" data-page="wishlist">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                Wishlist
-            </a>
-            <a href="savings.html" class="nav-link" data-page="savings">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                Savings
-            </a>
-            <a href="bundle.html" class="nav-link" data-page="bundle">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-                Bundle
-            </a>
-            <a href="buy-timing.html" class="nav-link" data-page="buy-timing">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                Timing
-            </a>
-            <a href="about.html" class="nav-link" data-page="about">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                About
-            </a>
-        </div>
-        
-        <div class="flex items-center gap-3">
-            <button id="theme-toggle" class="btn btn-ghost btn-sm" title="Toggle theme">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="theme-icon-moon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="theme-icon-sun" style="display: none;"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-            </button>
-            <button class="btn btn-primary btn-sm" id="auth-btn" onclick="window.location.href='login.html'">Sign In</button>
-        </div>
-    </div>
-</nav>
-`;
-
-function initNavbar() {
-    // Find existing nav and replace with template, or insert at body start
-    const existingNav = document.querySelector('.nav');
-    if (existingNav) {
-        existingNav.outerHTML = navbarTemplate;
-    } else {
-        // Insert as first child of body
-        document.body.insertAdjacentHTML('afterbegin', navbarTemplate);
-    }
-    
-    // Set active page based on current URL
+async function initNavbar() {
     const currentPage = window.location.pathname.split('/').pop().replace('.html', '') || 'index';
-    const activeLink = document.querySelector(`[data-page="${currentPage}"]`);
-    if (activeLink) {
-        activeLink.classList.add('active');
+    const existingNav = document.querySelector('.nav');
+    
+    if (!existingNav) return;
+    
+    // Determine which navbar to use
+    let navbarFile = 'includes/navbar.html';
+    if (currentPage === 'search') {
+        navbarFile = 'includes/navbar-search.html';
     }
     
-    // Initialize auth button
-    initNavbarAuth();
-    
-    // Initialize theme toggle
-    initNavbarTheme();
-    
-    // Initialize mobile menu toggle
-    initMobileMenuToggle();
+    try {
+        const response = await fetch(navbarFile);
+        const navbarHTML = await response.text();
+        existingNav.outerHTML = navbarHTML;
+        
+        // Set active page based on current URL
+        const activeLink = document.querySelector(`[data-page="${currentPage}"]`);
+        if (activeLink) {
+            activeLink.classList.add('active');
+        }
+        
+        // Initialize auth button
+        initNavbarAuth();
+        
+        // Initialize theme toggle
+        initNavbarTheme();
+        
+        // Initialize mobile menu toggle
+        initMobileMenuToggle();
+        
+    } catch (error) {
+        console.error('Failed to load navbar:', error);
+    }
 }
 
 function initMobileMenuToggle() {
@@ -140,17 +90,9 @@ function initNavbarTheme() {
     const themeToggle = document.getElementById('theme-toggle');
     if (!themeToggle) return;
     
-    const moonIcon = themeToggle.querySelector('.theme-icon-moon');
-    const sunIcon = themeToggle.querySelector('.theme-icon-sun');
-    
     // Check for saved theme preference
-    const savedTheme = localStorage.getItem('theme') || 'dark';
+    const savedTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
-    
-    if (savedTheme === 'light') {
-        if (moonIcon) moonIcon.style.display = 'none';
-        if (sunIcon) sunIcon.style.display = 'block';
-    }
     
     themeToggle.addEventListener('click', () => {
         const currentTheme = document.documentElement.getAttribute('data-theme');
@@ -158,8 +100,5 @@ function initNavbarTheme() {
         
         document.documentElement.setAttribute('data-theme', newTheme);
         localStorage.setItem('theme', newTheme);
-        
-        if (moonIcon) moonIcon.style.display = newTheme === 'dark' ? 'block' : 'none';
-        if (sunIcon) sunIcon.style.display = newTheme === 'light' ? 'block' : 'none';
     });
 }

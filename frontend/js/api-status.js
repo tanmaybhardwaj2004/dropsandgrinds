@@ -1,6 +1,5 @@
-document.addEventListener('DOMContentLoaded', () => {
-    initAuthButton();
-    initThemeToggle();
+document.addEventListener('DOMContentLoaded', async () => {
+    await initNavbar();
     checkAllStatus();
 });
 
@@ -153,34 +152,4 @@ function createAPICard(api, status) {
     `;
     
     grid.appendChild(card);
-}
-
-function initThemeToggle() {
-    const toggle = document.getElementById('theme-toggle');
-    if (!toggle) return;
-    
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    updateThemeIcons(savedTheme);
-    
-    toggle.addEventListener('click', () => {
-        const currentTheme = document.documentElement.getAttribute('data-theme');
-        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-        document.documentElement.setAttribute('data-theme', newTheme);
-        localStorage.setItem('theme', newTheme);
-        updateThemeIcons(newTheme);
-    });
-}
-
-function updateThemeIcons(theme) {
-    const moonIcon = document.querySelector('.theme-icon-moon');
-    const sunIcon = document.querySelector('.theme-icon-sun');
-    
-    if (theme === 'dark') {
-        moonIcon.style.display = 'none';
-        sunIcon.style.display = 'block';
-    } else {
-        moonIcon.style.display = 'block';
-        sunIcon.style.display = 'none';
-    }
 }
