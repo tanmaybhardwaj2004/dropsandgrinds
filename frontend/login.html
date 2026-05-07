@@ -94,8 +94,11 @@
         }
         
         function socialLogin(provider) {
-            // Placeholder for social login
-            alert(`${provider} login coming soon!`);
+            if (provider === 'google') {
+                window.location.href = '/auth/google';
+            } else if (provider === 'steam') {
+                window.location.href = '/auth/steam';
+            }
         }
         
         document.addEventListener('DOMContentLoaded', async () => {
