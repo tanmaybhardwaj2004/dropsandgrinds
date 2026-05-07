@@ -106,6 +106,28 @@
     font-size: 0.85rem;
 }
 
+.wishlist-game-link {
+    display: inline-grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    color: var(--color-text-primary);
+    text-decoration: none;
+    min-width: 0;
+}
+
+.wishlist-game-link img {
+    width: 44px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-secondary);
+}
+
+.wishlist-game-link span {
+    overflow-wrap: anywhere;
+}
+
 .btn-remove {
     background-color: #da3633;
     color: #fff;

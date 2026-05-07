@@ -23,22 +23,25 @@ type Config struct {
 
 // Init initializes the file-based logger
 func Init(cfg Config) error {
-	// Create logs directory if it doesn't exist
-	if err := os.MkdirAll(cfg.LogDir, 0755); err != nil {
-		return err
+	var writer io.Writer = os.Stdout
+	if cfg.LogDir != "" {
+		// Create logs directory if it doesn't exist
+		if err := os.MkdirAll(cfg.LogDir, 0755); err != nil {
+			return err
+		}
+
+		// Create log file with timestamp
+		timestamp := time.Now().Format("2006-01-02_15-04-05")
+		logFile := filepath.Join(cfg.LogDir, cfg.ServiceName+"_"+timestamp+".log")
+
+		file, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			return err
+		}
+
+		// Multi-writer: both file and stdout
+		writer = io.MultiWriter(file, os.Stdout)
 	}
-
-	// Create log file with timestamp
-	timestamp := time.Now().Format("2006-01-02_15-04-05")
-	logFile := filepath.Join(cfg.LogDir, cfg.ServiceName+"_"+timestamp+".log")
-
-	file, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-		return err
-	}
-
-	// Multi-writer: both file and stdout
-	multiWriter := io.MultiWriter(file, os.Stdout)
 
 	// Create handler based on format
 	var handler slog.Handler
@@ -47,9 +50,9 @@ func Init(cfg Config) error {
 	}
 
 	if cfg.Format == "json" {
-		handler = slog.NewJSONHandler(multiWriter, opts)
+		handler = slog.NewJSONHandler(writer, opts)
 	} else {
-		handler = slog.NewTextHandler(multiWriter, opts)
+		handler = slog.NewTextHandler(writer, opts)
 	}
 
 	// Add service name to all logs

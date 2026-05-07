@@ -20,7 +20,7 @@ func (f *fakeCatalogStore) ListGames(ctx context.Context, query, platform string
 	return f.listGamesFunc(ctx, query, platform, limit, offset, excludeOwned, userID)
 }
 
-func (f *fakeCatalogStore) SearchGames(ctx context.Context, query string, platform string, minPrice, maxPrice float64, minDiscount, maxDiscount int, minReviewScore, maxReviewScore float64, limit, offset int) ([]models.Game, int, error) {
+func (f *fakeCatalogStore) SearchGames(ctx context.Context, query string, platform string, minPrice, maxPrice float64, minDiscount, maxDiscount int, minReviewScore, maxReviewScore float64, paymentMethod string, limit, offset int) ([]models.Game, int, error) {
 	if f.searchGamesFunc == nil {
 		return nil, 0, nil
 	}

@@ -17,8 +17,8 @@ func TestNewHTTPHandler_HealthRoute(t *testing.T) {
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 
-	if rr.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", rr.Code)
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503 without DB/Redis, got %d", rr.Code)
 	}
 	if rr.Header().Get("X-Request-Id") == "" {
 		t.Fatal("expected X-Request-Id header to be set")

@@ -8,17 +8,20 @@ document.addEventListener('DOMContentLoaded', () => {
 function getProxiedImageUrl(originalUrl) {
     if (!originalUrl) return '';
     
-    if (originalUrl.includes('shared.cloudflare.steamstatic.com')) {
-        return originalUrl.replace('https://shared.cloudflare.steamstatic.com/', '/img/steam/');
+    let nextUrl = originalUrl.replace('/header.jpg', '/library_600x900.jpg').replace('/capsule_231x87.jpg', '/library_600x900.jpg');
+    if (nextUrl.includes('shared.cloudflare.steamstatic.com') || nextUrl.includes('shared.fastly.steamstatic.com')) {
+        return nextUrl
+            .replace('https://shared.cloudflare.steamstatic.com/', '/img/steam/')
+            .replace('https://shared.fastly.steamstatic.com/', '/img/steam/');
     }
-    if (originalUrl.includes('images.gog-statics.com')) {
-        return originalUrl.replace('https://images.gog-statics.com/', '/img/gog/');
+    if (nextUrl.includes('images.gog-statics.com')) {
+        return nextUrl.replace('https://images.gog-statics.com/', '/img/gog/');
     }
-    if (originalUrl.includes('cdn2.unrealengine.com')) {
-        return originalUrl.replace('https://cdn2.unrealengine.com/', '/img/epic/');
+    if (nextUrl.includes('cdn2.unrealengine.com')) {
+        return nextUrl.replace('https://cdn2.unrealengine.com/', '/img/epic/');
     }
     
-    return originalUrl;
+    return nextUrl;
 }
 
 function checkAuthAndLoadWishlist() {
@@ -62,8 +65,8 @@ async function loadWishlist() {
 
         if (data.items && data.items.length > 0) {
             if (container) {
-                container.style.display = 'grid';
-                container.innerHTML = data.items.map(item => renderWishlistItem(item)).join('');
+                container.style.display = 'block';
+                container.innerHTML = renderWishlistTable(data.items);
             }
         } else {
             if (emptyState) emptyState.style.display = 'block';
@@ -76,44 +79,52 @@ async function loadWishlist() {
     }
 }
 
-function renderWishlistItem(item) {
-    const alertClass = item.triggered ? 'triggered' : 'waiting';
-    const alertText = item.triggered ? 'Price Alert Triggered!' : 'Waiting for price drop';
-
+function renderWishlistTable(items) {
     return `
-        <div class="wishlist-card" data-id="${item.id}">
-            <img src="${getProxiedImageUrl(item.cover_url)}" class="wishlist-cover" alt="${item.title} cover" loading="lazy" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22%3ENo Image%3C/text%3E%3C/svg%3E'">
-            <div class="wishlist-info">
-                <div class="wishlist-title">${item.title}</div>
-                <div class="wishlist-platform">${item.platform}</div>
-                <div class="alert-status ${alertClass}">${alertText}</div>
-                <div class="wishlist-price-row">
-                    <div>
-                        <div class="current-price">₹${item.current_price_inr}</div>
-                        <div class="target-price">Target: ₹${item.target_price_inr}</div>
-                    </div>
-                </div>
-                <div class="threshold-input-group">
-                    <input type="number" 
-                           class="threshold-input" 
-                           placeholder="Update target price" 
-                           min="0" 
-                           value="${item.target_price_inr}"
-                           onchange="updateThreshold(${item.id}, this.value)">
-                </div>
-                <div class="wishlist-actions">
-                    <a href="game.html?id=${item.game_id}" class="btn btn-primary">View Deal</a>
-                    <button class="btn btn-remove" onclick="removeFromWishlist(${item.id})">Remove</button>
-                </div>
-            </div>
+        <div class="card" style="overflow:auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Game</th>
+                        <th>Platform</th>
+                        <th>Current</th>
+                        <th>Target</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>${items.map(renderWishlistRow).join('')}</tbody>
+            </table>
         </div>
+    `;
+}
+
+function renderWishlistRow(item) {
+    const alertText = item.triggered ? 'Triggered' : 'Watching';
+    return `
+        <tr data-id="${item.id}">
+            <td>
+                <a href="game.html?id=${item.game_id}" class="wishlist-game-link">
+                    <img src="${getProxiedImageUrl(item.cover_url) || '/images/game-placeholder.svg'}" alt="${item.title} cover" onerror="this.src='/images/game-placeholder.svg'">
+                    <span>${item.title}</span>
+                </a>
+            </td>
+            <td>${item.platform}</td>
+            <td>₹${item.current_price_inr}</td>
+            <td><input type="number" class="threshold-input" min="1" value="${item.target_price_inr}" onchange="updateThreshold(${item.id}, this.value)"></td>
+            <td><span class="status-pill ${item.triggered ? 'success' : 'neutral'}">${alertText}</span></td>
+            <td>
+                <a href="game.html?id=${item.game_id}" class="btn btn-secondary">View</a>
+                <button class="btn btn-remove" onclick="removeFromWishlist(${item.id})">Remove</button>
+            </td>
+        </tr>
     `;
 }
 
 async function updateThreshold(wishlistId, newThreshold) {
     try {
         const token = getAccessToken();
-        const response = await fetch(`/api/wishlist/${wishlistId}`, {
+        const response = await fetch(`/api/wishlist/${wishlistId}/threshold`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',

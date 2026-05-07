@@ -11,7 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/getsentry/sentry-go"
 	"github.com/joho/godotenv"
 
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/config"
@@ -33,29 +32,6 @@ import (
 func main() {
 	_ = godotenv.Load()
 	cfg := config.LoadConfig()
-
-	// Initialize Sentry
-	err := sentry.Init(sentry.ClientOptions{
-		Dsn: "https://ca3b71cc206fb5a094dca3953d3052bf@o4511301731811328.ingest.de.sentry.io/4511301742821456",
-		// Enable logs to be sent to Sentry
-		EnableLogs: true,
-		// Set TracesSampleRate to 1.0 to capture 100%
-		// of transactions for tracing.
-		// We recommend adjusting this value in production,
-		TracesSampleRate: 1.0,
-	})
-	if err != nil {
-		log.Fatalf("sentry.Init: %s", err)
-	}
-	defer sentry.Flush(2 * time.Second)
-
-	sentry.CaptureMessage("It works!")
-
-	// Emit metrics
-	meter := sentry.NewMeter(context.Background())
-	meter.Count("checkout.failed", 1)
-	meter.Gauge("queue.depth", 42)
-	meter.Distribution("cart.amount_usd", 187.5)
 
 	// Initialize file-based logger
 	logFormat := "text"
@@ -83,7 +59,9 @@ func main() {
 	// Set auth logger
 	middleware.SetAuthLogger(logger.Logger)
 
-	// Sentry is initialized above
+	// Initialize Sentry
+	config.InitSentry(cfg.SentryDSN)
+	defer config.FlushSentry()
 
 	logger.LogComponentStartup("database", map[string]string{"url": cfg.DatabaseURL})
 	conn, err := config.ConnectDB(cfg.DatabaseURL)
@@ -97,6 +75,12 @@ func main() {
 	}()
 	handlers.SetDBPool(conn)
 	logger.LogInfo("database connected successfully", nil)
+
+	if err := config.RunMigrations(context.Background(), conn, "migrations"); err != nil {
+		logger.LogError("database migrations", err, nil)
+		log.Fatal("Failed to run database migrations:", err)
+	}
+	logger.LogInfo("database migrations applied", nil)
 
 	// Connect to read replica if configured
 	if cfg.DatabaseReadReplicaURL != "" {
@@ -139,11 +123,12 @@ func main() {
 	handlers.SetDealsService(dealsService)
 
 	reviewRepo := repositories.NewReviewRepository(conn)
-	reviewService := services.NewReviewService(reviewRepo, "", "") // API keys from env in production
+	reviewService := services.NewReviewService(reviewRepo, cfg.SteamAPIKey, cfg.GameSpotAPIKey)
 	handlers.SetReviewService(reviewService)
 	wishlistRepo := repositories.NewWishlistRepository(conn)
 	wishlistService := services.NewWishlistService(wishlistRepo)
 	handlers.SetWishlistService(wishlistService)
+	alertService := services.NewAlertService(wishlistRepo, catalogRepo, logger.Logger)
 
 	authService, err := services.NewAuthService(conn, services.AuthServiceConfig{
 		JWTSecret:             cfg.JWTSecret,
@@ -185,29 +170,6 @@ func main() {
 	buyTimingService := services.NewBuyTimingService(salesCalendarRepo, logger.Logger)
 	handlers.SetBuyTimingService(buyTimingService)
 
-	// Initialize enhanced catalog repository for multi-platform game data
-	enhancedCatalogRepo := repositories.NewEnhancedCatalogRepository(conn, redisClient)
-	handlers.SetEnhancedCatalogRepository(enhancedCatalogRepo)
-
-	// Initialize deal alerts repository for price drop notifications
-	dealAlertRepo := repositories.NewDealAlertRepository(conn)
-
-	// Initialize user repository for email fetching
-	userRepo := repositories.NewUserRepository(conn)
-
-	// Initialize Indian payment offers repository
-	indianPaymentRepo := repositories.NewIndianPaymentRepository(conn)
-	handlers.SetIndianPaymentRepository(indianPaymentRepo)
-
-	// Initialize price notification service
-	emailService := services.NewEmailService(logger.Logger)
-	priceNotificationService := services.NewPriceNotificationService(dealAlertRepo, enhancedCatalogRepo, wishlistRepo, userRepo, emailService, logger.Logger)
-	handlers.SetPriceNotificationService(priceNotificationService)
-
-	// Initialize arbitrage service
-	arbitrageService := services.NewArbitrageService(catalogRepo, logger.Logger, 83.0, 0.18) // USD to INR exchange rate, 18% GST
-	handlers.SetArbitrageService(arbitrageService)
-
 	// Initialize OAuth service (optional)
 	var oauthService *services.OAuthService
 	if cfg.GoogleClientID != "" && cfg.GoogleClientSecret != "" {
@@ -245,9 +207,11 @@ func main() {
 		Run:      scheduler.ReviewRefreshJob(reviewService, logger.Logger),
 	})
 	sched.AddJob(scheduler.Job{
-		Name:     "price-drop-notification",
-		Interval: 30 * time.Minute,
-		Run:      scheduler.PriceDropNotificationJob(priceNotificationService, logger.Logger),
+		Name:     "price-alerts",
+		Interval: 15 * time.Minute,
+		Run: func(ctx context.Context) error {
+			return alertService.CheckAndTriggerAlerts(ctx)
+		},
 	})
 
 	// Start Meilisearch sync if configured

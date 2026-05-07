@@ -7,22 +7,22 @@ import (
 	"testing"
 )
 
-func TestHealthHandler_ReturnsOK(t *testing.T) {
+func TestHealthHandler_WithoutDependenciesReturnsUnavailable(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rr := httptest.NewRecorder()
 
 	HealthHandler(rr, req)
 
-	if rr.Code != http.StatusOK {
-		t.Fatalf("expected status 200, got %d", rr.Code)
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected status 503, got %d", rr.Code)
 	}
 
 	var payload map[string]string
 	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("failed to parse response json: %v", err)
 	}
-	if payload["status"] != "ok" {
-		t.Fatalf("expected status field 'ok', got %q", payload["status"])
+	if payload["status"] != "degraded" {
+		t.Fatalf("expected status field 'degraded', got %q", payload["status"])
 	}
 }
 

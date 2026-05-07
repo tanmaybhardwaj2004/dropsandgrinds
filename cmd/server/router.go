@@ -3,7 +3,6 @@ package main
 import (
 	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/redis/go-redis/v9"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
@@ -16,8 +15,6 @@ func newHTTPHandler(logger *slog.Logger, cfg config.Config, redisClient *redis.C
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", handlers.HealthHandler)
 	mux.HandleFunc("/health/deps", handlers.HealthDepsHandler)
-	mux.HandleFunc("/health/stores", handlers.AllStoresHealthHandler)
-	mux.HandleFunc("/health/stores/", handlers.StoreHealthHandler)
 	mux.HandleFunc("/metrics", handlers.MetricsHandler)
 
 	// Auth Routes
@@ -31,31 +28,26 @@ func newHTTPHandler(logger *slog.Logger, cfg config.Config, redisClient *redis.C
 	mux.HandleFunc("/auth/steam/callback", handlers.SteamCallbackHandler)
 
 	// Catalog and profile routes
-	mux.HandleFunc("/api/games", handlers.GamesListHandler)
+	mux.Handle("/api/games", middleware.OptionalAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.GamesListHandler)))
 	mux.HandleFunc("/api/games/search", handlers.SearchGamesHandler)
-	mux.HandleFunc("/api/games/detail/", handlers.GameDetailHandler)
-	mux.HandleFunc("/api/games/redirect/", handlers.GameRedirectHandler)
-	mux.HandleFunc("/api/games/reviews/", handlers.ReviewHandler)
+	mux.Handle("/api/games/", middleware.OptionalAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.GameSubrouter)))
 	mux.HandleFunc("/api/deals", handlers.DealsListHandler)
-	mux.HandleFunc("/api/deals/for-you", handlers.DealsForYouHandler)
-	mux.HandleFunc("/api/prices/history/", handlers.PriceHistoryHandler)
-	mux.HandleFunc("/api/games/arbitrage/", handlers.ArbitrageHandler)
+	mux.Handle("/api/deals/for-you", middleware.OptionalAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.DealsForYouHandler)))
+	mux.HandleFunc("/api/prices/", handlers.PriceSubrouter)
 	mux.Handle("/api/wishlist", middleware.RequireAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.WishlistCollectionHandler)))
 	mux.Handle("/api/wishlist/", middleware.RequireAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.WishlistItemHandler)))
 	mux.Handle("/api/me", middleware.RequireAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.MeHandler)))
+	mux.Handle("/api/me/consent", middleware.RequireAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.ConsentHandler)))
 	mux.Handle("/api/library", middleware.RequireAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.LibraryListHandler)))
+	mux.Handle("/api/library/dlc", middleware.RequireAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.LibraryDLCHandler)))
 	mux.Handle("/api/library/import", middleware.RequireAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.LibraryImportHandler)))
 	mux.Handle("/api/savings", middleware.RequireAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.SavingsGetHandler)))
 	mux.Handle("/api/savings/purchase", middleware.RequireAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.SavingsLogHandler)))
 	mux.Handle("/api/savings/history", middleware.RequireAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.SavingsHistoryHandler)))
 	mux.HandleFunc("/api/bundles/analyze", handlers.BundleAnalyzeHandler)
-	mux.HandleFunc("/api/games/buy-timing/", handlers.BuyTimingHandler)
 	mux.HandleFunc("/api/sales/active", handlers.ActiveSalesHandler)
 	mux.HandleFunc("/api/sales/calendar", handlers.SalesCalendarHandler)
 	mux.HandleFunc("/api/analytics/events", handlers.AnalyticsEventsHandler)
-	mux.HandleFunc("/api/indian-offers", handlers.IndianOffersHandler)
-	mux.Handle("/api/deal-alerts", middleware.RequireAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.DealAlertsCollectionHandler)))
-	mux.Handle("/api/deal-alerts/", middleware.RequireAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.DealAlertItemHandler)))
 
 	// Swagger UI
 	mux.Handle("/swagger/", httpSwagger.Handler(
@@ -63,11 +55,10 @@ func newHTTPHandler(logger *slog.Logger, cfg config.Config, redisClient *redis.C
 	))
 
 	var handler http.Handler = mux
-	if redisClient != nil {
-		handler = middleware.RateLimit(redisClient, 60, time.Minute)(handler)
-	}
 	handler = middleware.Metrics(handler)
 	handler = middleware.Logging(logger, handler)
 	handler = middleware.Sentry(handler)
+	handler = middleware.SanitizeInput(handler)
+	handler = middleware.CORS(handler)
 	return middleware.RequestID(handler)
 }

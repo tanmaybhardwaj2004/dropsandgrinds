@@ -190,3 +190,46 @@ func (r *WishlistRepository) DeleteWishlistItem(ctx context.Context, userID, wis
 	}
 	return result.RowsAffected() > 0, nil
 }
+
+type AlertCandidate struct {
+	UserID          int64
+	UserEmail       string
+	GameID          int64
+	GameTitle       string
+	TargetPriceINR  int
+	CurrentPriceINR int
+	IsHistoricalLow bool
+}
+
+func (r *WishlistRepository) ListTriggeredAlertCandidates(ctx context.Context) ([]AlertCandidate, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT w.user_id, u.email, w.game_id, g.title, w.target_price_inr,
+		       COALESCE(p.price_inr, 0), COALESCE(p.is_historical_low, FALSE)
+		FROM wishlists w
+		JOIN users u ON u.id = w.user_id
+		JOIN games g ON g.id = w.game_id
+		LEFT JOIN LATERAL (
+			SELECT price_inr, is_historical_low
+			FROM prices p
+			WHERE p.game_id = w.game_id
+			ORDER BY fetched_at DESC
+			LIMIT 1
+		) p ON TRUE
+		WHERE u.consent_alerts = TRUE
+		  AND COALESCE(p.price_inr, 0) > 0
+		  AND (p.price_inr <= w.target_price_inr OR p.is_historical_low = TRUE)
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []AlertCandidate
+	for rows.Next() {
+		var c AlertCandidate
+		if err := rows.Scan(&c.UserID, &c.UserEmail, &c.GameID, &c.GameTitle, &c.TargetPriceINR, &c.CurrentPriceINR, &c.IsHistoricalLow); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}

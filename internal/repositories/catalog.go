@@ -4,12 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
+	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/models"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/monitoring"
+	"github.com/tanmaybhardwaj2004/dropsandgrinds/pkg/cheapshark"
 )
 
 const (
@@ -25,9 +31,9 @@ func NewCatalogRepository(db *pgxpool.Pool, redis *redis.Client) *CatalogReposit
 	return &CatalogRepository{db: db, redis: redis}
 }
 
-func (r *CatalogRepository) SearchGames(ctx context.Context, query string, platform string, minPrice, maxPrice float64, minDiscount, maxDiscount int, minReviewScore, maxReviewScore float64, limit, offset int) ([]models.Game, int, error) {
+func (r *CatalogRepository) SearchGames(ctx context.Context, query string, platform string, minPrice, maxPrice float64, minDiscount, maxDiscount int, minReviewScore, maxReviewScore float64, paymentMethod string, limit, offset int) ([]models.Game, int, error) {
 	// Try cache first if Redis is available
-	cacheKey := fmt.Sprintf("search:%s:%s:%f:%f:%d:%d:%f:%f:%d:%d", query, platform, minPrice, maxPrice, minDiscount, maxDiscount, minReviewScore, maxReviewScore, limit, offset)
+	cacheKey := fmt.Sprintf("search:%s:%s:%f:%f:%d:%d:%f:%f:%s:%d:%d", query, platform, minPrice, maxPrice, minDiscount, maxDiscount, minReviewScore, maxReviewScore, paymentMethod, limit, offset)
 	if r.redis != nil {
 		cached, err := r.redis.Get(ctx, cacheKey).Result()
 		if err == nil {
@@ -43,15 +49,25 @@ func (r *CatalogRepository) SearchGames(ctx context.Context, query string, platf
 		monitoring.RecordCacheMiss("catalog_search")
 	}
 
-	// Simplified WHERE clause for basic search
+	// Build WHERE clause with filters
 	whereClause := "WHERE 1=1"
 	args := []interface{}{}
 	argIndex := 1
 
+	query = strings.TrimSpace(query)
 	if query != "" {
-		whereClause += fmt.Sprintf(" AND LOWER(g.title) LIKE LOWER($%d)", argIndex)
-		args = append(args, "%"+query+"%")
-		argIndex++
+		whereClause += fmt.Sprintf(" AND (LOWER(g.title) LIKE LOWER($%d) OR similarity(LOWER(g.title), LOWER($%d)) > 0.18", argIndex, argIndex+1)
+		args = append(args, "%"+query+"%", query)
+		argIndex += 2
+		for _, token := range strings.Fields(query) {
+			if len(token) < 3 {
+				continue
+			}
+			whereClause += fmt.Sprintf(" OR LOWER(g.title) LIKE LOWER($%d)", argIndex)
+			args = append(args, "%"+token+"%")
+			argIndex++
+		}
+		whereClause += ")"
 	}
 
 	if platform != "" {
@@ -60,10 +76,77 @@ func (r *CatalogRepository) SearchGames(ctx context.Context, query string, platf
 		argIndex++
 	}
 
-	// Simplified count query without complex joins
+	if minPrice > 0 {
+		whereClause += fmt.Sprintf(" AND COALESCE(p.price_inr, 0) >= $%d", argIndex)
+		args = append(args, minPrice)
+		argIndex++
+	}
+
+	if maxPrice > 0 {
+		whereClause += fmt.Sprintf(" AND COALESCE(p.price_inr, 0) <= $%d", argIndex)
+		args = append(args, maxPrice)
+		argIndex++
+	}
+
+	if minDiscount > 0 {
+		whereClause += fmt.Sprintf(" AND COALESCE(d.discount_percent, 0) >= $%d", argIndex)
+		args = append(args, minDiscount)
+		argIndex++
+	}
+
+	if maxDiscount > 0 {
+		whereClause += fmt.Sprintf(" AND COALESCE(d.discount_percent, 0) <= $%d", argIndex)
+		args = append(args, maxDiscount)
+		argIndex++
+	}
+
+	if minReviewScore > 0 {
+		whereClause += fmt.Sprintf(" AND COALESCE(r.avg_score, 0) >= $%d", argIndex)
+		args = append(args, minReviewScore)
+		argIndex++
+	}
+
+	if maxReviewScore > 0 {
+		whereClause += fmt.Sprintf(" AND COALESCE(r.avg_score, 0) <= $%d", argIndex)
+		args = append(args, maxReviewScore)
+		argIndex++
+	}
+	if paymentMethod != "" {
+		platforms := platformsForPaymentMethod(paymentMethod)
+		if len(platforms) > 0 {
+			placeholders := make([]string, 0, len(platforms))
+			for _, p := range platforms {
+				placeholders = append(placeholders, fmt.Sprintf("LOWER($%d)", argIndex))
+				args = append(args, p)
+				argIndex++
+			}
+			whereClause += " AND LOWER(g.platform) IN (" + strings.Join(placeholders, ",") + ")"
+		}
+	}
+
+	// Count query
 	countQuery := `
 		SELECT COUNT(*)
 		FROM games g
+		LEFT JOIN LATERAL (
+			SELECT price_inr
+			FROM prices p
+			WHERE p.game_id = g.id
+			ORDER BY p.fetched_at DESC
+			LIMIT 1
+		) p ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT original_inr, discount_percent
+			FROM deals d
+			WHERE d.game_id = g.id AND d.is_active = TRUE
+			ORDER BY d.discount_percent DESC
+			LIMIT 1
+		) d ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT AVG(score) AS avg_score
+			FROM review_scores r
+			WHERE r.game_id = g.id
+		) r ON TRUE
 		` + whereClause
 
 	var total int
@@ -71,25 +154,57 @@ func (r *CatalogRepository) SearchGames(ctx context.Context, query string, platf
 		return nil, 0, err
 	}
 
-	// Simplified data query without complex LATERAL JOINs
+	// Data query
+	orderQueryIndex := argIndex
+	limitIndex := argIndex + 1
+	offsetIndex := argIndex + 2
 	dataQuery := `
 		SELECT
 			g.id,
 			g.title,
 			g.platform,
 			g.cover_url,
-			0 AS price_inr,
-			0 AS lowest_price_inr,
-			false AS is_all_time_low,
-			0 AS original_inr,
-			0 AS discount_percent,
-			0 AS review_score
+			g.store_url,
+			COALESCE(p.price_inr, 0) AS price_inr,
+			COALESCE(p_low.lowest_price_inr, COALESCE(p.price_inr, 0), 0) AS lowest_price_inr,
+			(COALESCE(p.price_inr, 0) > 0 AND COALESCE(p.price_inr, 0) = COALESCE(p_low.lowest_price_inr, COALESCE(p.price_inr, 0), 0)) AS is_all_time_low,
+			COALESCE(d.original_inr, 0) AS original_inr,
+			COALESCE(d.discount_percent, 0) AS discount_percent,
+			COALESCE(r.avg_score, 0) AS review_score
 		FROM games g
+		LEFT JOIN LATERAL (
+			SELECT price_inr
+			FROM prices p
+			WHERE p.game_id = g.id
+			ORDER BY p.fetched_at DESC
+			LIMIT 1
+		) p ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT MIN(price_inr) AS lowest_price_inr
+			FROM prices p_low
+			WHERE p_low.game_id = g.id
+		) p_low ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT original_inr, discount_percent
+			FROM deals d
+			WHERE d.game_id = g.id AND d.is_active = TRUE
+			ORDER BY d.discount_percent DESC
+			LIMIT 1
+		) d ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT AVG(score) AS avg_score
+			FROM review_scores r
+			WHERE r.game_id = g.id
+		) r ON TRUE
 		` + whereClause + `
-		ORDER BY g.title ASC
-		LIMIT $` + fmt.Sprintf("%d", argIndex) + ` OFFSET $` + fmt.Sprintf("%d", argIndex+1)
+		ORDER BY
+			CASE WHEN $` + fmt.Sprintf("%d", orderQueryIndex) + ` = '' THEN 0 ELSE similarity(LOWER(g.title), LOWER($` + fmt.Sprintf("%d", orderQueryIndex) + `)) END DESC,
+			COALESCE(p.price_inr, 0) ASC,
+			COALESCE(d.discount_percent, 0) DESC,
+			g.title ASC
+		LIMIT $` + fmt.Sprintf("%d", limitIndex) + ` OFFSET $` + fmt.Sprintf("%d", offsetIndex)
 
-	args = append(args, limit, offset)
+	args = append(args, query, limit, offset)
 
 	rows, err := r.db.Query(ctx, dataQuery, args...)
 	if err != nil {
@@ -105,6 +220,7 @@ func (r *CatalogRepository) SearchGames(ctx context.Context, query string, platf
 			&g.Title,
 			&g.Platform,
 			&g.CoverURL,
+			&g.StoreURL,
 			&g.PriceINR,
 			&g.LowestPriceINR,
 			&g.IsAllTimeLow,
@@ -131,7 +247,7 @@ func (r *CatalogRepository) SearchGames(ctx context.Context, query string, platf
 			Total: total,
 		}
 		if data, err := json.Marshal(cacheResult); err == nil {
-			r.redis.Set(ctx, cacheKey, data, 1*time.Minute)
+			r.redis.Set(ctx, cacheKey, data, 1*time.Minute) // 1 minute TTL for search
 		}
 	}
 
@@ -182,6 +298,7 @@ func (r *CatalogRepository) ListGames(ctx context.Context, query, platform strin
 			g.title,
 			g.platform,
 			g.cover_url,
+			g.store_url,
 			COALESCE(p.price_inr, 0) AS price_inr,
 			COALESCE(p_low.lowest_price_inr, COALESCE(p.price_inr, 0), 0) AS lowest_price_inr,
 			(COALESCE(p.price_inr, 0) > 0 AND COALESCE(p.price_inr, 0) = COALESCE(p_low.lowest_price_inr, COALESCE(p.price_inr, 0), 0)) AS is_all_time_low,
@@ -236,6 +353,7 @@ func (r *CatalogRepository) ListGames(ctx context.Context, query, platform strin
 			&g.Title,
 			&g.Platform,
 			&g.CoverURL,
+			&g.StoreURL,
 			&g.PriceINR,
 			&g.LowestPriceINR,
 			&g.IsAllTimeLow,
@@ -291,6 +409,7 @@ func (r *CatalogRepository) GetGameByID(ctx context.Context, id int64) (models.G
 			g.title,
 			g.platform,
 			g.cover_url,
+			g.store_url,
 			COALESCE(p.price_inr, 0) AS price_inr,
 			COALESCE(p_low.lowest_price_inr, COALESCE(p.price_inr, 0), 0) AS lowest_price_inr,
 			(COALESCE(p.price_inr, 0) > 0 AND COALESCE(p.price_inr, 0) = COALESCE(p_low.lowest_price_inr, COALESCE(p.price_inr, 0), 0)) AS is_all_time_low,
@@ -321,11 +440,13 @@ func (r *CatalogRepository) GetGameByID(ctx context.Context, id int64) (models.G
 	`
 
 	var g models.Game
+	var syncedAt string
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&g.ID,
 		&g.Title,
 		&g.Platform,
 		&g.CoverURL,
+		&g.StoreURL,
 		&g.PriceINR,
 		&g.LowestPriceINR,
 		&g.IsAllTimeLow,
@@ -335,6 +456,24 @@ func (r *CatalogRepository) GetGameByID(ctx context.Context, id int64) (models.G
 	)
 	if err != nil {
 		return models.Game{}, false, nil
+	}
+	_ = r.db.QueryRow(ctx, `
+		SELECT COALESCE(MAX(fetched_at)::text, '')
+		FROM prices
+		WHERE game_id = $1
+	`, id).Scan(&syncedAt)
+	enrichGameForIndia(&g, syncedAt)
+	if comparisons, err := r.priceComparisonsForTitle(ctx, g.Title); err == nil && len(comparisons) > 0 {
+		g.PriceComparisons = comparisons
+		if comparisons[0].PriceINR > 0 {
+			g.Platform = comparisons[0].Store
+			g.PriceINR = comparisons[0].PriceINR
+			g.OriginalINR = comparisons[0].OriginalINR
+			g.DiscountPercent = comparisons[0].DiscountPercent
+			g.StoreURL = comparisons[0].StoreURL
+			g.CheapestRegion = comparisons[0].Region
+			g.PaymentMethods = comparisons[0].PaymentMethods
+		}
 	}
 
 	// Cache the result if Redis is available
@@ -346,6 +485,62 @@ func (r *CatalogRepository) GetGameByID(ctx context.Context, id int64) (models.G
 	}
 
 	return g, true, nil
+}
+
+func (r *CatalogRepository) priceComparisonsForTitle(ctx context.Context, title string) ([]models.PriceComparison, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT
+			g.platform,
+			COALESCE(p.price_inr, 0) AS price_inr,
+			COALESCE(d.original_inr, 0) AS original_inr,
+			COALESCE(d.discount_percent, 0) AS discount_percent,
+			g.store_url
+		FROM games g
+		LEFT JOIN LATERAL (
+			SELECT price_inr
+			FROM prices p
+			WHERE p.game_id = g.id
+			ORDER BY p.fetched_at DESC
+			LIMIT 1
+		) p ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT original_inr, discount_percent
+			FROM deals d
+			WHERE d.game_id = g.id AND d.is_active = TRUE
+			ORDER BY d.discount_percent DESC
+			LIMIT 1
+		) d ON TRUE
+		WHERE LOWER(g.title) = LOWER($1)
+		ORDER BY COALESCE(p.price_inr, 0) ASC, COALESCE(d.discount_percent, 0) DESC, g.platform ASC
+	`, strings.TrimSpace(title))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var comparisons []models.PriceComparison
+	for rows.Next() {
+		var store, storeURL string
+		var price, original, discount int
+		if err := rows.Scan(&store, &price, &original, &discount, &storeURL); err != nil {
+			return nil, err
+		}
+		region := "India"
+		if strings.Contains(strings.ToLower(store), "cheapshark") {
+			region = "Global"
+		}
+		comparisons = append(comparisons, models.PriceComparison{
+			Store:           store,
+			Region:          region,
+			PriceINR:        price,
+			OriginalINR:     original,
+			DiscountPercent: discount,
+			StoreURL:        storeURL,
+			PaymentMethods:  paymentMethodsForStore(store),
+			GSTInclusive:    true,
+		})
+	}
+	return comparisons, rows.Err()
 }
 
 func (r *CatalogRepository) ListDeals(ctx context.Context, limit, offset int) ([]models.Deal, int, error) {
@@ -378,6 +573,7 @@ func (r *CatalogRepository) ListDeals(ctx context.Context, limit, offset int) ([
 			g.title,
 			g.platform,
 			g.cover_url,
+			g.store_url,
 			COALESCE(p.price_inr, 0) AS price_inr,
 			COALESCE(p_low.lowest_price_inr, COALESCE(p.price_inr, 0), 0) AS lowest_price_inr,
 			(COALESCE(p.price_inr, 0) > 0 AND COALESCE(p.price_inr, 0) = COALESCE(p_low.lowest_price_inr, COALESCE(p.price_inr, 0), 0)) AS is_all_time_low,
@@ -418,6 +614,7 @@ func (r *CatalogRepository) ListDeals(ctx context.Context, limit, offset int) ([
 			&d.Title,
 			&d.Platform,
 			&d.CoverURL,
+			&d.StoreURL,
 			&d.PriceINR,
 			&d.LowestPriceINR,
 			&d.IsAllTimeLow,
@@ -428,6 +625,7 @@ func (r *CatalogRepository) ListDeals(ctx context.Context, limit, offset int) ([
 		); err != nil {
 			return nil, 0, err
 		}
+		enrichGameForIndia(&d.Game, d.CachedAt)
 		deals = append(deals, d)
 	}
 
@@ -453,9 +651,295 @@ func (r *CatalogRepository) ListDeals(ctx context.Context, limit, offset int) ([
 	return deals, total, nil
 }
 
+func (r *CatalogRepository) ListPersonalizedDeals(ctx context.Context, userID int64, limit, offset int) ([]models.Deal, int, error) {
+	if userID <= 0 {
+		return r.ListDeals(ctx, limit, offset)
+	}
+	base := `
+		FROM deals d
+		JOIN games g ON g.id = d.game_id
+		LEFT JOIN LATERAL (
+			SELECT price_inr
+			FROM prices p
+			WHERE p.game_id = g.id
+			ORDER BY p.fetched_at DESC
+			LIMIT 1
+		) p ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT MIN(price_inr) AS lowest_price_inr
+			FROM prices p_low
+			WHERE p_low.game_id = g.id
+		) p_low ON TRUE
+		WHERE d.is_active = TRUE
+		  AND (
+			d.game_id IN (SELECT game_id FROM wishlists WHERE user_id = $1)
+			OR d.game_id IN (SELECT game_id FROM clicks WHERE user_id = $1)
+		  )
+	`
+	var total int
+	if err := r.db.QueryRow(ctx, `SELECT COUNT(*) `+base, userID).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	if total == 0 {
+		return []models.Deal{}, 0, nil
+	}
+	query := `
+		SELECT
+			g.id, g.title, g.platform, g.cover_url, g.store_url,
+			COALESCE(p.price_inr, 0) AS price_inr,
+			COALESCE(p_low.lowest_price_inr, COALESCE(p.price_inr, 0), 0) AS lowest_price_inr,
+			(COALESCE(p.price_inr, 0) > 0 AND COALESCE(p.price_inr, 0) = COALESCE(p_low.lowest_price_inr, COALESCE(p.price_inr, 0), 0)) AS is_all_time_low,
+			d.original_inr, d.discount_percent, 0 AS review_score, d.cached_at::text
+	` + base + `
+		ORDER BY
+			CASE WHEN d.game_id IN (SELECT game_id FROM wishlists WHERE user_id = $1) THEN 0 ELSE 1 END,
+			d.discount_percent DESC,
+			g.title ASC
+		LIMIT $2 OFFSET $3
+	`
+	rows, err := r.db.Query(ctx, query, userID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	deals := make([]models.Deal, 0, limit)
+	for rows.Next() {
+		var d models.Deal
+		if err := rows.Scan(&d.ID, &d.Title, &d.Platform, &d.CoverURL, &d.StoreURL, &d.PriceINR, &d.LowestPriceINR, &d.IsAllTimeLow, &d.OriginalINR, &d.DiscountPercent, &d.ReviewScore, &d.CachedAt); err != nil {
+			return nil, 0, err
+		}
+		enrichGameForIndia(&d.Game, d.CachedAt)
+		deals = append(deals, d)
+	}
+	return deals, total, rows.Err()
+}
+
+func (r *CatalogRepository) SyncCheapSharkDeals(ctx context.Context, pageSize int) (int, error) {
+	// Guard: avoid hammering CheapShark on every request. We keep the app "real-time"
+	// by syncing frequently, but not per-request.
+	const (
+		minSyncInterval = 2 * time.Minute
+		defaultPageSize = 60
+		defaultPages    = 6 // ~360 deals ingested per sync
+	)
+	if r.redis != nil {
+		if last, err := r.redis.Get(ctx, "cheapshark:last_sync").Int64(); err == nil && last > 0 {
+			if time.Since(time.Unix(last, 0)) < minSyncInterval {
+				return 0, nil
+			}
+		}
+	}
+
+	// pageSize argument is treated as a hint; we ingest a healthy slice across pages
+	// to avoid the "same limited games" problem.
+	pageSize = defaultPageSize
+	client := cheapshark.NewClient()
+	allDeals := make([]cheapshark.Deal, 0, pageSize*defaultPages)
+	for page := 0; page < defaultPages; page++ {
+		deals, err := client.GetDeals(ctx, map[string]string{
+			"pageSize":   strconv.Itoa(pageSize),
+			"pageNumber": strconv.Itoa(page),
+			"sortBy":     "Deal Rating",
+			"onSale":     "1",
+		})
+		if err != nil {
+			// If upstream fails mid-sync, we still use whatever we got so far.
+			if len(allDeals) == 0 {
+				return 0, err
+			}
+			break
+		}
+		allDeals = append(allDeals, deals...)
+	}
+
+	rate := r.USDToINR(ctx)
+	updated := 0
+	for _, deal := range allDeals {
+		priceINR := dollarsToINR(float64(deal.SalePrice), rate)
+		normalINR := dollarsToINR(float64(deal.NormalPrice), rate)
+		if strings.TrimSpace(deal.Title) == "" || priceINR <= 0 {
+			continue
+		}
+		store := cheapSharkStoreName(deal.StoreID, deal.StoreName)
+		slug := liveDealSlug(deal.Title, store, deal.GameID)
+		storeURL := cheapSharkStoreURL(deal.DealID)
+		if storeURL == "" {
+			storeURL = "https://www.cheapshark.com/"
+		}
+
+		var gameID int64
+		err := r.db.QueryRow(ctx, `
+			INSERT INTO games (title, slug, platform, cover_url, store_url)
+			VALUES ($1, $2, $3, $4, $5)
+			ON CONFLICT (slug) DO UPDATE SET
+				title = EXCLUDED.title,
+				platform = EXCLUDED.platform,
+				cover_url = CASE WHEN EXCLUDED.cover_url <> '' THEN EXCLUDED.cover_url ELSE games.cover_url END,
+				store_url = EXCLUDED.store_url
+			RETURNING id
+		`, strings.TrimSpace(deal.Title), slug, store, strings.TrimSpace(deal.Thumb), storeURL).Scan(&gameID)
+		if err != nil {
+			continue
+		}
+
+		if _, err := r.db.Exec(ctx, `
+			INSERT INTO prices (game_id, price_inr, store, region, is_historical_low, fetched_at)
+			VALUES (
+				$1,
+				$2,
+				$3,
+				'global',
+				NOT EXISTS (SELECT 1 FROM prices WHERE game_id = $1 AND price_inr < $2),
+				NOW()
+			)
+		`, gameID, priceINR, "cheapshark:"+deal.StoreID); err != nil {
+			continue
+		}
+
+		discountPercent := int(math.Round(float64(deal.Savings)))
+		if normalINR > 0 && discountPercent > 0 {
+			_ = r.UpdateDeal(ctx, gameID, normalINR, discountPercent)
+		}
+		updated++
+	}
+	if r.redis != nil {
+		_ = r.redis.Set(ctx, "cheapshark:last_sync", strconv.FormatInt(time.Now().Unix(), 10), 24*time.Hour).Err()
+	}
+	r.clearDealCaches(ctx)
+	return updated, nil
+}
+
+// SyncCheapSharkDealsByQuery ingests discounted deals matching a title query directly
+// from CheapShark so search can surface games beyond the current DB snapshot.
+func (r *CatalogRepository) SyncCheapSharkDealsByQuery(ctx context.Context, query string, pageSize, pages int) (int, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return 0, nil
+	}
+	if pageSize <= 0 {
+		pageSize = 60
+	}
+	if pages <= 0 {
+		pages = 3
+	}
+
+	if r.redis != nil {
+		// Per-query guard to keep frequent typing from triggering repeated upstream pulls.
+		queryKey := "cheapshark:query_sync:" + strings.ToLower(query)
+		if last, err := r.redis.Get(ctx, queryKey).Int64(); err == nil && last > 0 {
+			if time.Since(time.Unix(last, 0)) < 60*time.Second {
+				return 0, nil
+			}
+		}
+	}
+
+	client := cheapshark.NewClient()
+	allDeals := make([]cheapshark.Deal, 0, pageSize*pages)
+	for page := 0; page < pages; page++ {
+		deals, err := client.GetDeals(ctx, map[string]string{
+			"title":      query,
+			"exact":      "0",
+			"pageSize":   strconv.Itoa(pageSize),
+			"pageNumber": strconv.Itoa(page),
+			"sortBy":     "Deal Rating",
+			"onSale":     "1",
+		})
+		if err != nil {
+			if len(allDeals) == 0 {
+				return 0, err
+			}
+			break
+		}
+		allDeals = append(allDeals, deals...)
+	}
+
+	rate := r.USDToINR(ctx)
+	updated := 0
+	for _, deal := range allDeals {
+		priceINR := dollarsToINR(float64(deal.SalePrice), rate)
+		normalINR := dollarsToINR(float64(deal.NormalPrice), rate)
+		if strings.TrimSpace(deal.Title) == "" || priceINR <= 0 {
+			continue
+		}
+		store := cheapSharkStoreName(deal.StoreID, deal.StoreName)
+		slug := liveDealSlug(deal.Title, store, deal.GameID)
+		storeURL := cheapSharkStoreURL(deal.DealID)
+		if storeURL == "" {
+			storeURL = "https://www.cheapshark.com/"
+		}
+
+		var gameID int64
+		err := r.db.QueryRow(ctx, `
+			INSERT INTO games (title, slug, platform, cover_url, store_url)
+			VALUES ($1, $2, $3, $4, $5)
+			ON CONFLICT (slug) DO UPDATE SET
+				title = EXCLUDED.title,
+				platform = EXCLUDED.platform,
+				cover_url = CASE WHEN EXCLUDED.cover_url <> '' THEN EXCLUDED.cover_url ELSE games.cover_url END,
+				store_url = EXCLUDED.store_url
+			RETURNING id
+		`, strings.TrimSpace(deal.Title), slug, store, strings.TrimSpace(deal.Thumb), storeURL).Scan(&gameID)
+		if err != nil {
+			continue
+		}
+
+		if _, err := r.db.Exec(ctx, `
+			INSERT INTO prices (game_id, price_inr, store, region, is_historical_low, fetched_at)
+			VALUES (
+				$1,
+				$2,
+				$3,
+				'global',
+				NOT EXISTS (SELECT 1 FROM prices WHERE game_id = $1 AND price_inr < $2),
+				NOW()
+			)
+		`, gameID, priceINR, "cheapshark:"+deal.StoreID); err != nil {
+			continue
+		}
+
+		discountPercent := int(math.Round(float64(deal.Savings)))
+		if normalINR > 0 && discountPercent > 0 {
+			_ = r.UpdateDeal(ctx, gameID, normalINR, discountPercent)
+		}
+		updated++
+	}
+
+	if r.redis != nil {
+		queryKey := "cheapshark:query_sync:" + strings.ToLower(query)
+		_ = r.redis.Set(ctx, queryKey, strconv.FormatInt(time.Now().Unix(), 10), 24*time.Hour).Err()
+	}
+	r.clearDealCaches(ctx)
+	return updated, nil
+}
+
+func (r *CatalogRepository) clearDealCaches(ctx context.Context) {
+	if r.redis == nil {
+		return
+	}
+	for _, pattern := range []string{"deals:*", "games:*", "search:*"} {
+		iter := r.redis.Scan(ctx, 0, pattern, 100).Iterator()
+		for iter.Next(ctx) {
+			_ = r.redis.Del(ctx, iter.Val()).Err()
+		}
+	}
+}
+
+func (r *CatalogRepository) GetStoreURL(ctx context.Context, gameID int64, platform string) (string, bool, error) {
+	var storeURL string
+	err := r.db.QueryRow(ctx, `
+		SELECT store_url
+		FROM games
+		WHERE id = $1 AND ($2 = '' OR LOWER(platform) = LOWER($2))
+	`, gameID, strings.TrimSpace(platform)).Scan(&storeURL)
+	if err != nil {
+		return "", false, err
+	}
+	return storeURL, strings.TrimSpace(storeURL) != "", nil
+}
+
 func (r *CatalogRepository) GetPriceHistory(ctx context.Context, gameID int64, limit, offset int) ([]models.PriceHistoryPoint, error) {
 	query := `
-		SELECT price_inr, fetched_at::text
+		SELECT price_inr, is_historical_low, fetched_at::text
 		FROM prices
 		WHERE game_id = $1
 		ORDER BY fetched_at DESC
@@ -470,7 +954,7 @@ func (r *CatalogRepository) GetPriceHistory(ctx context.Context, gameID int64, l
 	history := make([]models.PriceHistoryPoint, 0, limit)
 	for rows.Next() {
 		var p models.PriceHistoryPoint
-		if err := rows.Scan(&p.PriceINR, &p.FetchedAt); err != nil {
+		if err := rows.Scan(&p.PriceINR, &p.IsHistoricalLow, &p.FetchedAt); err != nil {
 			return nil, err
 		}
 		history = append(history, p)
@@ -485,26 +969,44 @@ func (r *CatalogRepository) GetPriceHistory(ctx context.Context, gameID int64, l
 
 // InsertPrice adds a new price entry for a game
 func (r *CatalogRepository) InsertPrice(ctx context.Context, gameID int64, priceINR int, store string) error {
+	var previousLow int
+	_ = r.db.QueryRow(ctx, `SELECT COALESCE(MIN(price_inr), 0) FROM prices WHERE game_id = $1`, gameID).Scan(&previousLow)
+	isHistoricalLow := previousLow == 0 || priceINR <= previousLow
 	query := `
-		INSERT INTO prices (game_id, price_inr, store, fetched_at)
-		VALUES ($1, $2, $3, NOW())
+		INSERT INTO prices (game_id, price_inr, store, is_historical_low, fetched_at)
+		VALUES ($1, $2, $3, $4, NOW())
 	`
-	_, err := r.db.Exec(ctx, query, gameID, priceINR, store)
+	_, err := r.db.Exec(ctx, query, gameID, priceINR, strings.ToLower(strings.TrimSpace(store)), isHistoricalLow)
 	return err
 }
 
 // UpdateDeal updates or creates a deal entry for a game
 func (r *CatalogRepository) UpdateDeal(ctx context.Context, gameID int64, originalINR, discountPercent int) error {
-	query := `
-		INSERT INTO deals (game_id, original_inr, discount_percent, is_active, cached_at)
-		VALUES ($1, $2, $3, TRUE, NOW())
-		ON CONFLICT (game_id) DO UPDATE SET
-			original_inr = EXCLUDED.original_inr,
-			discount_percent = EXCLUDED.discount_percent,
+	if discountPercent < 0 {
+		discountPercent = 0
+	}
+	if discountPercent > 100 {
+		discountPercent = 100
+	}
+	tag, err := r.db.Exec(ctx, `
+		UPDATE deals
+		SET original_inr = $2,
+			discount_percent = $3,
 			is_active = TRUE,
 			cached_at = NOW()
-	`
-	_, err := r.db.Exec(ctx, query, gameID, originalINR, discountPercent)
+		WHERE game_id = $1
+	`, gameID, originalINR, discountPercent)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() > 0 {
+		return nil
+	}
+	_, err = r.db.Exec(ctx, `
+		INSERT INTO deals (game_id, original_inr, discount_percent, is_active, cached_at)
+		SELECT $1, $2, $3, TRUE, NOW()
+		WHERE NOT EXISTS (SELECT 1 FROM deals WHERE game_id = $1)
+	`, gameID, originalINR, discountPercent)
 	return err
 }
 
@@ -537,8 +1039,38 @@ func (r *CatalogRepository) FindGameByTitle(ctx context.Context, title string) (
 	return gameID, nil
 }
 
+func (r *CatalogRepository) FindGamePricesByTitle(ctx context.Context, title string, limit int) ([]models.Game, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+	rows, err := r.db.Query(ctx, `
+		SELECT g.id, g.title, g.platform, g.cover_url, g.store_url,
+		       COALESCE(p.price_inr, 0), 0, FALSE, 0, 0, 0
+		FROM games g
+		LEFT JOIN LATERAL (
+			SELECT price_inr FROM prices p WHERE p.game_id = g.id ORDER BY p.fetched_at DESC LIMIT 1
+		) p ON TRUE
+		WHERE LOWER(g.title) LIKE '%' || LOWER($1) || '%'
+		ORDER BY g.title
+		LIMIT $2
+	`, strings.TrimSpace(title), limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var games []models.Game
+	for rows.Next() {
+		var g models.Game
+		if err := rows.Scan(&g.ID, &g.Title, &g.Platform, &g.CoverURL, &g.StoreURL, &g.PriceINR, &g.LowestPriceINR, &g.IsAllTimeLow, &g.OriginalINR, &g.DiscountPercent, &g.ReviewScore); err != nil {
+			return nil, err
+		}
+		games = append(games, g)
+	}
+	return games, rows.Err()
+}
+
 // GetIndiaArbitrage calculates India vs Global pricing with GST
-func (r *CatalogRepository) GetIndiaArbitrage(ctx context.Context, gameID int64) (models.ArbitrageData, error) {
+func (r *CatalogRepository) GetIndiaArbitrage(ctx context.Context, gameID int64) (models.IndiaArbitrage, error) {
 	// Get current price from database
 	query := `
 		SELECT COALESCE(p.price_inr, 0) AS current_price
@@ -556,17 +1088,18 @@ func (r *CatalogRepository) GetIndiaArbitrage(ctx context.Context, gameID int64)
 	var currentPrice int
 	err := r.db.QueryRow(ctx, query, gameID).Scan(&currentPrice)
 	if err != nil {
-		return models.ArbitrageData{}, err
+		return models.IndiaArbitrage{}, err
 	}
 
-	// For MVP: use current price as India price, simulate global price
-	// In production: fetch actual Steam India and Global prices from API
-	steamIndiaPrice := float64(currentPrice)
-	steamGlobalPrice := float64(currentPrice) * 8 // Simulate global price in USD
-	usdToINR := 83.0
-	steamGlobalINR := steamGlobalPrice * usdToINR
+	steamIndiaPrice := currentPrice
+	rate := r.USDToINR(ctx)
+	steamGlobalINR, globalAvailable := r.steamGlobalINR(ctx, gameID)
+	if !globalAvailable {
+		steamGlobalINR = r.cheapSharkINR(ctx, gameID, currentPrice)
+	}
+	steamGlobalPrice := int(math.Round(float64(steamGlobalINR) / rate))
 	gstRate := 0.18
-	gstAmount := steamGlobalINR * gstRate
+	gstAmount := int(float64(steamGlobalINR) * gstRate)
 	totalWithGST := steamGlobalINR + gstAmount
 
 	// Determine cheapest region
@@ -579,20 +1112,242 @@ func (r *CatalogRepository) GetIndiaArbitrage(ctx context.Context, gameID int64)
 	verdict := ""
 	if cheapestRegion == "India" {
 		savings := totalWithGST - steamIndiaPrice
-		verdict = fmt.Sprintf("Buy from India - saves ₹%.0f", savings)
+		verdict = fmt.Sprintf("Buy from India - saves ₹%d", savings)
 	} else {
 		savings := steamIndiaPrice - totalWithGST
-		verdict = fmt.Sprintf("Buy from Global - saves ₹%.0f", savings)
+		verdict = fmt.Sprintf("Buy from Global - saves ₹%d", savings)
+	}
+	if !globalAvailable {
+		verdict += " (global price unavailable)"
 	}
 
-	return models.ArbitrageData{
-		IndiaBaseINR:   steamIndiaPrice,
-		IndiaGSTINR:    steamIndiaPrice * gstRate,
-		IndiaTotalINR:  steamIndiaPrice + (steamIndiaPrice * gstRate),
-		GlobalBaseINR:  steamGlobalINR,
-		GlobalGSTINR:   gstAmount,
-		GlobalTotalINR: totalWithGST,
-		CheapestRegion: cheapestRegion,
-		Verdict:        verdict,
+	return models.IndiaArbitrage{
+		GameID:           gameID,
+		SteamIndiaPrice:  steamIndiaPrice,
+		SteamGlobalPrice: steamGlobalPrice,
+		SteamGlobalINR:   steamGlobalINR,
+		GSTAmount:        gstAmount,
+		TotalWithGST:     totalWithGST,
+		CheapestRegion:   cheapestRegion,
+		Verdict:          verdict,
 	}, nil
+}
+
+func (r *CatalogRepository) USDToINR(ctx context.Context) float64 {
+	const fallback = 83.0
+	if r.redis != nil {
+		if cached, err := r.redis.Get(ctx, "fx:usd_inr").Float64(); err == nil && cached > 0 {
+			return cached
+		}
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.frankfurter.app/latest?from=USD&to=INR", nil)
+	if err != nil {
+		return fallback
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fallback
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fallback
+	}
+	var payload struct {
+		Rates map[string]float64 `json:"rates"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return fallback
+	}
+	rate := payload.Rates["INR"]
+	if rate <= 0 {
+		return fallback
+	}
+	if r.redis != nil {
+		_ = r.redis.Set(ctx, "fx:usd_inr", strconv.FormatFloat(rate, 'f', -1, 64), 24*time.Hour).Err()
+	}
+	return rate
+}
+
+func (r *CatalogRepository) steamGlobalINR(ctx context.Context, gameID int64) (int, bool) {
+	var price int
+	err := r.db.QueryRow(ctx, `
+		SELECT price_inr
+		FROM prices
+		WHERE game_id = $1 AND LOWER(store) = 'steam' AND LOWER(region) = 'global'
+		ORDER BY fetched_at DESC
+		LIMIT 1
+	`, gameID).Scan(&price)
+	if err != nil || price <= 0 {
+		return 0, false
+	}
+	return price, true
+}
+
+func (r *CatalogRepository) cheapSharkINR(ctx context.Context, gameID int64, fallback int) int {
+	var price int
+	err := r.db.QueryRow(ctx, `
+		SELECT price_inr
+		FROM prices
+		WHERE game_id = $1 AND LOWER(store) LIKE 'cheapshark:%'
+		ORDER BY fetched_at DESC
+		LIMIT 1
+	`, gameID).Scan(&price)
+	if err != nil || price <= 0 {
+		return fallback
+	}
+	return price
+}
+
+func platformsForPaymentMethod(method string) []string {
+	switch strings.ToLower(strings.TrimSpace(method)) {
+	case "upi", "wallet":
+		return []string{"steam", "epic games", "gog"}
+	case "card":
+		return []string{"steam", "epic games", "gog"}
+	default:
+		return nil
+	}
+}
+
+func enrichGameForIndia(g *models.Game, syncedAt string) {
+	g.BannerURL = g.CoverURL
+	g.SupportedPlatforms = uniqueNonEmpty([]string{g.Platform})
+	g.Description = fmt.Sprintf("%s is tracked live with INR pricing, historical lows, deal quality, GST-aware India pricing, and store redirects.", g.Title)
+	g.ReviewSummary = reviewSummary(g.ReviewScore)
+	g.DealQuality = qualityFor(g.DiscountPercent, g.IsAllTimeLow)
+	g.GSTAmount = int(math.Round(float64(g.PriceINR) * 0.18))
+	g.TotalWithGST = g.PriceINR + g.GSTAmount
+	g.CheapestRegion = "India"
+	if strings.Contains(strings.ToLower(g.Platform), "cheapshark") || strings.Contains(strings.ToLower(g.StoreURL), "cheapshark") {
+		g.CheapestRegion = "Global"
+	}
+	g.PaymentMethods = paymentMethodsForStore(g.Platform)
+	g.PriceComparisons = []models.PriceComparison{{
+		Store:             g.Platform,
+		Region:            g.CheapestRegion,
+		PriceINR:          g.PriceINR,
+		OriginalINR:       g.OriginalINR,
+		DiscountPercent:   g.DiscountPercent,
+		StoreURL:          g.StoreURL,
+		PaymentMethods:    g.PaymentMethods,
+		GSTInclusive:      true,
+		RegionalArbitrage: g.CheapestRegion,
+	}}
+	g.BestTimeToBuy = bestTimeToBuy(g.DiscountPercent, g.IsAllTimeLow)
+	g.LiveDataSource = "catalog+live-price-api"
+	g.LastSyncedAt = syncedAt
+	if len(g.Editions) == 0 {
+		g.Editions = []string{"Standard"}
+	}
+	if g.SystemRequirements == nil {
+		g.SystemRequirements = map[string]string{
+			"minimum":     "See the official store page for live minimum requirements.",
+			"recommended": "See the official store page for live recommended requirements.",
+		}
+	}
+}
+
+func qualityFor(discount int, low bool) string {
+	if low || discount >= 70 {
+		return "hot"
+	}
+	if discount >= 30 {
+		return "good"
+	}
+	return "fair"
+}
+
+func bestTimeToBuy(discount int, low bool) string {
+	if low {
+		return "Buy now: current price matches the tracked historical low."
+	}
+	if discount >= 70 {
+		return "Buy now: discount is in the strongest tracked range."
+	}
+	if discount >= 40 {
+		return "Consider buying during this sale, or wishlist for an all-time-low alert."
+	}
+	return "Wait for a seasonal sale or wishlist threshold alert."
+}
+
+func reviewSummary(score int) string {
+	if score >= 85 {
+		return "Strong multi-source review signal"
+	}
+	if score >= 70 {
+		return "Positive multi-source review signal"
+	}
+	if score > 0 {
+		return "Mixed multi-source review signal"
+	}
+	return "Review aggregation pending"
+}
+
+func paymentMethodsForStore(store string) []string {
+	switch strings.ToLower(strings.TrimSpace(store)) {
+	case "steam", "epic games", "gog":
+		return []string{"UPI", "Wallet", "Card"}
+	case "xbox", "playstation", "nintendo":
+		return []string{"Card", "Wallet"}
+	default:
+		return []string{"Card"}
+	}
+}
+
+func uniqueNonEmpty(values []string) []string {
+	seen := map[string]bool{}
+	out := []string{}
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" || seen[strings.ToLower(value)] {
+			continue
+		}
+		seen[strings.ToLower(value)] = true
+		out = append(out, value)
+	}
+	return out
+}
+
+func dollarsToINR(price float64, rate float64) int {
+	if price <= 0 {
+		return 0
+	}
+	return int(math.Round(price * rate))
+}
+
+func liveDealSlug(title, store, externalID string) string {
+	base := strings.ToLower(strings.TrimSpace(title + "-" + store + "-" + externalID))
+	base = regexp.MustCompile(`[^a-z0-9]+`).ReplaceAllString(base, "-")
+	base = strings.Trim(base, "-")
+	if base == "" {
+		return "live-deal"
+	}
+	return base
+}
+
+func cheapSharkStoreName(storeID, fallback string) string {
+	if strings.TrimSpace(fallback) != "" {
+		return strings.TrimSpace(fallback)
+	}
+	names := map[string]string{
+		"1":  "Steam",
+		"7":  "GOG",
+		"8":  "Origin",
+		"11": "Humble Store",
+		"15": "Fanatical",
+		"25": "Epic Games",
+		"31": "Blizzard Shop",
+	}
+	if name, ok := names[strings.TrimSpace(storeID)]; ok {
+		return name
+	}
+	return "CheapShark Store " + strings.TrimSpace(storeID)
+}
+
+func cheapSharkStoreURL(dealID string) string {
+	dealID = strings.TrimSpace(dealID)
+	if dealID == "" {
+		return ""
+	}
+	return "https://www.cheapshark.com/redirect?dealID=" + dealID
 }

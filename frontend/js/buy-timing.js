@@ -12,12 +12,12 @@ function initBuyTiming() {
     if (!checkBtn || !gameInput) return;
 
     checkBtn.addEventListener('click', () => {
-        const gameID = parseInt(gameInput.value);
-        if (!gameID || gameID <= 0) {
-            alert('Please enter a valid game ID');
+        const gameName = gameInput.value.trim();
+        if (!gameName) {
+            showTimingError('Please enter a game name');
             return;
         }
-        checkBuyTiming(gameID);
+        findGameAndCheckTiming(gameName);
     });
 
     // Allow Enter key to trigger check
@@ -26,6 +26,33 @@ function initBuyTiming() {
             checkBtn.click();
         }
     });
+}
+
+async function findGameAndCheckTiming(gameName) {
+    const loadingState = document.getElementById('loading-state');
+    const recommendationCard = document.getElementById('recommendation-card');
+
+    if (loadingState) loadingState.style.display = 'block';
+    if (recommendationCard) recommendationCard.style.display = 'none';
+
+    try {
+        const response = await fetch(`/api/games/search?q=${encodeURIComponent(gameName)}&limit=1&offset=0`);
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.error || 'Search failed');
+        }
+
+        const game = (data.games || [])[0];
+        if (!game) {
+            showTimingError('Game not found');
+            return;
+        }
+
+        await checkBuyTiming(game.id, game.title);
+    } catch (error) {
+        console.error('Failed to search game:', error);
+        showTimingError(error.message || 'Failed to search game');
+    }
 }
 
 async function checkBuyTiming(gameID) {
@@ -47,13 +74,12 @@ async function checkBuyTiming(gameID) {
         // Hide loading state
         if (loadingState) loadingState.style.display = 'none';
 
-        // Display recommendation
         displayRecommendation(data);
 
     } catch (error) {
         console.error('Failed to get buy timing:', error);
         if (loadingState) loadingState.style.display = 'none';
-        alert('Failed to get buy timing. Please try again.');
+        showTimingError('Failed to get buy timing. Please try again.');
     }
 }
 
@@ -65,26 +91,54 @@ function displayRecommendation(data) {
     const recClass = data.recommendation === 'buy_now' ? 'buy_now' : 
                      data.recommendation === 'wait_soon' ? 'wait_soon' : 'wait_next';
     
-    const recText = data.recommendation === 'buy_now' ? 'BUY NOW! 🎉' :
-                    data.recommendation === 'wait_soon' ? 'WAIT - SALE SOON ⏳' : 'WAIT FOR NEXT SALE 📅';
+    const recText = data.recommendation === 'buy_now' ? 'Buy Now' :
+                    data.recommendation === 'wait_soon' ? 'Wait' : 'Wait';
     
     recommendationBanner.className = `recommendation-banner ${recClass}`;
     recommendationBanner.textContent = recText;
 
     // Set details
-    document.getElementById('recommendation-text').textContent = data.recommendation.replace('_', ' ').toUpperCase();
+    document.getElementById('recommendation-text').textContent = recText;
     document.getElementById('recommendation-reason').textContent = data.reason;
 
     // Show days until sale if available
     const daysUntilItem = document.getElementById('days-until-item');
     if (data.days_until_sale !== undefined && data.days_until_sale !== null) {
         daysUntilItem.style.display = 'block';
-        document.getElementById('days-until').textContent = data.days_until_sale;
+        document.getElementById('days-until').textContent = `${data.days_until_sale} days`;
     } else {
         daysUntilItem.style.display = 'none';
     }
 
+    const sale = data.active_sale || data.next_sale;
+    const saleNameItem = document.getElementById('sale-name-item');
+    if (saleNameItem && sale) {
+        saleNameItem.style.display = 'block';
+        document.getElementById('sale-name').textContent = sale.name || 'Sale window';
+    } else if (saleNameItem) {
+        saleNameItem.style.display = 'none';
+    }
+
     // Show recommendation card
+    recommendationCard.style.display = 'block';
+}
+
+function showTimingError(message) {
+    const loadingState = document.getElementById('loading-state');
+    const recommendationCard = document.getElementById('recommendation-card');
+    const recommendationBanner = document.getElementById('recommendation-banner');
+    if (loadingState) loadingState.style.display = 'none';
+    if (!recommendationCard || !recommendationBanner) {
+        alert(message);
+        return;
+    }
+    recommendationBanner.className = 'recommendation-banner wait_next';
+    recommendationBanner.textContent = message === 'Game not found' ? 'Game not found' : 'Unable to check';
+    document.getElementById('recommendation-text').textContent = message;
+    document.getElementById('recommendation-reason').textContent = '';
+    document.getElementById('days-until-item').style.display = 'none';
+    const saleNameItem = document.getElementById('sale-name-item');
+    if (saleNameItem) saleNameItem.style.display = 'none';
     recommendationCard.style.display = 'block';
 }
 

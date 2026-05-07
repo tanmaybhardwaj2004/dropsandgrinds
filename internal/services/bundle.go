@@ -3,13 +3,15 @@ package services
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/repositories"
-	"golang.org/x/net/html"
 )
 
 // BundleGame represents a game in a bundle
@@ -71,13 +73,13 @@ func (s *BundleService) AnalyzeBundle(ctx context.Context, bundleURL string, bun
 	bundleShare := bundlePrice / float64(len(games))
 
 	for _, gameTitle := range games {
-		// Try to find game in catalog by title (using ILIKE for fuzzy match)
 		currentPrice := 0.0
 		steamID := int64(0)
-
-		// For MVP, we'll need to add a method to search by title
-		// For now, skip games not in catalog
-		s.logger.Warn("Game title search not fully implemented", "title", gameTitle)
+		matches, err := s.catalogRepo.FindGamePricesByTitle(ctx, gameTitle, 1)
+		if err == nil && len(matches) > 0 {
+			currentPrice = float64(matches[0].PriceINR)
+			steamID = matches[0].ID
+		}
 
 		analysis.Games = append(analysis.Games, BundleGame{
 			Title:        gameTitle,
@@ -100,192 +102,144 @@ func (s *BundleService) AnalyzeBundle(ctx context.Context, bundleURL string, bun
 
 // scrapeBundle scrapes a bundle page and extracts game titles
 func (s *BundleService) scrapeBundle(ctx context.Context, url string) ([]string, error) {
-	// Respect robots.txt and add delay
 	time.Sleep(1 * time.Second)
+	if err := s.allowedByRobots(ctx, url); err != nil {
+		return nil, err
+	}
 
 	// Detect bundle type from URL
 	if strings.Contains(url, "humblebundle.com") {
-		return s.extractHumbleGames(ctx, url)
+		return s.extractGamesFromPage(ctx, url)
 	}
 	if strings.Contains(url, "fanatical.com") {
-		return s.extractFanaticalGames(ctx, url)
+		return s.extractGamesFromPage(ctx, url)
 	}
 	if strings.Contains(url, "store.steampowered.com") && strings.Contains(url, "bundle") {
-		return s.extractSteamGames(ctx, url)
+		return s.extractGamesFromPage(ctx, url)
 	}
 
 	return nil, fmt.Errorf("unsupported bundle URL")
 }
 
-// extractHumbleGames extracts games from Humble Bundle URL
-func (s *BundleService) extractHumbleGames(ctx context.Context, url string) ([]string, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+func (s *BundleService) extractGamesFromPage(ctx context.Context, pageURL string) ([]string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, pageURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, err
 	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-
+	req.Header.Set("User-Agent", "DropsAndGrindsBot/1.0")
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch page: %w", err)
+		return nil, err
 	}
 	defer resp.Body.Close()
-
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		return nil, fmt.Errorf("bundle page returned HTTP %d", resp.StatusCode)
 	}
-
-	doc, err := html.Parse(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse HTML: %w", err)
+		return nil, err
 	}
-
+	seen := map[string]struct{}{}
 	var games []string
-	var traverse func(*html.Node)
-	traverse = func(n *html.Node) {
-		if n.Type == html.ElementNode {
-			// Humble Bundle uses data-entity-name attribute for game titles
-			for _, attr := range n.Attr {
-				if attr.Key == "data-entity-name" && attr.Val != "" {
-					games = append(games, strings.TrimSpace(attr.Val))
-					break
-				}
-			}
-			// Also check for title in h2/h3 tags with specific classes
-			if n.Data == "h2" || n.Data == "h3" {
-				if hasClass(n, "entity-title") || hasClass(n, "hb-title") {
-					if text := extractText(n); text != "" {
-						games = append(games, strings.TrimSpace(text))
-					}
-				}
-			}
+	addTitle := func(raw string) {
+		title := cleanBundleTitle(raw)
+		if title == "" {
+			return
 		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			traverse(c)
+		key := strings.ToLower(title)
+		if _, ok := seen[key]; ok {
+			return
+		}
+		seen[key] = struct{}{}
+		games = append(games, title)
+	}
+	html := string(body)
+	for _, title := range extractJSONLDTitles(html) {
+		addTitle(title)
+	}
+	if len(games) == 0 {
+		for _, title := range extractBundleSelectorTitles(html) {
+			addTitle(title)
 		}
 	}
-	traverse(doc)
-
-	s.logger.Info("Extracted games from Humble Bundle", "url", url, "count", len(games))
 	return games, nil
 }
 
-// extractFanaticalGames extracts games from Fanatical URL
-func (s *BundleService) extractFanaticalGames(ctx context.Context, url string) ([]string, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+func extractJSONLDTitles(html string) []string {
+	scriptRe := regexp.MustCompile(`(?is)<script[^>]+type=["']application/ld\+json["'][^>]*>(.*?)</script>`)
+	nameRe := regexp.MustCompile(`(?i)"name"\s*:\s*"([^"]{3,120})"`)
+	var titles []string
+	for _, script := range scriptRe.FindAllStringSubmatch(html, -1) {
+		for _, match := range nameRe.FindAllStringSubmatch(script[1], -1) {
+			titles = append(titles, htmlUnescape(match[1]))
+		}
 	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+	return titles
+}
 
-	resp, err := s.httpClient.Do(req)
+func extractBundleSelectorTitles(html string) []string {
+	patterns := []*regexp.Regexp{
+		regexp.MustCompile(`(?is)<[^>]+class=["'][^"']*(?:product-title|game-title|bundle-item-title|entity-title|product-name)[^"']*["'][^>]*>(.*?)</[^>]+>`),
+		regexp.MustCompile(`(?is)<[^>]+(?:data-title|data-game-name|aria-label)=["']([^"']{3,120})["'][^>]*>`),
+	}
+	var titles []string
+	for _, pattern := range patterns {
+		for _, match := range pattern.FindAllStringSubmatch(html, -1) {
+			titles = append(titles, htmlUnescape(stripTags(match[1])))
+		}
+	}
+	return titles
+}
+
+func stripTags(value string) string {
+	tagRe := regexp.MustCompile(`(?is)<[^>]+>`)
+	return tagRe.ReplaceAllString(value, " ")
+}
+
+func htmlUnescape(value string) string {
+	replacer := strings.NewReplacer("&amp;", "&", "&#39;", "'", "&quot;", `"`, "&nbsp;", " ")
+	return replacer.Replace(value)
+}
+
+func (s *BundleService) allowedByRobots(ctx context.Context, rawURL string) error {
+	parsed, err := url.Parse(rawURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch page: %w", err)
+		return err
+	}
+	robotsURL := parsed.Scheme + "://" + parsed.Host + "/robots.txt"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, robotsURL, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := s.httpClient.Do(req)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		return nil
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-	}
-
-	doc, err := html.Parse(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse HTML: %w", err)
+		return nil
 	}
-
-	var games []string
-	var traverse func(*html.Node)
-	traverse = func(n *html.Node) {
-		if n.Type == html.ElementNode {
-			// Fanatical uses product-card-title class
-			if hasClass(n, "product-card-title") || hasClass(n, "game-title") {
-				if text := extractText(n); text != "" {
-					games = append(games, strings.TrimSpace(text))
-				}
-			}
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			traverse(c)
-		}
-	}
-	traverse(doc)
-
-	s.logger.Info("Extracted games from Fanatical", "url", url, "count", len(games))
-	return games, nil
-}
-
-// extractSteamGames extracts games from Steam Bundle URL
-func (s *BundleService) extractSteamGames(ctx context.Context, url string) ([]string, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-
-	resp, err := s.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch page: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-	}
-
-	doc, err := html.Parse(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse HTML: %w", err)
-	}
-
-	var games []string
-	var traverse func(*html.Node)
-	traverse = func(n *html.Node) {
-		if n.Type == html.ElementNode {
-			// Steam uses app title in various places
-			if hasClass(n, "bundle_app_item") || hasClass(n, "tab_item_name") {
-				if text := extractText(n); text != "" {
-					games = append(games, strings.TrimSpace(text))
-				}
-			}
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			traverse(c)
-		}
-	}
-	traverse(doc)
-
-	s.logger.Info("Extracted games from Steam Bundle", "url", url, "count", len(games))
-	return games, nil
-}
-
-// Helper functions for HTML parsing
-func hasClass(n *html.Node, className string) bool {
-	for _, attr := range n.Attr {
-		if attr.Key == "class" {
-			classes := strings.Fields(attr.Val)
-			for _, c := range classes {
-				if c == className {
-					return true
-				}
+	path := parsed.EscapedPath()
+	for _, line := range strings.Split(string(body), "\n") {
+		line = strings.TrimSpace(strings.ToLower(line))
+		if strings.HasPrefix(line, "disallow:") {
+			disallowed := strings.TrimSpace(strings.TrimPrefix(line, "disallow:"))
+			if disallowed != "" && strings.HasPrefix(strings.ToLower(path), disallowed) {
+				return fmt.Errorf("bundle URL disallowed by robots.txt")
 			}
 		}
 	}
-	return false
+	return nil
 }
 
-func extractText(n *html.Node) string {
-	var text strings.Builder
-	var traverse func(*html.Node)
-	traverse = func(node *html.Node) {
-		if node.Type == html.TextNode {
-			text.WriteString(node.Data)
-		}
-		for c := node.FirstChild; c != nil; c = c.NextSibling {
-			traverse(c)
-		}
+func cleanBundleTitle(title string) string {
+	title = strings.TrimSpace(strings.ReplaceAll(title, "\n", " "))
+	lower := strings.ToLower(title)
+	if strings.Contains(lower, "logo") || strings.Contains(lower, "icon") || strings.Contains(lower, "bundle") || strings.Contains(lower, "cart") {
+		return ""
 	}
-	traverse(n)
-	return strings.TrimSpace(text.String())
+	return title
 }
 
 // extractBundleName extracts a readable name from the URL

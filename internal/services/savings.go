@@ -25,17 +25,17 @@ func NewSavingsService(repo SavingsStore) *SavingsService {
 
 // LogPurchaseRequest represents a purchase log request
 type LogPurchaseRequest struct {
-	GameID          int64  `json:"game_id" binding:"required"`
-	GameTitle       string `json:"game_title" binding:"required"`
-	PaidPriceINR    int    `json:"paid_price_inr" binding:"required"`
+	GameID           int64  `json:"game_id" binding:"required"`
+	GameTitle        string `json:"game_title" binding:"required"`
+	PaidPriceINR     int    `json:"paid_price_inr" binding:"required"`
 	OriginalPriceINR int    `json:"original_price_inr" binding:"required"`
 }
 
 // SavingsResponse represents the savings summary
 type SavingsResponse struct {
-	TotalSavings      int                              `json:"total_savings"`
-	MonthlyBreakdown  []repositories.MonthlySavings    `json:"monthly_breakdown"`
-	EquivalentGames   string                           `json:"equivalent_games"`
+	TotalSavings     int                           `json:"total_savings"`
+	MonthlyBreakdown []repositories.MonthlySavings `json:"monthly_breakdown"`
+	EquivalentGames  string                        `json:"equivalent_games"`
 }
 
 func (s *SavingsService) LogPurchase(ctx context.Context, userID int64, req LogPurchaseRequest) error {
@@ -124,12 +124,12 @@ func calculateEquivalentGames(totalSavings int) string {
 	case equivalent == 0:
 		return "You're on your way to your first free game!"
 	case equivalent == 1:
-		return "You saved enough for 1 free game! 🎮"
+		return "You saved enough for 1 free game."
 	case equivalent < 5:
-		return fmt.Sprintf("You saved enough for %d free games! 🎮", equivalent)
+		return fmt.Sprintf("You saved enough for %d free games.", equivalent)
 	case equivalent < 10:
-		return fmt.Sprintf("You saved enough for %d free games! That's impressive! 🎮🎮", equivalent)
+		return fmt.Sprintf("You saved enough for %d free games. That's impressive.", equivalent)
 	default:
-		return fmt.Sprintf("You saved enough for %d free games! You're a deal-hunting legend! 🏆", equivalent)
+		return fmt.Sprintf("You saved enough for %d free games. Excellent deal tracking.", equivalent)
 	}
 }

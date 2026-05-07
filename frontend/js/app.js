@@ -6,86 +6,192 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Register Service Worker for PWA
 function registerServiceWorker() {
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js')
-                .then((registration) => {
-                    console.log('Service Worker registered:', registration);
-                })
-                .catch((error) => {
-                    console.log('Service Worker registration failed:', error);
-                });
-        });
-    }
-}
-
-// PWA Install Prompt Handling
-let deferredPrompt;
-
-window.addEventListener('beforeinstallprompt', (e) => {
-    console.log('PWA install prompt available');
-    e.preventDefault();
-    deferredPrompt = e;
-    showInstallButton();
-});
-
-function showInstallButton() {
-    const installBtn = document.getElementById('pwa-install-btn');
-    if (installBtn) {
-        installBtn.style.display = 'block';
-        installBtn.addEventListener('click', handleInstallClick);
-    }
-}
-
-async function handleInstallClick() {
-    if (!deferredPrompt) {
-        console.log('Install prompt not available');
-        return;
-    }
-
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log('User choice:', outcome);
-
-    if (outcome === 'accepted') {
-        console.log('PWA installed successfully');
-        const installBtn = document.getElementById('pwa-install-btn');
-        if (installBtn) {
-            installBtn.style.display = 'none';
+    // Chromium/Brave can get stuck with stale service-worker caches during rapid
+    // frontend changes. For local/dev reliability, we disable SW and unregister old ones.
+    if (!('serviceWorker' in navigator)) return;
+    window.addEventListener('load', async () => {
+        try {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map((reg) => reg.unregister()));
+            if ('caches' in window) {
+                const keys = await caches.keys();
+                await Promise.all(keys.map((key) => caches.delete(key)));
+            }
+            console.log('Service Workers disabled for local reliability.');
+        } catch (error) {
+            console.log('Service Worker cleanup failed:', error);
         }
-    }
-
-    deferredPrompt = null;
+    });
 }
 
-window.addEventListener('appinstalled', () => {
-    console.log('PWA was installed');
-    deferredPrompt = null;
-    const installBtn = document.getElementById('pwa-install-btn');
-    if (installBtn) {
-        installBtn.style.display = 'none';
+function normalizePlatformName(storeName) {
+    const raw = String(storeName || '').trim().toLowerCase();
+    if (raw === '') return 'Store';
+    if (raw.includes('steam')) return 'Steam';
+    if (raw.includes('epic')) return 'Epic Games';
+    if (raw.includes('gog')) return 'GOG';
+    if (raw.includes('humble')) return 'Humble Store';
+    if (raw.includes('fanatical')) return 'Fanatical';
+    if (raw.includes('ubisoft')) return 'Ubisoft Store';
+    if (raw.includes('origin') || raw.includes('ea')) return 'EA App';
+    return storeName;
+}
+
+function normalizeRegionName(region) {
+    const value = String(region || '').trim();
+    if (!value) return 'Global';
+    if (value.toLowerCase() === 'global') return 'Global';
+    if (value.toLowerCase() === 'india') return 'India';
+    return value;
+}
+
+function mapDealPayload(deal) {
+    return {
+        id: deal.id,
+        title: deal.title,
+        cover: getProxiedImageUrl(deal.cover_url) || '/images/game-placeholder.svg',
+        store: normalizePlatformName(deal.platform),
+        price: deal.price_inr || 0,
+        lowestPrice: deal.lowest_price_inr || 0,
+        original: deal.original_inr || 0,
+        discount: deal.discount_percent || 0,
+        score: deal.review_score || 0,
+        status: deal.deal_status || '',
+        quality: deal.deal_quality || deal.deal_status || '',
+        savings: deal.potential_savings_inr || 0,
+        cheapestRegion: normalizeRegionName(deal.cheapest_region),
+        paymentMethods: deal.payment_methods || [],
+        isGSTAdded: true
+    };
+}
+
+function mapGamePayloadAsDeal(game) {
+    return {
+        id: game.id,
+        title: game.title,
+        cover: getProxiedImageUrl(game.cover_url) || '/images/game-placeholder.svg',
+        store: normalizePlatformName(game.platform),
+        price: game.price_inr || 0,
+        lowestPrice: game.lowest_price_inr || 0,
+        original: game.original_inr || 0,
+        discount: game.discount_percent || 0,
+        score: game.review_score || 0,
+        status: '',
+        quality: game.discount_percent >= 70 || game.is_all_time_low ? 'hot' : game.discount_percent >= 30 ? 'good' : 'meh',
+        savings: Math.max(0, (game.original_inr || 0) - (game.price_inr || 0)),
+        cheapestRegion: normalizeRegionName(game.cheapest_region),
+        paymentMethods: game.payment_methods || [],
+        isGSTAdded: true
+    };
+}
+
+function updatePlatformFilterOptionsFromDeals(deals) {
+    const filters = [
+        { id: 'store-steam', labels: ['steam'] },
+        { id: 'store-epic', labels: ['epic'] },
+        { id: 'store-gog', labels: ['gog'] }
+    ];
+    for (const filter of filters) {
+        const input = document.getElementById(filter.id);
+        if (!input) continue;
+        const hasDeals = deals.some((deal) => {
+            const store = String(deal.store || '').toLowerCase();
+            return filter.labels.some((label) => store.includes(label));
+        });
+        input.disabled = !hasDeals;
     }
-});
+}
+
+function getSelectedStores() {
+    const stores = [];
+    const steam = document.getElementById('store-steam');
+    const epic = document.getElementById('store-epic');
+    const gog = document.getElementById('store-gog');
+    if (steam?.checked) stores.push('steam');
+    if (epic?.checked) stores.push('epic');
+    if (gog?.checked) stores.push('gog');
+    return stores;
+}
+
+async function fetchDealsFromApi(limit, offset) {
+    const selectedStores = getSelectedStores();
+    const query = (document.getElementById('sidebar-search')?.value || '').trim();
+    const maxPrice = parseInt(document.getElementById('price-slider')?.value || '0', 10);
+
+    // If user applied search/store filters, use live search endpoint so results are not
+    // limited to only what was previously loaded on the page.
+    if (query || selectedStores.length > 0 || maxPrice > 0) {
+        const aggregate = [];
+        const storesToQuery = selectedStores.length > 0 ? selectedStores : ['steam', 'epic', 'gog'];
+        for (const store of storesToQuery) {
+            const params = new URLSearchParams();
+            if (query) params.set('q', query);
+            params.set('platform', store);
+            if (maxPrice > 0) params.set('max_price', String(maxPrice));
+            params.set('limit', String(limit));
+            params.set('offset', String(offset));
+            const response = await fetch(`/api/games/search?${params.toString()}`);
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.error || 'Failed to fetch live search deals');
+            }
+            for (const game of payload.games || []) {
+                aggregate.push(mapGamePayloadAsDeal(game));
+            }
+        }
+        // Deduplicate by game id + store label
+        const seen = new Set();
+        const unique = [];
+        for (const row of aggregate) {
+            const key = `${row.id}:${String(row.store).toLowerCase()}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            unique.push(row);
+        }
+        return { rows: unique, total: unique.length };
+    }
+
+    const response = await fetch(`/api/deals?limit=${limit}&offset=${offset}`);
+    const payload = await response.json();
+    if (!response.ok) {
+        throw new Error(payload.error || 'Failed to fetch deals');
+    }
+    return {
+        rows: (payload.deals || []).map(mapDealPayload),
+        total: payload.total || 0
+    };
+}
 
 let allDeals = [];
-let currentDealsOffset = 0;
-const dealsPerPage = 20;
+let dealsRefreshTimer = null;
+let dealsOffset = 0;
+let dealsTotal = 0;
+const dealsPageSize = 24;
 
 // Transform external image URLs to use local proxy (bypasses hotlink protection)
 function getProxiedImageUrl(originalUrl) {
     if (!originalUrl) return '';
-    
-    if (originalUrl.includes('shared.cloudflare.steamstatic.com')) {
-        return originalUrl.replace('https://shared.cloudflare.steamstatic.com/', '/img/steam/');
+    let nextUrl = originalUrl;
+    if (nextUrl.includes('/header.jpg')) {
+        nextUrl = nextUrl.replace('/header.jpg', '/library_600x900.jpg');
     }
-    if (originalUrl.includes('images.gog-statics.com')) {
-        return originalUrl.replace('https://images.gog-statics.com/', '/img/gog/');
-    }
-    if (originalUrl.includes('cdn2.unrealengine.com')) {
-        return originalUrl.replace('https://cdn2.unrealengine.com/', '/img/epic/');
+    if (nextUrl.includes('/capsule_231x87.jpg')) {
+        nextUrl = nextUrl.replace('/capsule_231x87.jpg', '/library_600x900.jpg');
     }
     
-    return originalUrl;
+    if (nextUrl.includes('shared.cloudflare.steamstatic.com') || nextUrl.includes('shared.fastly.steamstatic.com')) {
+        return nextUrl
+            .replace('https://shared.cloudflare.steamstatic.com/', '/img/steam/')
+            .replace('https://shared.fastly.steamstatic.com/', '/img/steam/');
+    }
+    if (nextUrl.includes('images.gog-statics.com')) {
+        return nextUrl.replace('https://images.gog-statics.com/', '/img/gog/');
+    }
+    if (nextUrl.includes('cdn2.unrealengine.com')) {
+        return nextUrl.replace('https://cdn2.unrealengine.com/', '/img/epic/');
+    }
+    
+    return nextUrl;
 }
 
 async function loadActiveSales() {
@@ -107,7 +213,7 @@ async function loadActiveSales() {
             const endDate = new Date(sale.end_date);
             const daysRemaining = Math.ceil((endDate - new Date()) / (1000 * 60 * 60 * 24));
             
-            title.textContent = `🔴 LIVE: ${sale.name}`;
+            title.textContent = `LIVE: ${sale.name}`;
             message.textContent = `Ending in ${daysRemaining} days. Don't miss out on great deals!`;
             banner.style.display = 'block';
         } else {
@@ -124,7 +230,6 @@ async function loadActiveSales() {
 
 function initSearch() {
     const searchInput = document.getElementById('sidebar-search');
-    const searchBtn = document.getElementById('search-btn');
 
     if (!searchInput) return;
 
@@ -135,17 +240,12 @@ function initSearch() {
         }
     };
 
-    // Try to find search button if it exists
-    if (searchBtn) {
-        searchBtn.addEventListener('click', performSearch);
-    }
-    
-    // Add enter key support for search input
     searchInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             performSearch();
         }
     });
+    searchInput.addEventListener('input', updateFilters);
 }
 
 async function initApp() {
@@ -154,6 +254,7 @@ async function initApp() {
     await checkHealth();
     await loadActiveSales();
     await loadDeals();
+    startDealAutoRefresh();
     await loadWishlistPreview();
     await loadDealsForYou();
 
@@ -173,51 +274,28 @@ async function initApp() {
         });
     }
     
-    const searchInput = document.getElementById('search-input');
-    if (searchInput) searchInput.addEventListener('input', updateFilters);
-
     const hideOwnedCheckbox = document.getElementById('hide-owned');
     if (hideOwnedCheckbox) {
-        hideOwnedCheckbox.addEventListener('change', loadDeals);
+        hideOwnedCheckbox.addEventListener('change', () => loadDeals({ reset: true }));
     }
 
-    // Attach Event Listener for Load More button
+    const sortSelect = document.getElementById('sort-select');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', updateFilters);
+    }
+
     const loadMoreBtn = document.getElementById('load-more-btn');
     if (loadMoreBtn) {
-        loadMoreBtn.addEventListener('click', () => {
-            loadDeals(true); // true means load more
-        });
+        loadMoreBtn.addEventListener('click', () => loadDeals({ append: true }));
     }
 }
 
-function initAuthButton() {
-    const btn = document.getElementById('auth-btn');
-    if (!btn) return;
-
-    const token = getAccessToken();
-    if (!token) {
-        btn.textContent = 'Login';
-        btn.onclick = () => {
-            window.location.href = 'login.html';
-        };
-        return;
-    }
-
-    btn.textContent = 'Logout';
-    btn.onclick = () => {
-        sessionStorage.removeItem('dropsandgrinds_access_token');
-        sessionStorage.removeItem('dropsandgrinds_refresh_token');
-        sessionStorage.removeItem('dropsandgrinds_user_id');
-        sessionStorage.removeItem('dropsandgrinds_is_authenticated');
-        window.location.href = 'login.html';
-    };
-}
-
-function getAccessToken() {
-    if (window.authState?.accessToken) {
-        return window.authState.accessToken;
-    }
-    return sessionStorage.getItem('dropsandgrinds_access_token');
+function startDealAutoRefresh() {
+    if (dealsRefreshTimer) clearInterval(dealsRefreshTimer);
+    dealsRefreshTimer = setInterval(() => {
+        const active = document.visibilityState === 'visible';
+        if (active) loadDeals({ silent: true, rotate: true });
+    }, 60000);
 }
 
 async function loadWishlistPreview() {
@@ -275,6 +353,7 @@ async function checkHealth() {
 
 function renderSkeletons(count = 6) {
     const container = document.getElementById('deals-container');
+    if (!container) return;
     container.innerHTML = '';
     for (let i = 0; i < count; i++) {
         const skeleton = document.createElement('div');
@@ -294,7 +373,7 @@ function renderSkeletons(count = 6) {
 function renderEmptyState(message = 'No deals found matching your criteria.') {
     return `
         <div class="state-container state-empty">
-            <div class="state-icon">📭</div>
+            <div class="state-icon"><i data-lucide="inbox"></i></div>
             <div class="state-title">No Deals Found</div>
             <div class="state-message">${message}</div>
         </div>
@@ -304,7 +383,7 @@ function renderEmptyState(message = 'No deals found matching your criteria.') {
 function renderErrorState(message = 'Failed to load deals.', onRetry) {
     return `
         <div class="state-container state-error">
-            <div class="state-icon">⚠️</div>
+            <div class="state-icon"><i data-lucide="triangle-alert"></i></div>
             <div class="state-title">Oops!</div>
             <div class="state-message">${message}</div>
             <button class="retry-btn" onclick="${onRetry}()">Try Again</button>
@@ -319,81 +398,103 @@ function getScoreColorClass(score) {
     return 'red';
 }
 
-async function loadDeals(loadMore = false) {
+async function loadDeals(options = {}) {
     const container = document.getElementById('deals-container');
     const loadMoreBtn = document.getElementById('load-more-btn');
-    
-    if (loadMore) {
-        // Show loading on load more button
-        if (loadMoreBtn) {
-            loadMoreBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 16 12 12 8 12"/></svg> Loading...';
-            loadMoreBtn.disabled = true;
-        }
-    } else {
-        renderSkeletons();
-        currentDealsOffset = 0; // Reset offset for fresh load
+    const append = Boolean(options.append);
+    if (options.reset || !append) {
+        dealsOffset = 0;
+    }
+    if (!options.silent && !append) renderSkeletons();
+    if (loadMoreBtn) {
+        loadMoreBtn.disabled = true;
+        loadMoreBtn.textContent = append ? 'Loading...' : 'Load More Deals';
     }
 
     try {
         const hideOwned = document.getElementById('hide-owned')?.checked || false;
-        let url = `/api/deals?limit=${dealsPerPage}&offset=${currentDealsOffset}`;
-        
+        const offset = append ? dealsOffset : 0;
+        let nextDeals = [];
+        let computedTotal = 0;
         if (hideOwned) {
-            url += '&exclude_owned=true';
-        }
-
-        const response = await fetch(url);
-        const payload = await response.json();
-        if (!response.ok) {
-            throw new Error(payload.error || 'Failed to fetch deals');
-        }
-
-        const newDeals = (payload.deals || []).map((deal) => ({
-            id: deal.id,
-            title: deal.title,
-            cover: getProxiedImageUrl(deal.cover_url) || '',
-            store: deal.platform || 'Store',
-            price: deal.price_inr || 0,
-            lowestPrice: deal.lowest_price_inr || 0,
-            original: deal.original_inr || 0,
-            discount: deal.discount_percent || 0,
-            score: deal.review_score || 0,
-            status: deal.deal_status || '',
-            savings: deal.potential_savings_inr || 0,
-            isGSTAdded: true
-        }));
-
-        if (loadMore) {
-            // Append new deals to existing ones
-            allDeals = [...allDeals, ...newDeals];
-            currentDealsOffset += dealsPerPage;
+            const token = typeof getAccessToken === 'function' ? getAccessToken() : null;
+            const headers = token ? { Authorization: `Bearer ${token}` } : {};
+            const response = await fetch(`/api/games?limit=${dealsPageSize}&offset=${offset}&exclude_owned=true`, { headers });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.error || 'Failed to fetch games');
+            }
+            nextDeals = (payload.games || []).map(mapGamePayloadAsDeal);
+            computedTotal = payload.total || nextDeals.length;
         } else {
-            // Initial load
-            allDeals = newDeals;
-            currentDealsOffset = dealsPerPage;
+            const live = await fetchDealsFromApi(dealsPageSize, offset);
+            nextDeals = live.rows;
+            computedTotal = live.total;
         }
 
-        // DEBUG: Log deal IDs to verify correct mapping
-        console.log('Loaded deals:', allDeals.map(d => ({ id: d.id, title: d.title })));
+        allDeals = append ? allDeals.concat(nextDeals) : nextDeals;
+        dealsOffset = offset + nextDeals.length;
+        dealsTotal = computedTotal || allDeals.length;
+        updatePlatformFilterOptionsFromDeals(allDeals);
 
-        renderDeals(allDeals, loadMore);
+        updateDealStats(allDeals, dealsTotal);
+        updateDealsHeading(hideOwned, dealsTotal);
+        if (append) {
+            // Requirement: "Load More" must append, not replace.
+            renderDeals(nextDeals, { append: true });
+        } else {
+            renderDeals(options.rotate ? rotateDeals(allDeals) : allDeals);
+        }
+        updateLoadMoreButton();
     } catch (error) {
         container.innerHTML = renderErrorState('Failed to load deals from API. Please try again.', 'loadDeals');
         console.error(error);
     } finally {
-        // Restore load more button
         if (loadMoreBtn) {
-            loadMoreBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 16 12 12 8 12"/></svg> Load More Deals';
             loadMoreBtn.disabled = false;
+            loadMoreBtn.innerHTML = '<i data-lucide="plus"></i> Load More Deals';
         }
+        updateLoadMoreButton();
+        if (window.lucide) window.lucide.createIcons();
     }
+}
+
+function updateLoadMoreButton() {
+    const loadMoreBtn = document.getElementById('load-more-btn');
+    if (!loadMoreBtn) return;
+    loadMoreBtn.style.display = dealsOffset < dealsTotal ? 'inline-flex' : 'none';
+}
+
+function rotateDeals(deals) {
+    if (deals.length <= 1) return deals;
+    const offset = Math.floor(Math.random() * deals.length);
+    return deals.slice(offset).concat(deals.slice(0, offset));
+}
+
+function updateDealStats(deals, total) {
+    const statDeals = document.getElementById('stat-deals');
+    const statSavings = document.getElementById('stat-savings');
+    if (statDeals) statDeals.textContent = total;
+    if (statSavings) {
+        const discounted = deals.filter((deal) => deal.discount > 0);
+        const avg = discounted.length
+            ? Math.round(discounted.reduce((sum, deal) => sum + deal.discount, 0) / discounted.length)
+            : 0;
+        statSavings.textContent = `${avg}%`;
+    }
+}
+
+function updateDealsHeading(hideOwned, total) {
+    const heading = document.getElementById('deals-heading');
+    if (!heading) return;
+    heading.textContent = hideOwned ? `Games You Do Not Own (${total})` : `Live Deals (${total})`;
 }
 
 async function loadDealsForYou() {
     const token = getAccessToken();
     const section = document.getElementById('deals-for-you-section');
     
-    if (!token || !section) return; // Don't show section if not logged in
+    if (!section) return;
     
     section.style.display = 'block';
 
@@ -406,11 +507,10 @@ async function loadDealsForYou() {
         '</div>';
 
     try {
-        const response = await fetch('/api/deals/for-you?limit=4&offset=0', {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
+        // Backend supports optional auth: returns personalized when logged in, top deals otherwise.
+        const endpoint = '/api/deals/for-you?limit=4&offset=0';
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const response = await fetch(endpoint, { headers });
 
         if (response.status === 401) {
             container.innerHTML = '';
@@ -425,13 +525,20 @@ async function loadDealsForYou() {
         const deals = (payload.deals || []).map((deal) => ({
             id: deal.id,
             title: deal.title,
-            cover: getProxiedImageUrl(deal.cover_url) || '',
+            cover: getProxiedImageUrl(deal.cover_url) || '/images/game-placeholder.svg',
             store: deal.platform || 'Store',
             price: deal.price_inr || 0,
+            lowestPrice: deal.lowest_price_inr || 0,
             original: deal.original_inr || 0,
             discount: deal.discount_percent || 0,
             score: deal.review_score || 0,
-            reason: deal.personalized_reason || 'Recommended for you'
+            status: deal.deal_status || '',
+            quality: deal.deal_quality || deal.deal_status || '',
+            savings: deal.potential_savings_inr || 0,
+            cheapestRegion: deal.cheapest_region || 'India',
+            paymentMethods: deal.payment_methods || [],
+            isGSTAdded: true,
+            reason: token ? (deal.personalized_reason || 'Recommended for you') : 'Top deal',
         }));
 
         renderDealsForYou(deals);
@@ -454,34 +561,25 @@ function renderDealsForYou(deals) {
         return;
     }
 
-    container.innerHTML = '<div class="deals-for-you-grid">' + deals.map(deal => `
-        <div class="deal-card-small" onclick="window.location.href='game.html?id=${deal.id}'">
-            <img src="${deal.cover}" class="deal-cover" alt="${deal.title} cover" loading="lazy" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22%3ENo Image%3C/text%3E%3C/svg%3E'">
-            <div class="deal-info">
-                <span class="personalized-badge">${deal.reason}</span>
-                <div class="deal-title">${deal.title}</div>
-                <div class="deal-price-row" style="margin-top:8px;">
-                    <span class="discount">-${deal.discount}%</span>
-                    <span class="price">₹${deal.price}</span>
-                </div>
-            </div>
-        </div>
-    `).join('') + '</div>';
+    // Render with the same card template/size as Live Deals.
+    container.innerHTML = '';
+    renderDeals(deals, { append: true, targetContainerId: 'deals-for-you-container', showReasonBadge: true });
+    if (window.lucide) window.lucide.createIcons();
 }
 
 function updateFilters() {
-    const steamChecked = document.getElementById('store-steam').checked;
-    const epicChecked = document.getElementById('store-epic').checked;
-    const gogChecked = document.getElementById('store-gog').checked;
-    const maxPrice = parseInt(document.getElementById('price-slider').value);
-    const searchTerm = document.getElementById('search-input').value.toLowerCase();
-    const hideOwned = document.getElementById('hide-owned')?.checked || false;
+    const steamChecked = document.getElementById('store-steam')?.checked ?? true;
+    const epicChecked = document.getElementById('store-epic')?.checked ?? true;
+    const gogChecked = document.getElementById('store-gog')?.checked ?? true;
+    const maxPrice = parseInt(document.getElementById('price-slider')?.value || '5000');
+    const searchTerm = (document.getElementById('sidebar-search')?.value || '').toLowerCase();
 
     const filtered = allDeals.filter(deal => {
         // Store filter
-        if (deal.store === "Steam" && !steamChecked) return false;
-        if (deal.store === "Epic Games" && !epicChecked) return false;
-        if (deal.store === "GOG" && !gogChecked) return false;
+        const store = String(deal.store || '').toLowerCase();
+        if (store.includes("steam") && !steamChecked) return false;
+        if (store.includes("epic") && !epicChecked) return false;
+        if (store.includes("gog") && !gogChecked) return false;
 
         // Price filter
         if (deal.price > maxPrice) return false;
@@ -492,52 +590,83 @@ function updateFilters() {
         return true;
     });
 
+    const sort = document.getElementById('sort-select')?.value || 'discount';
+    filtered.sort((a, b) => {
+        switch (sort) {
+            case 'price-low':
+                return a.price - b.price;
+            case 'price-high':
+                return b.price - a.price;
+            case 'rating':
+                return b.score - a.score;
+            case 'discount':
+            default:
+                return b.discount - a.discount;
+        }
+    });
+
     renderDeals(filtered);
 }
 
-function renderDeals(dealsArray, loadMore = false) {
-    const container = document.getElementById('deals-container');
-    const loadMoreBtn = document.getElementById('load-more-btn');
-    
-    if (!loadMore) {
-        container.innerHTML = ''; // clear grid for fresh load
+function renderDeals(dealsArray, options = {}) {
+    const targetId = options.targetContainerId || 'deals-container';
+    const container = document.getElementById(targetId);
+    const append = Boolean(options.append);
+    if (!append) {
+        container.innerHTML = ''; // clear grid
     }
-    
-    if(dealsArray.length === 0) {
+
+    if (!append && dealsArray.length === 0) {
         container.innerHTML = renderEmptyState();
-        if (loadMoreBtn) loadMoreBtn.style.display = 'none';
         return;
     }
 
     dealsArray.forEach(deal => {
         const card = document.createElement('div');
         card.className = 'deal-card';
+        card.tabIndex = 0;
+        card.setAttribute('role', 'link');
+        card.setAttribute('aria-label', `View ${deal.title}`);
+        card.addEventListener('click', () => {
+            window.location.href = `game.html?id=${deal.id}`;
+        });
+        card.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                window.location.href = `game.html?id=${deal.id}`;
+            }
+        });
         
         const scoreColor = getScoreColorClass(deal.score);
-        const savingsAmount = deal.original - deal.price;
+        const savingsAmount = Math.max(0, deal.original - deal.price);
         
         card.innerHTML = `
-            <img data-src="${deal.cover}" class="deal-cover" alt="${deal.title} cover" loading="lazy" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22%3ENo Image%3C/text%3E%3C/svg%3E'">
+            <img src="${deal.cover}" class="deal-cover" alt="${deal.title} cover" onerror="this.src='/images/game-placeholder.svg'">
             <div class="deal-info">
+                ${options.showReasonBadge && deal.reason ? `<div class="badge badge-primary" style="margin-bottom: 8px; width: fit-content;">${deal.reason}</div>` : ''}
                 <div class="meta-row">
                     <span>${deal.store} ${deal.isGSTAdded ? '(Inc. GST)' : ''}</span>
-                    <span style="display: flex; align-items: center; gap: 4px;">
-                        <span class="deal-score-badge ${scoreColor}">${deal.score || '--'}</span>
-                        <span class="score-sources">${deal.review_source_count ? `(${deal.review_source_count})` : ''}</span>
-                    </span>
+                    ${deal.score > 0 ? `<span class="score-badge">${deal.score}</span>` : '<span class="score-badge muted">No score</span>'}
                 </div>
                 <div class="deal-title">${deal.title}</div>
                 <div class="deal-price-row">
-                    <span class="discount">-${deal.discount}%</span>
+                    ${deal.discount > 0 ? `<span class="discount">-${deal.discount}%</span>` : '<span class="discount muted">Deal</span>'}
                     <div style="text-align: right;">
-                        <span style="text-decoration: line-through; color: var(--text-muted); font-size: 0.8rem; display: block;">₹${deal.original}</span>
+                        <span style="text-decoration: line-through; color: var(--color-text-muted); font-size: 0.8rem; display: block;">₹${deal.original}</span>
                         <span class="price">₹${deal.price}</span>
                     </div>
                 </div>
                 <div class="meta-row" style="margin-top: 10px;">
                     <span>Best: ₹${deal.lowestPrice}</span>
-                    <span>${deal.status ? deal.status.toUpperCase() : 'DEAL'}</span>
+                    <span>${deal.quality ? deal.quality.toUpperCase() : 'DEAL'}</span>
                 </div>
+                <div class="meta-row" style="margin-top: 8px;">
+                    <span>${deal.cheapestRegion}</span>
+                    <span>${deal.paymentMethods.slice(0, 2).join(' / ') || 'Card'}</span>
+                </div>
+                <button class="btn btn-secondary btn-sm wishlist-card-btn" onclick="event.stopPropagation(); addDealToWishlist(${deal.id}, ${Math.max(1, deal.lowestPrice || deal.price || 1)})">
+                    Add to Wishlist
+                </button>
             </div>
             <div class="deal-overlay">
                 <div class="overlay-title">${deal.title}</div>
@@ -546,30 +675,52 @@ function renderDeals(dealsArray, loadMore = false) {
                     <span>Review Score</span>
                 </div>
                 <div class="overlay-savings">Save ₹${savingsAmount}</div>
-                <a href="game.html?id=${deal.id}" class="overlay-btn">View Deal</a>
+                <a href="game.html?id=${deal.id}" class="overlay-btn" onclick="event.stopPropagation()">View Details</a>
             </div>
         `;
         container.appendChild(card);
-
-        // Load cached image asynchronously after DOM insertion
-        const img = card.querySelector('img[data-src]');
-        if (img && window.imageCache) {
-            window.imageCache.fetchCachedImage(img.dataset.src).then(url => {
-                img.src = url;
-            }).catch(() => {
-                img.src = img.dataset.src;
-            });
-        } else if (img) {
-            img.src = img.dataset.src;
-        }
     });
-    
-    // Show/hide load more button
-    if (loadMoreBtn) {
-        if (dealsArray.length < dealsPerPage) {
-            loadMoreBtn.style.display = 'none';
-        } else {
-            loadMoreBtn.style.display = 'block';
+    if (window.lucide) window.lucide.createIcons();
+}
+
+async function addDealToWishlist(gameID, targetPrice) {
+    const token = getAccessToken();
+    if (!token) {
+        sessionStorage.setItem('dropsandgrinds_login_message', 'Sign in to add to wishlist');
+        window.location.href = 'login.html';
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/wishlist', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+                game_id: gameID,
+                target_price_inr: Number(targetPrice) || 1,
+            }),
+        });
+
+        if (response.status === 401) {
+            sessionStorage.setItem('dropsandgrinds_login_message', 'Sign in to add to wishlist');
+            window.location.href = 'login.html';
+            return;
         }
+
+        if (response.status === 409) {
+            alert('This game is already in your wishlist.');
+            return;
+        }
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(payload.error || 'Failed to add to wishlist');
+        }
+        alert('Added to wishlist.');
+    } catch (error) {
+        alert(error.message || 'Could not add to wishlist');
     }
 }

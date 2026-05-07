@@ -2,6 +2,7 @@ package reviews
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,16 +16,16 @@ type ReviewSource string
 const (
 	SourceMetacritic ReviewSource = "metacritic"
 	SourceOpenCritic ReviewSource = "opencritic"
-	SourceSteam     ReviewSource = "steam"
-	SourceIGN       ReviewSource = "ign"
-	SourceGameSpot  ReviewSource = "gamespot"
+	SourceSteam      ReviewSource = "steam"
+	SourceIGN        ReviewSource = "ign"
+	SourceGameSpot   ReviewSource = "gamespot"
 )
 
 // ReviewScore represents a normalized review score
 type ReviewScore struct {
-	Source   ReviewSource `json:"source"`
-	Score    int          `json:"score"`    // 0-100
-	URL      string       `json:"url"`
+	Source    ReviewSource `json:"source"`
+	Score     int          `json:"score"` // 0-100
+	URL       string       `json:"url"`
 	FetchedAt time.Time    `json:"fetched_at"`
 }
 
@@ -45,14 +46,7 @@ func NewMetacriticClient() *MetacriticClient {
 }
 
 func (c *MetacriticClient) FetchScore(ctx context.Context, gameID string) (*ReviewScore, error) {
-	// For MVP: simulate Metacritic API call
-	// In production: use actual Metacritic API or scrape
-	return &ReviewScore{
-		Source:   SourceMetacritic,
-		Score:    85, // Simulated score
-		URL:      fmt.Sprintf("https://www.metacritic.com/game/%s", gameID),
-		FetchedAt: time.Now(),
-	}, nil
+	return nil, fmt.Errorf("metacritic client not configured")
 }
 
 // OpenCriticClient fetches scores from OpenCritic
@@ -67,12 +61,29 @@ func NewOpenCriticClient() *OpenCriticClient {
 }
 
 func (c *OpenCriticClient) FetchScore(ctx context.Context, gameID string) (*ReviewScore, error) {
-	// For MVP: simulate OpenCritic API call
-	// In production: use OpenCritic public API
+	url := fmt.Sprintf("https://api.opencritic.com/api/game/%s", gameID)
+	body, err := fetchHTTP(ctx, c.httpClient, url)
+	if err != nil {
+		return nil, err
+	}
+	var payload struct {
+		TopCriticScore float64 `json:"topCriticScore"`
+		MedianScore    float64 `json:"medianScore"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return nil, err
+	}
+	score := payload.TopCriticScore
+	if score <= 0 {
+		score = payload.MedianScore
+	}
+	if score <= 0 {
+		return nil, fmt.Errorf("opencritic score unavailable")
+	}
 	return &ReviewScore{
-		Source:   SourceOpenCritic,
-		Score:    88, // Simulated score
-		URL:      fmt.Sprintf("https://opencritic.com/game/%s", gameID),
+		Source:    SourceOpenCritic,
+		Score:     int(score + 0.5),
+		URL:       fmt.Sprintf("https://opencritic.com/game/%s", gameID),
 		FetchedAt: time.Now(),
 	}, nil
 }
@@ -91,21 +102,33 @@ func NewSteamClient(apiKey string) *SteamClient {
 }
 
 func (c *SteamClient) FetchScore(ctx context.Context, gameID string) (*ReviewScore, error) {
-	// For MVP: simulate Steam API call
-	// In production: use Steam appreviews endpoint
-	// Convert gameID to Steam AppID if needed
 	appID, err := strconv.ParseInt(gameID, 10, 64)
 	if err != nil {
-		appID = 1091500 // Default to Cyberpunk 2077
+		return nil, err
 	}
-	
-	// Simulate Steam review percentage (positive reviews)
-	positivePercent := 92
-	
+	url := fmt.Sprintf("https://store.steampowered.com/appreviews/%d?json=1&language=all&purchase_type=all", appID)
+	body, err := fetchHTTP(ctx, c.httpClient, url)
+	if err != nil {
+		return nil, err
+	}
+	var payload struct {
+		QuerySummary struct {
+			TotalPositive int `json:"total_positive"`
+			TotalNegative int `json:"total_negative"`
+		} `json:"query_summary"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return nil, err
+	}
+	total := payload.QuerySummary.TotalPositive + payload.QuerySummary.TotalNegative
+	if total == 0 {
+		return nil, fmt.Errorf("steam review score unavailable")
+	}
+	score := int(float64(payload.QuerySummary.TotalPositive)/float64(total)*100 + 0.5)
 	return &ReviewScore{
-		Source:   SourceSteam,
-		Score:    positivePercent,
-		URL:      fmt.Sprintf("https://store.steampowered.com/app/%d", appID),
+		Source:    SourceSteam,
+		Score:     score,
+		URL:       fmt.Sprintf("https://store.steampowered.com/app/%d", appID),
 		FetchedAt: time.Now(),
 	}, nil
 }
@@ -122,14 +145,7 @@ func NewIGNClient() *IGNClient {
 }
 
 func (c *IGNClient) FetchScore(ctx context.Context, gameID string) (*ReviewScore, error) {
-	// For MVP: simulate IGN API call
-	// In production: scrape IGN review pages
-	return &ReviewScore{
-		Source:   SourceIGN,
-		Score:    90, // Simulated score
-		URL:      fmt.Sprintf("https://www.ign.com/games/%s", gameID),
-		FetchedAt: time.Now(),
-	}, nil
+	return nil, fmt.Errorf("ign client not configured")
 }
 
 // GameSpotClient fetches scores from GameSpot
@@ -146,14 +162,7 @@ func NewGameSpotClient(apiKey string) *GameSpotClient {
 }
 
 func (c *GameSpotClient) FetchScore(ctx context.Context, gameID string) (*ReviewScore, error) {
-	// For MVP: simulate GameSpot API call
-	// In production: use GameSpot API or scrape
-	return &ReviewScore{
-		Source:   SourceGameSpot,
-		Score:    87, // Simulated score
-		URL:      fmt.Sprintf("https://www.gamespot.com/games/%s", gameID),
-		FetchedAt: time.Now(),
-	}, nil
+	return nil, fmt.Errorf("gamespot client not configured")
 }
 
 // ReviewAggregator aggregates reviews from multiple sources
@@ -166,9 +175,9 @@ func NewReviewAggregator(steamAPIKey, gameSpotAPIKey string) *ReviewAggregator {
 		clients: map[ReviewSource]ReviewClient{
 			SourceMetacritic: NewMetacriticClient(),
 			SourceOpenCritic: NewOpenCriticClient(),
-			SourceSteam:     NewSteamClient(steamAPIKey),
-			SourceIGN:       NewIGNClient(),
-			SourceGameSpot:  NewGameSpotClient(gameSpotAPIKey),
+			SourceSteam:      NewSteamClient(steamAPIKey),
+			SourceIGN:        NewIGNClient(),
+			SourceGameSpot:   NewGameSpotClient(gameSpotAPIKey),
 		},
 	}
 }
@@ -176,16 +185,18 @@ func NewReviewAggregator(steamAPIKey, gameSpotAPIKey string) *ReviewAggregator {
 // FetchAllScores fetches scores from all available sources
 func (a *ReviewAggregator) FetchAllScores(ctx context.Context, gameID string) ([]ReviewScore, error) {
 	var scores []ReviewScore
-	
+
 	for _, client := range a.clients {
 		score, err := client.FetchScore(ctx, gameID)
 		if err != nil {
 			// Log error but continue with other sources
 			continue
 		}
-		scores = append(scores, *score)
+		if score != nil {
+			scores = append(scores, *score)
+		}
 	}
-	
+
 	return scores, nil
 }
 
@@ -195,7 +206,7 @@ func (a *ReviewAggregator) FetchScoreFromSource(ctx context.Context, gameID stri
 	if !ok {
 		return nil, fmt.Errorf("unsupported review source: %s", source)
 	}
-	
+
 	return client.FetchScore(ctx, gameID)
 }
 
@@ -205,16 +216,16 @@ func fetchHTTP(ctx context.Context, client *http.Client, url string) ([]byte, er
 	if err != nil {
 		return nil, err
 	}
-	
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
 	}
-	
+
 	return io.ReadAll(resp.Body)
 }

@@ -5,14 +5,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/middleware"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/models"
-	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/repositories"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/services"
 )
 
 var gamesService *services.GamesService
 var meilisearchService *services.MeilisearchService
-var enhancedCatalogRepo *repositories.EnhancedCatalogRepository
 
 // SetGamesService wires the games service into HTTP handlers at startup.
 func SetGamesService(svc *services.GamesService) {
@@ -24,9 +23,32 @@ func SetMeilisearchService(svc *services.MeilisearchService) {
 	meilisearchService = svc
 }
 
-// SetEnhancedCatalogRepository wires the enhanced catalog repository into HTTP handlers at startup.
-func SetEnhancedCatalogRepository(repo *repositories.EnhancedCatalogRepository) {
-	enhancedCatalogRepo = repo
+func GameSubrouter(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/games/")
+	switch {
+	case strings.HasSuffix(path, "/redirect"):
+		GameRedirectHandler(w, r)
+	case strings.HasSuffix(path, "/reviews"):
+		ReviewHandler(w, r)
+	case strings.HasSuffix(path, "/buy-timing"):
+		BuyTimingHandler(w, r)
+	case strings.HasSuffix(path, "/buy-advice"):
+		BuyAdviceHandler(w, r)
+	default:
+		GameDetailHandler(w, r)
+	}
+}
+
+func PriceSubrouter(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/prices/")
+	switch {
+	case strings.HasSuffix(path, "/history"):
+		PriceHistoryHandler(w, r)
+	case strings.HasSuffix(path, "/india"):
+		IndiaArbitrageHandler(w, r)
+	default:
+		writeJSON(w, http.StatusNotFound, models.APIError{Error: "Price route not found"})
+	}
 }
 
 // SearchGamesHandler returns games matching search criteria with filters.
@@ -60,6 +82,7 @@ func SearchGamesHandler(w http.ResponseWriter, r *http.Request) {
 	maxDiscount := parseQueryInt(r.URL.Query().Get("max_discount"), 0)
 	minReviewScore := parseQueryFloat(r.URL.Query().Get("min_review_score"), 0)
 	maxReviewScore := parseQueryFloat(r.URL.Query().Get("max_review_score"), 0)
+	paymentMethod := r.URL.Query().Get("payment_method")
 	limit := parseQueryInt(r.URL.Query().Get("limit"), 30)
 	offset := parseQueryInt(r.URL.Query().Get("offset"), 0)
 
@@ -67,14 +90,13 @@ func SearchGamesHandler(w http.ResponseWriter, r *http.Request) {
 	var total int
 	var err error
 
-	// Use Meilisearch if available, otherwise fall back to PostgreSQL
-	if meilisearchService != nil {
-		// Build Meilisearch filter string
-		filters := buildMeilisearchFilters(platform, minPrice, maxPrice, minDiscount, maxDiscount, minReviewScore, maxReviewScore)
-		games, total, err = meilisearchService.SearchGames(r.Context(), query, filters, limit, offset)
-	} else {
-		games, total, err = gamesService.SearchGames(r.Context(), query, platform, minPrice, maxPrice, minDiscount, maxDiscount, minReviewScore, maxReviewScore, limit, offset)
+	// Force primary search path through GamesService (DB + live API ingestion),
+	// because stale external indexes can cap results and break "real-time" behavior.
+	if gamesService == nil {
+		writeJSON(w, http.StatusInternalServerError, models.APIError{Error: "Games service not initialized"})
+		return
 	}
+	games, total, err = gamesService.SearchGames(r.Context(), query, platform, minPrice, maxPrice, minDiscount, maxDiscount, minReviewScore, maxReviewScore, paymentMethod, limit, offset)
 
 	if err != nil {
 		writeServiceError(w, err, "Failed to search games")
@@ -155,8 +177,8 @@ func GamesListHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get user_id from context if authenticated
 	var userID int64
-	if uid := r.Context().Value("user_id"); uid != nil {
-		userID = uid.(int64)
+	if uid, ok := middleware.UserIDFromContext(r.Context()); ok {
+		userID = uid
 	}
 
 	response, err := gamesService.ListGames(r.Context(), services.GameFilter{
@@ -194,10 +216,6 @@ func GameDetailHandler(w http.ResponseWriter, r *http.Request) {
 		BuyAdviceHandler(w, r)
 		return
 	}
-	if strings.HasSuffix(r.URL.Path, "/enhanced") {
-		EnhancedGameDataHandler(w, r)
-		return
-	}
 	if gamesService == nil {
 		writeJSON(w, http.StatusInternalServerError, models.APIError{Error: "Games service not initialized"})
 		return
@@ -224,11 +242,6 @@ func GameDetailHandler(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, models.APIError{Error: "Game not found"})
 		return
 	}
-
-	// Fetch arbitrage data if service is available
-	// Note: This requires GetArbitrageService to be exposed or arbitrageService to be package-level
-	// For now, skip arbitrage in game detail - it's available via /api/games/{id}/arbitrage endpoint
-	// This is more efficient as it's only fetched when needed
 
 	writeJSON(w, http.StatusOK, game)
 }
@@ -338,54 +351,6 @@ func IndiaArbitrageHandler(w http.ResponseWriter, r *http.Request) {
 	response, err := gamesService.GetIndiaArbitrage(r.Context(), gameID)
 	if err != nil {
 		writeServiceError(w, err, "Failed to fetch India arbitrage data")
-		return
-	}
-
-	writeJSON(w, http.StatusOK, response)
-}
-
-// EnhancedGameDataHandler returns enhanced game data including screenshots, trailers, system requirements, platforms, and price comparison.
-// @Summary      Get enhanced game data
-// @Description  Returns comprehensive game data including screenshots, trailers, system requirements, platforms, and multi-store price comparison
-// @Tags         games
-// @Produce      json
-// @Param        id   path  int  true  "Game ID"
-// @Success      200  {object}  models.PriceComparisonResponse
-// @Failure      400  {object}  models.APIError
-// @Failure      404  {object}  models.APIError
-// @Router       /api/games/{id}/enhanced [get]
-func EnhancedGameDataHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, models.APIError{Error: "Method not allowed"})
-		return
-	}
-	if enhancedCatalogRepo == nil {
-		writeJSON(w, http.StatusInternalServerError, models.APIError{Error: "Enhanced catalog repository not initialized"})
-		return
-	}
-
-	const prefix = "/api/games/"
-	const suffix = "/enhanced"
-	if !strings.HasPrefix(r.URL.Path, prefix) || !strings.HasSuffix(r.URL.Path, suffix) {
-		writeJSON(w, http.StatusBadRequest, models.APIError{Error: "Invalid enhanced game path"})
-		return
-	}
-
-	middle := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, prefix), suffix)
-	gameID, err := strconv.ParseInt(strings.Trim(middle, "/"), 10, 64)
-	if err != nil || gameID <= 0 {
-		writeJSON(w, http.StatusBadRequest, models.APIError{Error: "Invalid game id"})
-		return
-	}
-
-	region := r.URL.Query().Get("region")
-	if region == "" {
-		region = "IN" // Default to India region
-	}
-
-	response, err := enhancedCatalogRepo.GetGameWithPriceComparison(r.Context(), gameID, region)
-	if err != nil {
-		writeServiceError(w, err, "Failed to get enhanced game data")
 		return
 	}
 

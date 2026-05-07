@@ -18,6 +18,7 @@ type Config struct {
 	RefreshTokenTTLHours   int
 	SentryDSN              string
 	SteamAPIKey            string
+	GameSpotAPIKey         string
 	MeilisearchURL         string
 	MeilisearchMasterKey   string
 	GoogleClientID         string
@@ -38,6 +39,7 @@ func LoadConfig() Config {
 	refreshTokenTTLHours := parseEnvInt("REFRESH_TOKEN_TTL_HOURS", 168)
 	sentryDSN := readSecretEnv("SENTRY_DSN")
 	steamAPIKey := readSecretEnv("STEAM_API_KEY")
+	gameSpotAPIKey := readSecretEnv("GAMESPOT_API_KEY")
 	meilisearchURL := os.Getenv("MEILISEARCH_URL")
 	meilisearchMasterKey := os.Getenv("MEILISEARCH_MASTER_KEY")
 	googleClientID := os.Getenv("GOOGLE_CLIENT_ID")
@@ -68,6 +70,7 @@ func LoadConfig() Config {
 		RefreshTokenTTLHours:   refreshTokenTTLHours,
 		SentryDSN:              sentryDSN,
 		SteamAPIKey:            steamAPIKey,
+		GameSpotAPIKey:         gameSpotAPIKey,
 		MeilisearchURL:         meilisearchURL,
 		MeilisearchMasterKey:   meilisearchMasterKey,
 		GoogleClientID:         googleClientID,

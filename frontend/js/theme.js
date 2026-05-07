@@ -19,7 +19,9 @@
     function getEffectiveTheme() {
         const stored = getStoredTheme();
         if (stored) return stored;
-        return getSystemTheme();
+        // Dark is the product default (India-first gaming aesthetic). We only respect
+        // system preference after the user explicitly opts in by toggling.
+        return 'dark';
     }
     
     // Apply theme to document

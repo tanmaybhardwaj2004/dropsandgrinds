@@ -60,7 +60,7 @@ function initPurchaseForm() {
 
             // Reset form and reload savings
             form.reset();
-            loadSavings();
+            await loadSavings();
             alert('Purchase logged successfully!');
 
         } catch (error) {

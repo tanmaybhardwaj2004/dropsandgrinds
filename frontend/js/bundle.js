@@ -18,9 +18,22 @@ function initBundleForm() {
             alert('Please fill in all fields');
             return;
         }
+        if (!isSupportedBundleURL(url)) {
+            showBundleError('Bundle URL is not supported. Use a Humble Bundle, Fanatical, or Steam bundle URL.');
+            return;
+        }
 
         await analyzeBundle(url, bundlePrice);
     });
+}
+
+function isSupportedBundleURL(url) {
+    try {
+        const host = new URL(url).hostname.toLowerCase();
+        return host.includes('humblebundle.com') || host.includes('fanatical.com') || host.includes('steampowered.com') || host.includes('store.steampowered.com');
+    } catch {
+        return false;
+    }
 }
 
 async function analyzeBundle(url, bundlePrice) {
@@ -60,10 +73,19 @@ async function analyzeBundle(url, bundlePrice) {
     } catch (error) {
         console.error('Failed to analyze bundle:', error);
         if (loadingState) loadingState.style.display = 'none';
-        if (errorState) {
-            errorState.style.display = 'block';
-            document.getElementById('error-message').textContent = error.message;
-        }
+        showBundleError(error.message || 'Bundle URL is not supported.');
+    }
+}
+
+function showBundleError(message) {
+    const loadingState = document.getElementById('loading-state');
+    const errorState = document.getElementById('error-state');
+    const resultsContainer = document.getElementById('results-container');
+    if (loadingState) loadingState.style.display = 'none';
+    if (resultsContainer) resultsContainer.style.display = 'none';
+    if (errorState) {
+        errorState.style.display = 'block';
+        document.getElementById('error-message').textContent = message;
     }
 }
 
@@ -75,24 +97,24 @@ function displayResults(data) {
     const verdictClass = data.verdict === 'buy_bundle' ? 'buy_bundle' : 
                         data.verdict === 'buy_separately' ? 'buy_separately' : 'mixed';
     
-    const verdictText = data.verdict === 'buy_bundle' ? 'BUY THE BUNDLE! 💰' :
-                       data.verdict === 'buy_separately' ? 'BUY SEPARATELY 🛒' : 'MIXED DECISION 🤔';
+    const verdictText = data.verdict === 'buy_bundle' ? 'BUY THE BUNDLE' :
+                       data.verdict === 'buy_separately' ? 'BUY SEPARATELY' : 'MIXED DECISION';
     
     verdictBanner.className = `verdict-banner ${verdictClass}`;
     verdictBanner.textContent = verdictText;
 
     // Set summary values
     document.getElementById('bundle-name').textContent = data.bundle_name || 'Unknown Bundle';
-    document.getElementById('bundle-price-display').textContent = `₹${data.bundle_price_inr.toFixed(2)}`;
-    document.getElementById('individual-sum').textContent = `₹${data.individual_sum_inr.toFixed(2)}`;
+    document.getElementById('bundle-price-display').textContent = `₹${Number(data.bundle_price_inr || 0).toFixed(2)}`;
+    document.getElementById('individual-sum').textContent = `₹${Number(data.individual_sum_inr || 0).toFixed(2)}`;
     
     const savingsEl = document.getElementById('savings');
-    savingsEl.textContent = `₹${data.savings_inr.toFixed(2)}`;
+    savingsEl.textContent = `₹${Number(data.savings_inr || 0).toFixed(2)}`;
     savingsEl.style.color = data.savings_inr >= 0 ? '#238636' : '#da3633';
 
     // Populate games table
     const tableBody = document.getElementById('games-table-body');
-    tableBody.innerHTML = data.games.map(game => {
+    tableBody.innerHTML = (data.games || []).map(game => {
         const statusClass = game.current_price_inr > 0 ? 
                            game.bundle_share_inr < game.current_price_inr ? 'status-good' : 'status-bad' : 
                            'status-unknown';

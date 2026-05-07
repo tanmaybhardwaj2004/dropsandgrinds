@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -65,7 +64,8 @@ func DealsListHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	deals, total, err := dealsService.GetDealsForYou(r.Context(), 0, limit, offset)
+	// Trigger optional live refresh in the background path (repository has Redis gate).
+	deals, total, err := dealsService.ListDeals(r.Context(), limit, offset)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.APIError{Error: "Failed to fetch deals"})
 		return
@@ -88,7 +88,7 @@ func DealsListHandler(w http.ResponseWriter, r *http.Request) {
 
 // DealsForYouHandler handles GET /api/deals/for-you
 // @Summary      Personalized deals
-// @Description  Returns deals filtered by user's wishlist and click history
+// @Description  If authenticated, returns deals filtered by user's wishlist and click history. If not authenticated, returns top deals.
 // @Tags         deals
 // @Produce      json
 // @Param        limit   query  int  false  "Page size"  default(20)
@@ -126,12 +126,19 @@ func DealsForYouHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// For MVP: user ID from auth context (to be implemented)
-	userID := int64(0)
-
-	deals, total, err := dealsService.GetDealsForYou(r.Context(), userID, limit, offset)
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	var (
+		deals []models.Deal
+		total int
+		err   error
+	)
+	if ok {
+		deals, total, err = dealsService.GetDealsForYou(r.Context(), userID, limit, offset)
+	} else {
+		deals, total, err = dealsService.ListDeals(r.Context(), limit, offset)
+	}
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, models.APIError{Error: "Failed to fetch personalized deals"})
+		writeJSON(w, http.StatusInternalServerError, models.APIError{Error: "Failed to fetch deals"})
 		return
 	}
 
@@ -202,8 +209,11 @@ func GameRedirectHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// For MVP: return Steam store URL
-	storeURL := fmt.Sprintf("https://store.steampowered.com/app/%d", gameID)
+	storeURL, ok, err := dealsService.StoreURL(r.Context(), gameID, platform)
+	if err != nil || !ok {
+		writeJSON(w, http.StatusNotFound, models.APIError{Error: "Store URL not found"})
+		return
+	}
 
 	response := struct {
 		URL string `json:"url"`

@@ -17,7 +17,7 @@ func (f *fakeCatalogStoreForHandler) ListGames(ctx context.Context, query, platf
 	return []models.Game{{ID: 1, Title: "Cyberpunk 2077", Platform: "Steam", PriceINR: 1499, LowestPriceINR: 999, IsAllTimeLow: false}}, 1, nil
 }
 
-func (f *fakeCatalogStoreForHandler) SearchGames(ctx context.Context, query string, platform string, minPrice, maxPrice float64, minDiscount, maxDiscount int, minReviewScore, maxReviewScore float64, limit, offset int) ([]models.Game, int, error) {
+func (f *fakeCatalogStoreForHandler) SearchGames(ctx context.Context, query string, platform string, minPrice, maxPrice float64, minDiscount, maxDiscount int, minReviewScore, maxReviewScore float64, paymentMethod string, limit, offset int) ([]models.Game, int, error) {
 	return []models.Game{{ID: 1, Title: "Cyberpunk 2077", Platform: "Steam", PriceINR: 1499, LowestPriceINR: 999, IsAllTimeLow: false}}, 1, nil
 }
 

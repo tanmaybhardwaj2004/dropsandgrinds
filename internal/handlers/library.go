@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 
+	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/middleware"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/models"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/services"
 )
@@ -37,14 +37,14 @@ func LibraryImportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := r.Context().Value("user_id")
-	if userID == nil {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
 		writeJSON(w, http.StatusUnauthorized, models.APIError{Error: "Unauthorized"})
 		return
 	}
 
 	var req models.LibraryImportRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := decodeJSONBody(r, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, models.APIError{Error: "Invalid request body"})
 		return
 	}
@@ -54,8 +54,15 @@ func LibraryImportHandler(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, models.APIError{Error: "SteamID is required"})
 		return
 	}
+	if !req.ConsentAnalytics {
+		writeJSON(w, http.StatusBadRequest, models.APIError{Error: "Consent is required to import a Steam library"})
+		return
+	}
+	if clicksRepo != nil {
+		_ = clicksRepo.SetUserConsentAnalytics(r.Context(), userID, true)
+	}
 
-	result, err := libraryService.ImportLibrary(r.Context(), userID.(int64), req.SteamID)
+	result, err := libraryService.ImportLibrary(r.Context(), userID, req.SteamID)
 	if err != nil {
 		writeServiceError(w, err, "Failed to import library")
 		return
@@ -83,13 +90,13 @@ func LibraryListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := r.Context().Value("user_id")
-	if userID == nil {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
 		writeJSON(w, http.StatusUnauthorized, models.APIError{Error: "Unauthorized"})
 		return
 	}
 
-	gameIDs, err := libraryService.GetLibrary(r.Context(), userID.(int64))
+	gameIDs, err := libraryService.GetLibrary(r.Context(), userID)
 	if err != nil {
 		writeServiceError(w, err, "Failed to get library")
 		return
@@ -101,4 +108,38 @@ func LibraryListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, response)
+}
+
+// LibraryDLCHandler handles GET /api/library/dlc
+// @Summary      Get missing DLCs
+// @Description  Returns catalog DLCs likely related to owned games but not present in the authenticated user's library
+// @Tags         library
+// @Produce      json
+// @Success      200  {object}  models.LibraryDLCResponse
+// @Failure      401  {object}  models.APIError
+// @Failure      500  {object}  models.APIError
+// @Router       /api/library/dlc [get]
+func LibraryDLCHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, models.APIError{Error: "Method not allowed"})
+		return
+	}
+	if libraryService == nil {
+		writeJSON(w, http.StatusInternalServerError, models.APIError{Error: "Library service not initialized"})
+		return
+	}
+
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, models.APIError{Error: "Unauthorized"})
+		return
+	}
+
+	dlcs, err := libraryService.FindMissingDLCGames(r.Context(), userID)
+	if err != nil {
+		writeServiceError(w, err, "Failed to get DLCs")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, models.LibraryDLCResponse{DLCs: dlcs, Count: len(dlcs)})
 }

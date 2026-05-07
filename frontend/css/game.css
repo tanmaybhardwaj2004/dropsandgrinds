@@ -345,85 +345,21 @@
 .source-item {
     background-color: var(--color-bg-secondary);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: var(--space-4);
-    min-height: 300px;
+    border-radius: 8px;
+    padding: 16px;
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    justify-content: center;
+    transition: border-color 0.2s ease;
 }
 
 .source-item:hover {
     border-color: var(--color-accent-primary);
 }
 
-/* Price Chart Loading States */
-.loading-overlay,
-.error-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: var(--color-surface);
-    border-radius: var(--radius-lg);
-    z-index: 10;
-}
-
-.spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid var(--color-border);
-    border-top-color: var(--color-primary);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: var(--space-3);
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-.error-overlay p {
-    color: var(--color-text-secondary);
-    margin-bottom: var(--space-3);
-}
-
-/* Chart Period Buttons */
-.chart-period-btn {
-    font-size: var(--text-xs);
-    padding: var(--space-2) var(--space-3);
-}
-
-.chart-period-btn.active {
-    background: var(--color-primary);
-    color: white;
-}
-
-/* Price Stats */
-.stat-box {
-    text-align: center;
-    padding: var(--space-3);
-    background: var(--color-surface-elevated);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-border);
-}
-
-.stat-label {
-    font-size: var(--text-xs);
-    color: var(--color-text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: var(--space-1);
-}
-
-.stat-value {
-    font-size: var(--text-lg);
-    font-weight: 700;
+.best-offer-row {
+    border-color: rgba(34, 197, 94, 0.55);
+    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.16);
 }
 
 .source-name {
@@ -434,6 +370,8 @@
 .source-score {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
     gap: 12px;
 }
 
@@ -462,117 +400,6 @@
     text-align: right;
 }
 
-/* India Arbitrage Side-by-Side Table */
-.arbitrage-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 20px;
-    font-size: 1rem;
-}
-
-.arbitrage-table th,
-.arbitrage-table td {
-    padding: 12px 16px;
-    text-align: left;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.arbitrage-table th {
-    color: var(--color-text-secondary);
-    font-weight: 600;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.arbitrage-table td {
-    color: var(--color-text-primary);
-}
-
-.arbitrage-table .price-cell {
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 1.1rem;
-}
-
-.arbitrage-table .gst-row td {
-    color: var(--color-accent-danger);
-}
-
-.arbitrage-table .total-row td {
-    border-top: 2px solid var(--color-border);
-    font-weight: 700;
-    font-size: 1.1rem;
-}
-
-.arbitrage-table .cheapest td {
-    background-color: rgba(35, 134, 54, 0.1);
-    color: var(--color-accent-success);
-}
-
-.cheapest-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background-color: var(--color-accent-success);
-    color: white;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    margin-left: 8px;
-}
-
-.cheapest-badge::before {
-    content: '✓';
-}
-
-/* Deal Card Score Badge */
-.deal-score-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: white;
-    flex-shrink: 0;
-}
-
-.deal-score-badge.green { background-color: #238636; }
-.deal-score-badge.amber { background-color: #d29922; }
-.deal-score-badge.orange { background-color: #d26922; }
-.deal-score-badge.red { background-color: #da3633; }
-.deal-score-badge.gray { background-color: #6e7681; }
-
-.score-sources {
-    font-size: 0.75rem;
-    color: var(--color-text-secondary);
-    margin-left: 4px;
-}
-
-/* Review Source Link */
-.source-link {
-    color: var(--color-accent-primary);
-    text-decoration: none;
-    font-size: 0.85rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    margin-top: 8px;
-}
-
-.source-link:hover {
-    text-decoration: underline;
-}
-
-.source-link svg {
-    width: 12px;
-    height: 12px;
-}
-
 /* Responsive */
 @media (max-width: 900px) {
     .game-hero, .metrics-grid {
@@ -586,5 +413,10 @@
     
     .aggregate-label {
         text-align: center;
+    }
+
+    .source-item {
+        align-items: flex-start;
+        flex-direction: column;
     }
 }

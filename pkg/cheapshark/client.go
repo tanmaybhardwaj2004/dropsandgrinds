@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -18,27 +19,113 @@ const (
 
 // Deal represents a game deal from CheapShark
 type Deal struct {
-	GameID       string  `json:"gameID"`
-	Title        string  `json:"title"`
-	StoreID      string  `json:"storeID"`
-	StoreName    string  `json:"storeName"`
-	SalePrice    float64 `json:"salePrice"`
-	NormalPrice  float64 `json:"normalPrice"`
-	IsOnSale     bool    `json:"isOnSale"`
-	Savings      float64 `json:"savings"`
-	Metacritic   int     `json:"metacriticScore"`
-	SteamRating  float64 `json:"steamRatingPercent"`
-	Thumb        string  `json:"thumb"`
-	ReleaseDate  int64   `json:"releaseDate"`
-	LastChange   int64   `json:"lastChange"`
-	DealRating   string  `json:"dealRating"`
+	DealID      string  `json:"dealID"`
+	GameID      string  `json:"gameID"`
+	Title       string  `json:"title"`
+	StoreID     string  `json:"storeID"`
+	StoreName   string  `json:"storeName"`
+	SalePrice   Float64 `json:"salePrice"`
+	NormalPrice Float64 `json:"normalPrice"`
+	IsOnSale    Bool    `json:"isOnSale"`
+	Savings     Float64 `json:"savings"`
+	Metacritic  Int     `json:"metacriticScore"`
+	SteamRating Float64 `json:"steamRatingPercent"`
+	Thumb       string  `json:"thumb"`
+	ReleaseDate Int64   `json:"releaseDate"`
+	LastChange  Int64   `json:"lastChange"`
+	DealRating  string  `json:"dealRating"`
+}
+
+type Float64 float64
+
+func (f *Float64) UnmarshalJSON(data []byte) error {
+	var number float64
+	if err := json.Unmarshal(data, &number); err == nil {
+		*f = Float64(number)
+		return nil
+	}
+	var text string
+	if err := json.Unmarshal(data, &text); err != nil {
+		return err
+	}
+	if text == "" {
+		*f = 0
+		return nil
+	}
+	parsed, err := strconv.ParseFloat(text, 64)
+	if err != nil {
+		return err
+	}
+	*f = Float64(parsed)
+	return nil
+}
+
+type Bool bool
+
+func (b *Bool) UnmarshalJSON(data []byte) error {
+	var value bool
+	if err := json.Unmarshal(data, &value); err == nil {
+		*b = Bool(value)
+		return nil
+	}
+	var text string
+	if err := json.Unmarshal(data, &text); err != nil {
+		return err
+	}
+	if text == "" {
+		*b = false
+		return nil
+	}
+	parsed, err := strconv.ParseBool(text)
+	if err != nil {
+		return err
+	}
+	*b = Bool(parsed)
+	return nil
+}
+
+type Int int
+
+func (i *Int) UnmarshalJSON(data []byte) error {
+	value, err := parseJSONInt(data)
+	if err != nil {
+		return err
+	}
+	*i = Int(value)
+	return nil
+}
+
+type Int64 int64
+
+func (i *Int64) UnmarshalJSON(data []byte) error {
+	value, err := parseJSONInt(data)
+	if err != nil {
+		return err
+	}
+	*i = Int64(value)
+	return nil
+}
+
+func parseJSONInt(data []byte) (int64, error) {
+	var number int64
+	if err := json.Unmarshal(data, &number); err == nil {
+		return number, nil
+	}
+	var text string
+	if err := json.Unmarshal(data, &text); err != nil {
+		return 0, err
+	}
+	if text == "" {
+		return 0, nil
+	}
+	return strconv.ParseInt(text, 10, 64)
 }
 
 // Game represents game details from CheapShark
 type Game struct {
-	GameID      string  `json:"gameID"`
-	Title       string  `json:"title"`
-	SteamAppID  string  `json:"steamAppID"`
+	GameID            string  `json:"gameID"`
+	Title             string  `json:"title"`
+	SteamAppID        string  `json:"steamAppID"`
 	CheapestPriceEver float64 `json:"cheapestPriceEver"`
 }
 

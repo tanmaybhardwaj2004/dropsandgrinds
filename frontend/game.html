@@ -3,66 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loading... - DropsAndGrinds</title>
+    <title>Game Details - DropsAndGrinds</title>
     <meta name="theme-color" content="#6366f1">
     <link rel="stylesheet" href="css/modern-theme.css">
     <link rel="stylesheet" href="css/game.css">
-    <link rel="stylesheet" href="css/responsive.css">
 </head>
 <body>
     <!-- Navigation -->
     <nav class="nav">
         <div class="container flex items-center justify-between" style="height: 64px;">
             <a href="index.html" class="flex items-center gap-2" style="text-decoration: none;">
-                <div style="width: 36px; height: 36px; background: var(--gradient-primary); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">🎮</div>
+                <div class="brand-mark" aria-hidden="true">DG</div>
                 <span style="font-family: var(--font-display); font-size: var(--text-xl); font-weight: 700; color: var(--color-text-primary);">DropsAndGrinds</span>
             </a>
             
-            <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle menu">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-            
-            <div class="flex items-center gap-1 nav-links" id="nav-links">
+            <div class="flex items-center gap-1" id="nav-links">
                 <a href="index.html" class="nav-link">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    <i data-lucide="badge-percent"></i>
                     Deals
                 </a>
                 <a href="search.html" class="nav-link">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    <i data-lucide="search"></i>
                     Search
                 </a>
                 <a href="library.html" class="nav-link">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                    <i data-lucide="library"></i>
                     Library
                 </a>
                 <a href="wishlist.html" class="nav-link">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                    <i data-lucide="heart"></i>
                     Wishlist
                 </a>
                 <a href="savings.html" class="nav-link">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    <i data-lucide="badge-dollar-sign"></i>
                     Savings
                 </a>
                 <a href="bundle.html" class="nav-link">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                    <i data-lucide="package"></i>
                     Bundle
                 </a>
                 <a href="buy-timing.html" class="nav-link">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <i data-lucide="clock"></i>
                     Timing
                 </a>
                 <a href="about.html" class="nav-link">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    <i data-lucide="info"></i>
                     About
                 </a>
             </div>
             
             <div class="flex items-center gap-3">
                 <button id="theme-toggle" class="btn btn-ghost btn-sm" title="Toggle theme">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="theme-icon-moon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="theme-icon-sun" style="display: none;"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                    <i data-lucide="moon" class="theme-icon-moon"></i>
+                    <i data-lucide="sun" class="theme-icon-sun" style="display: none;"></i>
                 </button>
                 <button class="btn btn-primary btn-sm" id="auth-btn" onclick="window.location.href='login.html'">Sign In</button>
             </div>
@@ -75,26 +68,19 @@
             <!-- Left: Cover & Info -->
             <div>
                 <div style="border-radius: var(--radius-lg); overflow: hidden; margin-bottom: var(--space-5); position: relative;">
-                    <img src="" alt="Loading..." style="width: 100%; aspect-ratio: 16/9; object-fit: cover; display: none;" id="game-cover">
-                    <div id="cover-skeleton" class="skeleton" style="width: 100%; aspect-ratio: 16/9;"></div>
+                    <img src="" alt="Game cover" style="width: 100%; aspect-ratio: 16/9; object-fit: cover;" id="game-cover">
                     <div style="position: absolute; top: var(--space-3); left: var(--space-3);">
                         <span class="badge badge-primary" id="store-badge">Steam</span>
                     </div>
                 </div>
                 
-                <h1 id="game-title" style="font-size: var(--text-3xl); margin-bottom: var(--space-3); min-height: 1.2em;"><span class="skeleton" style="display: inline-block; width: 60%; height: 1em;"></span></h1>
+                <h1 id="game-title" style="font-size: var(--text-3xl); margin-bottom: var(--space-3);">Loading game...</h1>
                 
-                <div id="genre-badges" style="display: flex; gap: var(--space-2); margin-bottom: var(--space-4); flex-wrap: wrap; min-height: 28px;">
-                    <span class="skeleton" style="width: 50px; height: 24px; display: inline-block;"></span>
-                    <span class="skeleton" style="width: 60px; height: 24px; display: inline-block;"></span>
-                    <span class="badge badge-success" id="discount-badge" style="display: none;">--</span>
+                <div id="genre-badges" style="display: flex; gap: var(--space-2); margin-bottom: var(--space-4); flex-wrap: wrap;">
+                    <span class="badge badge-success" id="discount-badge">Loading</span>
                 </div>
                 
-                <p id="game-description" style="color: var(--color-text-secondary); line-height: 1.7; font-size: var(--text-lg); min-height: 3.4em;">
-                    <span class="skeleton" style="display: block; width: 100%; height: 1em; margin-bottom: 0.4em;"></span>
-                    <span class="skeleton" style="display: block; width: 80%; height: 1em; margin-bottom: 0.4em;"></span>
-                    <span class="skeleton" style="display: block; width: 60%; height: 1em;"></span>
-                </p>
+                <p class="description" style="color: var(--color-text-secondary); line-height: 1.7; font-size: var(--text-lg);">Loading live pricing, reviews, and store data from the API.</p>
             </div>
             
             <!-- Right: Pricing & Actions -->
@@ -103,19 +89,19 @@
                     <!-- Price -->
                     <div style="text-align: center; padding: var(--space-5) 0; border-bottom: 1px solid var(--color-border);">
                         <div style="display: flex; align-items: baseline; justify-content: center; gap: var(--space-2); margin-bottom: var(--space-2);">
-                            <span style="font-size: var(--text-sm); color: var(--color-text-muted); text-decoration: line-through;" id="original-price"><span class="skeleton" style="display: inline-block; width: 50px; height: 0.8em;"></span></span>
-                            <span style="font-family: var(--font-display); font-size: var(--text-4xl); font-weight: 700; color: var(--color-accent-success);" id="main-price"><span class="skeleton" style="display: inline-block; width: 100px; height: 1em;"></span></span>
+                            <span style="font-size: var(--text-sm); color: var(--color-text-muted); text-decoration: line-through;" id="original-price">--</span>
+                            <span style="font-family: var(--font-display); font-size: var(--text-4xl); font-weight: 700; color: var(--color-accent-success);" id="main-price">--</span>
                         </div>
-                        <div class="badge badge-success" style="font-size: var(--text-base); display: none;" id="savings-badge">Save --</div>
+                        <div class="badge badge-success" id="savings-badge" style="font-size: var(--text-base);">Loading</div>
                     </div>
                     
                     <!-- Target Price -->
                     <div style="padding: var(--space-4);">
-                        <label for="target-price-input" class="form-label">Alert me when price drops below</label>
+                        <label class="form-label">Alert me when price drops below</label>
                         <div style="display: flex; gap: var(--space-2);">
                             <input type="number" id="target-price-input" class="form-input" min="1" step="1" value="999" placeholder="₹999">
                             <button class="btn btn-primary" id="wishlist-btn" style="white-space: nowrap;">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: var(--space-1);"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                <i data-lucide="heart"></i>
                                 Add to Wishlist
                             </button>
                         </div>
@@ -125,92 +111,15 @@
                 <!-- Quick Links -->
                 <div class="card" style="padding: var(--space-4);">
                     <h4 style="font-size: var(--text-sm); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-3);">View on Store</h4>
-                    <a href="#" class="btn btn-secondary" style="width: 100%; margin-bottom: var(--space-2);">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: var(--space-2);"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-                        Open in Steam
+                    <a href="#" class="btn btn-secondary" id="store-link" style="width: 100%; margin-bottom: var(--space-2);">
+                        <i data-lucide="external-link"></i>
+                        Open Store
                     </a>
-                    <a href="#" class="btn btn-ghost" style="width: 100%; font-size: var(--text-sm);">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: var(--space-2);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    <a href="#price-chart-container" class="btn btn-ghost" style="width: 100%; font-size: var(--text-sm);">
+                        <i data-lucide="chart-line"></i>
                         Price History
                     </a>
                 </div>
-            </div>
-        </section>
-
-        <!-- Screenshots Gallery -->
-        <section style="margin-top: var(--space-8);">
-            <h3 style="font-size: var(--text-2xl); margin-bottom: var(--space-4);">Screenshots</h3>
-            <div id="screenshots-gallery" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-4);">
-                <div class="screenshot-placeholder skeleton" style="aspect-ratio: 16/9; border-radius: var(--radius-md);"></div>
-                <div class="screenshot-placeholder skeleton" style="aspect-ratio: 16/9; border-radius: var(--radius-md);"></div>
-                <div class="screenshot-placeholder skeleton" style="aspect-ratio: 16/9; border-radius: var(--radius-md);"></div>
-            </div>
-        </section>
-
-        <!-- Trailers Section -->
-        <section style="margin-top: var(--space-8);">
-            <h3 style="font-size: var(--text-2xl); margin-bottom: var(--space-4);">Trailers & Videos</h3>
-            <div id="trailers-section" style="display: grid; grid-template-columns: 1fr; gap: var(--space-4);">
-                <div class="trailer-placeholder skeleton" style="aspect-ratio: 16/9; border-radius: var(--radius-md);"></div>
-            </div>
-        </section>
-
-        <!-- System Requirements -->
-        <section style="margin-top: var(--space-8);">
-            <h3 style="font-size: var(--text-2xl); margin-bottom: var(--space-4);">System Requirements</h3>
-            <div class="card" style="padding: var(--space-5);">
-                <div id="system-requirements" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6);">
-                    <div>
-                        <h4 style="font-size: var(--text-lg); margin-bottom: var(--space-3); color: var(--color-accent-primary);">Minimum</h4>
-                        <div id="min-requirements">
-                            <div class="skeleton" style="width: 100%; height: 1em; margin-bottom: var(--space-2);"></div>
-                            <div class="skeleton" style="width: 80%; height: 1em; margin-bottom: var(--space-2);"></div>
-                            <div class="skeleton" style="width: 60%; height: 1em;"></div>
-                        </div>
-                    </div>
-                    <div>
-                        <h4 style="font-size: var(--text-lg); margin-bottom: var(--space-3); color: var(--color-accent-success);">Recommended</h4>
-                        <div id="rec-requirements">
-                            <div class="skeleton" style="width: 100%; height: 1em; margin-bottom: var(--space-2);"></div>
-                            <div class="skeleton" style="width: 80%; height: 1em; margin-bottom: var(--space-2);"></div>
-                            <div class="skeleton" style="width: 60%; height: 1em;"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Platform Support -->
-        <section style="margin-top: var(--space-8);">
-            <h3 style="font-size: var(--text-2xl); margin-bottom: var(--space-4);">Available Platforms</h3>
-            <div id="platform-badges" style="display: flex; gap: var(--space-3); flex-wrap: wrap;">
-                <div class="skeleton" style="width: 80px; height: 32px; border-radius: var(--radius-md);"></div>
-                <div class="skeleton" style="width: 80px; height: 32px; border-radius: var(--radius-md);"></div>
-                <div class="skeleton" style="width: 80px; height: 32px; border-radius: var(--radius-md);"></div>
-            </div>
-        </section>
-
-        <!-- Multi-Store Price Comparison -->
-        <section style="margin-top: var(--space-8);">
-            <h3 style="font-size: var(--text-2xl); margin-bottom: var(--space-4);">Price Comparison Across Stores</h3>
-            <div class="card" style="padding: var(--space-5); overflow-x: auto;">
-                <table id="price-comparison-table" style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr style="border-bottom: 2px solid var(--color-border);">
-                            <th style="text-align: left; padding: var(--space-3);">Store</th>
-                            <th style="text-align: right; padding: var(--space-3);">Price</th>
-                            <th style="text-align: right; padding: var(--space-3);">Discount</th>
-                            <th style="text-align: center; padding: var(--space-3);">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="price-comparison-body">
-                        <tr style="border-bottom: 1px solid var(--color-border);">
-                            <td colspan="4" style="text-align: center; padding: var(--space-4);">
-                                <div class="skeleton" style="width: 100%; height: 40px;"></div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
             </div>
         </section>
 
@@ -219,71 +128,46 @@
             
             <!-- Geo Arbitrage Breakdown -->
             <div class="metric-card arbitrage-card">
-                <h3>🌍 India Arbitrage Engine</h3>
+                <h3><i data-lucide="globe-2"></i> India Arbitrage Engine</h3>
                 <p class="metric-sub">Calculated vs current Global Base Cost ($29.99 USD)</p>
                 
-                <div class="receipt" id="arbitrage-loading">
-                    <div class="receipt-row"><span class="skeleton" style="width: 40%; height: 1em;"></span><span class="skeleton" style="width: 60px; height: 1em;"></span></div>
-                    <div class="receipt-row"><span class="skeleton" style="width: 60%; height: 1em;"></span><span class="skeleton" style="width: 60px; height: 1em;"></span></div>
-                    <div class="receipt-divider"></div>
-                    <div class="receipt-row"><span class="skeleton" style="width: 50%; height: 1em;"></span><span class="skeleton" style="width: 60px; height: 1em;"></span></div>
-                    <div class="receipt-row highlight-row mt-3">
-                        <span>Current Store Price</span>
-                        <span class="highlight-green" id="arbitrage-cost"><span class="skeleton" style="width: 70px; height: 1em; display: inline-block;"></span></span>
+                <div class="receipt">
+                    <div class="receipt-row">
+                        <span>Base USD → INR Conv.</span>
+                        <span>₹2,492.00</span>
                     </div>
-                </div>
-                <div id="arbitrage-loaded" style="display: none;">
-                    <table class="arbitrage-table">
-                        <thead>
-                            <tr>
-                                <th>Region / Store</th>
-                                <th>Base Price</th>
-                                <th>GST (18%)</th>
-                                <th>Total Price</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr id="arbitrage-row-india">
-                                <td>🇮🇳 Steam India</td>
-                                <td class="price-cell" id="arbitrage-india-base">--</td>
-                                <td class="price-cell tax-value" id="arbitrage-india-gst">--</td>
-                                <td class="price-cell" id="arbitrage-india-total">--</td>
-                            </tr>
-                            <tr id="arbitrage-row-global">
-                                <td>🌍 Steam Global (USD → INR)</td>
-                                <td class="price-cell" id="arbitrage-global-base">--</td>
-                                <td class="price-cell tax-value" id="arbitrage-global-gst">--</td>
-                                <td class="price-cell" id="arbitrage-global-total">--</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <div style="text-align: center; margin-bottom: 16px;">
-                        <span id="arbitrage-cheapest-badge"></span>
+                    <div class="receipt-row">
+                        <span>Statutory Digital Tax (18% GST)</span>
+                        <span class="tax-value">+ ₹448.56</span>
+                    </div>
+                    <div class="receipt-divider"></div>
+                    <div class="receipt-row total-row">
+                        <span>True Global Value</span>
+                        <span>₹2,940.56</span>
+                    </div>
+                    <div class="receipt-row highlight-row mt-3">
+                        <span>Current Store Price (India Subsidy)</span>
+                        <span class="highlight-green" id="arbitrage-cost">₹1,499.00</span>
                     </div>
                 </div>
                 
-                <div class="arbitrage-verdict" id="arbitrage-verdict">
-                    <span class="skeleton" style="width: 80%; height: 1em; display: inline-block;"></span>
+                <div class="arbitrage-verdict green" id="arbitrage-verdict">
+                    VERDICT: High Arbitrage Potential (Savings vs Global: 49%)
                 </div>
             </div>
 
             <!-- Predictive Timeline -->
             <div class="metric-card timeline-card">
-                <h3>⏳ Best Time to Buy</h3>
+                <h3><i data-lucide="clock"></i> Best Time to Buy</h3>
                 <p class="metric-sub">Algorithm based on historic sales and publisher cycles.</p>
 
-                <div class="timeline" id="timeline-loading">
-                    <div class="time-node"><div class="skeleton" style="width: 120px; height: 1.2em;"></div></div>
-                    <div class="time-node"><div class="skeleton" style="width: 140px; height: 1.2em;"></div></div>
-                    <div class="time-node"><div class="skeleton" style="width: 160px; height: 1.2em;"></div></div>
-                </div>
-                <div class="timeline" id="timeline-loaded" style="display: none;">
+                <div class="timeline">
                     <!-- Past Drop -->
                     <div class="time-node past">
                         <div class="node-circle"></div>
                         <div class="node-content">
-                            <h4 id="timeline-past-title">--</h4>
-                            <span class="node-cost" id="timeline-past-price">--</span>
+                            <h4>Winter Sale 2025</h4>
+                            <span class="node-cost">₹1,499</span>
                         </div>
                     </div>
                     
@@ -291,8 +175,8 @@
                     <div class="time-node active">
                         <div class="node-circle"></div>
                         <div class="node-content">
-                            <h4>Current Price</h4>
-                            <span class="node-cost current-node-cost">--</span>
+                            <h4>Current (Spring Sale)</h4>
+                            <span class="node-cost current-node-cost">₹1,499</span>
                         </div>
                     </div>
                     
@@ -300,15 +184,15 @@
                     <div class="time-node future">
                         <div class="node-circle"></div>
                         <div class="node-content">
-                            <h4 id="timeline-future-title">Expected Drop</h4>
-                            <span class="node-cost" id="timeline-future-price">Predicted: --</span>
-                            <span class="confidence" id="timeline-confidence">--</span>
+                            <h4>Expected Summer Drop</h4>
+                            <span class="node-cost">Predicted: ₹999</span>
+                            <span class="confidence">87% Confidence</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="timeline-verdict" id="timeline-verdict">
-                    <span class="skeleton" style="width: 90%; height: 1em; display: inline-block;"></span>
+                    WAIT: Historical metrics predict a steeper drop within 90 days.
                 </div>
             </div>
 
@@ -317,53 +201,51 @@
         <!-- Price History Chart Section (Phase 5) -->
         <section class="metrics-grid" style="margin-top: 32px;">
             <div class="metric-card full-width">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
-                    <div>
-                        <h3>📈 Price History</h3>
-                        <p class="metric-sub">Track price changes over time to find the best deal</p>
-                    </div>
-                    <div style="display: flex; gap: var(--space-2);">
-                        <button id="chart-period-30" class="btn btn-sm btn-ghost chart-period-btn active" data-days="30">30 Days</button>
-                        <button id="chart-period-90" class="btn btn-sm btn-ghost chart-period-btn" data-days="90">90 Days</button>
-                        <button id="chart-period-all" class="btn btn-sm btn-ghost chart-period-btn" data-days="365">1 Year</button>
-                    </div>
-                </div>
-                <div id="price-chart-container" class="chart-container" style="position: relative;">
-                    <div id="price-chart-loading" class="loading-overlay" style="display: none;">
-                        <div class="spinner"></div>
-                        <p>Loading price history...</p>
-                    </div>
-                    <div id="price-chart-error" class="error-overlay" style="display: none;">
-                        <p>Failed to load price history</p>
-                        <button onclick="loadPriceHistory()" class="btn btn-sm btn-primary">Retry</button>
-                    </div>
+                <h3><i data-lucide="chart-line"></i> Price History</h3>
+                <p class="metric-sub">Track price changes over time to find the best deal</p>
+                <div id="price-chart-container" class="chart-container">
                     <canvas id="priceChart"></canvas>
                 </div>
-                <div id="price-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--space-4); margin-top: var(--space-4);">
-                    <div class="stat-box">
-                        <div class="stat-label">Lowest Price</div>
-                        <div class="stat-value" id="stat-lowest">--</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-label">Highest Price</div>
-                        <div class="stat-value" id="stat-highest">--</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-label">Average Price</div>
-                        <div class="stat-value" id="stat-average">--</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-label">Price Drop</div>
-                        <div class="stat-value" id="stat-drop">--</div>
-                    </div>
-                </div>
+            </div>
+        </section>
+
+        <!-- Store Comparison and Metadata -->
+        <section class="metrics-grid" style="margin-top: 32px;">
+            <div class="metric-card full-width">
+                <h3><i data-lucide="store"></i> Store Price Comparison</h3>
+                <p class="metric-sub">Live INR price, GST inclusion, payment support, and cheapest-region signal</p>
+                <div id="price-comparison-list" class="review-sources"></div>
+            </div>
+
+            <div class="metric-card">
+                <h3><i data-lucide="credit-card"></i> India Checkout Intelligence</h3>
+                <p class="metric-sub">Payment methods and regional buying context</p>
+                <div class="review-sources" id="payment-methods-list"></div>
+            </div>
+
+            <div class="metric-card">
+                <h3><i data-lucide="monitor-cog"></i> System Requirements</h3>
+                <p class="metric-sub">Official store requirements when available</p>
+                <div class="review-sources" id="system-requirements-list"></div>
+            </div>
+
+            <div class="metric-card">
+                <h3><i data-lucide="layers-3"></i> Editions and DLC</h3>
+                <p class="metric-sub">Purchase variants and add-on tracking</p>
+                <div class="review-sources" id="editions-dlc-list"></div>
+            </div>
+
+            <div class="metric-card">
+                <h3><i data-lucide="gamepad-2"></i> Platforms and Media</h3>
+                <p class="metric-sub">Supported platforms, screenshots, and trailers from live metadata</p>
+                <div class="review-sources" id="platform-media-list"></div>
             </div>
         </section>
 
         <!-- Review Scores Section (Phase 6) -->
         <section class="metrics-grid" style="margin-top: 32px;">
             <div class="metric-card review-card full-width">
-                <h3>🎮 Review Scores</h3>
+                <h3><i data-lucide="gamepad-2"></i> Review Scores</h3>
                 <p class="metric-sub">Aggregated from multiple review sources</p>
                 
                 <div class="review-aggregate" id="review-aggregate">
@@ -385,60 +267,11 @@
         </section>
     </main>
 
-    <!-- Footer -->
-    <footer style="border-top: 1px solid var(--color-border); padding: var(--space-8) 0; background: var(--color-bg-secondary); margin-top: auto;">
-        <div class="container">
-            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: var(--space-8);">
-                <div>
-                    <div style="display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3);">
-                        <div style="width: 32px; height: 32px; background: var(--gradient-primary); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;">🎮</div>
-                        <span style="font-family: var(--font-display); font-weight: 700;">DropsAndGrinds</span>
-                    </div>
-                    <p style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Smart cross-platform game deal tracker for Indian gamers. Never miss a price drop again.</p>
-                </div>
-                <div>
-                    <h4 style="font-size: var(--text-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-3); color: var(--color-text-muted);">Features</h4>
-                    <ul style="list-style: none; display: flex; flex-direction: column; gap: var(--space-2);">
-                        <li><a href="search.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Deal Search</a></li>
-                        <li><a href="library.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Game Library</a></li>
-                        <li><a href="bundle.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Bundle Analyzer</a></li>
-                        <li><a href="buy-timing.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Buy Timing</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h4 style="font-size: var(--text-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-3); color: var(--color-text-muted);">Tools</h4>
-                    <ul style="list-style: none; display: flex; flex-direction: column; gap: var(--space-2);">
-                        <li><a href="savings.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Savings Tracker</a></li>
-                        <li><a href="wishlist.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Wishlist Alerts</a></li>
-                        <li><a href="api-status.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">API Status Checker</a></li>
-                        <li><a href="timing.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">Buy Timing</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h4 style="font-size: var(--text-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-3); color: var(--color-text-muted);">Connect</h4>
-                    <ul style="list-style: none; display: flex; flex-direction: column; gap: var(--space-2);">
-                        <li><a href="about.html" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">About</a></li>
-                        <li><a href="https://github.com/tanmaybhardwaj2004/dropsandgrinds" target="_blank" rel="noopener noreferrer" style="color: var(--color-text-tertiary); font-size: var(--text-sm);">GitHub</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div style="border-top: 1px solid var(--color-border); margin-top: var(--space-6); padding-top: var(--space-6); text-align: center; color: var(--color-text-muted); font-size: var(--text-sm);">
-                © <span class="copyright-year">2025</span> DropsAndGrinds. Built for Indian gamers.
-            </div>
-        </div>
-    </footer>
-
-    <script src="js/navbar.js"></script>
     <script src="js/theme.js"></script>
-    <script>
-        document.querySelectorAll('.copyright-year').forEach(el => el.textContent = new Date().getFullYear());
-        document.addEventListener('DOMContentLoaded', async () => {
-            await initNavbar();
-        });
-    </script>
     <script src="js/auth.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="js/image-cache.js"></script>
     <script src="js/game.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>if (window.lucide) window.lucide.createIcons();</script>
 </body>
 </html>
