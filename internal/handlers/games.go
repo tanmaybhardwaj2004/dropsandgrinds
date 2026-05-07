@@ -90,18 +90,13 @@ func SearchGamesHandler(w http.ResponseWriter, r *http.Request) {
 	var total int
 	var err error
 
-	// Use Meilisearch if available, otherwise fall back to PostgreSQL
-	if meilisearchService != nil {
-		// Build Meilisearch filter string
-		filters := buildMeilisearchFilters(platform, minPrice, maxPrice, minDiscount, maxDiscount, minReviewScore, maxReviewScore)
-		games, total, err = meilisearchService.SearchGames(r.Context(), query, filters, limit, offset)
-	} else {
-		if gamesService == nil {
-			writeJSON(w, http.StatusInternalServerError, models.APIError{Error: "Games service not initialized"})
-			return
-		}
-		games, total, err = gamesService.SearchGames(r.Context(), query, platform, minPrice, maxPrice, minDiscount, maxDiscount, minReviewScore, maxReviewScore, paymentMethod, limit, offset)
+	// Force primary search path through GamesService (DB + live API ingestion),
+	// because stale external indexes can cap results and break "real-time" behavior.
+	if gamesService == nil {
+		writeJSON(w, http.StatusInternalServerError, models.APIError{Error: "Games service not initialized"})
+		return
 	}
+	games, total, err = gamesService.SearchGames(r.Context(), query, platform, minPrice, maxPrice, minDiscount, maxDiscount, minReviewScore, maxReviewScore, paymentMethod, limit, offset)
 
 	if err != nil {
 		writeServiceError(w, err, "Failed to search games")

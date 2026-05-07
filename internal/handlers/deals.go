@@ -64,6 +64,7 @@ func DealsListHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Trigger optional live refresh in the background path (repository has Redis gate).
 	deals, total, err := dealsService.ListDeals(r.Context(), limit, offset)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.APIError{Error: "Failed to fetch deals"})
@@ -87,7 +88,7 @@ func DealsListHandler(w http.ResponseWriter, r *http.Request) {
 
 // DealsForYouHandler handles GET /api/deals/for-you
 // @Summary      Personalized deals
-// @Description  Returns deals filtered by user's wishlist and click history
+// @Description  If authenticated, returns deals filtered by user's wishlist and click history. If not authenticated, returns top deals.
 // @Tags         deals
 // @Produce      json
 // @Param        limit   query  int  false  "Page size"  default(20)
@@ -126,14 +127,18 @@ func DealsForYouHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userID, ok := middleware.UserIDFromContext(r.Context())
-	if !ok {
-		writeJSON(w, http.StatusUnauthorized, models.APIError{Error: "Unauthorized"})
-		return
+	var (
+		deals []models.Deal
+		total int
+		err   error
+	)
+	if ok {
+		deals, total, err = dealsService.GetDealsForYou(r.Context(), userID, limit, offset)
+	} else {
+		deals, total, err = dealsService.ListDeals(r.Context(), limit, offset)
 	}
-
-	deals, total, err := dealsService.GetDealsForYou(r.Context(), userID, limit, offset)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, models.APIError{Error: "Failed to fetch personalized deals"})
+		writeJSON(w, http.StatusInternalServerError, models.APIError{Error: "Failed to fetch deals"})
 		return
 	}
 

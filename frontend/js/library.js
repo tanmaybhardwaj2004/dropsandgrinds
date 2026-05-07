@@ -3,7 +3,12 @@ document.addEventListener('DOMContentLoaded', () => {
     initAuthButton();
     checkAuthAndLoadLibrary();
     initImportForm();
+    initLibraryPagination();
 });
+
+let libraryGameIDs = [];
+let libraryPageOffset = 0;
+const libraryPageSize = 200;
 
 function checkAuthAndLoadLibrary() {
     const token = getAccessToken();
@@ -14,6 +19,13 @@ function checkAuthAndLoadLibrary() {
     }
     loadLibraryStats();
     loadFlaggedDLCs();
+}
+
+function initLibraryPagination() {
+    const btn = document.getElementById('library-load-more-btn');
+    if (btn) {
+        btn.addEventListener('click', () => renderNextLibraryPage());
+    }
 }
 
 function initImportForm() {
@@ -32,6 +44,10 @@ function initImportForm() {
             showImportError('Invalid Steam ID', 'Please enter a valid 64-bit Steam ID.');
             return;
         }
+        if (!consentAnalytics) {
+            showImportError('Consent Required', 'Please check the consent box before importing your Steam library.');
+            return;
+        }
 
         // Disable button and show loading state
         importBtn.disabled = true;
@@ -46,7 +62,8 @@ function initImportForm() {
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    steam_id: steamID
+                    steam_id: steamID,
+                    consent_analytics: consentAnalytics
                 })
             });
 
@@ -57,14 +74,16 @@ function initImportForm() {
             }
 
             // Show success
-            showImportResult('Import Successful', data.message || 'Your library has been imported successfully.');
+            const imported = data.imported_count ?? data.total_games ?? 0;
+            showImportResult('Import Successful', `${data.message || 'Your library has been imported successfully.'} Imported games: ${imported}.`);
             
-            // Reload library stats
-            loadLibraryStats();
+            // Reload full imported library and DLC recommendations.
+            await loadLibraryStats();
             loadFlaggedDLCs();
             
             // Reset form
-            form.reset();
+            sessionStorage.setItem('dropsandgrinds_last_steam_id', steamID);
+            document.getElementById('steam-id').value = steamID;
 
         } catch (error) {
             console.error('Import failed:', error);
@@ -132,20 +151,114 @@ async function loadLibraryStats() {
             throw new Error(data.error || 'Failed to load library');
         }
 
+        libraryGameIDs = data.game_ids || [];
+        libraryPageOffset = 0;
+
         // Update stats
         const statsSection = document.getElementById('library-stats');
         const ownedCount = document.getElementById('owned-count');
         const hiddenCount = document.getElementById('hidden-count');
 
         if (statsSection && ownedCount && hiddenCount) {
-            ownedCount.textContent = data.count || 0;
-            hiddenCount.textContent = data.count || 0; // For now, same as owned
+            ownedCount.textContent = data.count || libraryGameIDs.length || 0;
+            hiddenCount.textContent = data.count || libraryGameIDs.length || 0; // For now, same as owned
             statsSection.style.display = 'grid';
+        }
+        renderLibraryGames();
+        const savedSteamID = sessionStorage.getItem('dropsandgrinds_last_steam_id');
+        const steamInput = document.getElementById('steam-id');
+        if (steamInput && savedSteamID && !steamInput.value) {
+            steamInput.value = savedSteamID;
         }
 
     } catch (error) {
         console.error('Failed to load library stats:', error);
     }
+}
+
+async function renderLibraryGames() {
+    const section = document.getElementById('library-games-section');
+    const list = document.getElementById('library-games-list');
+    const count = document.getElementById('library-games-count');
+    if (!section || !list) return;
+
+    if (count) count.textContent = `${libraryGameIDs.length} imported`;
+
+    if (libraryGameIDs.length === 0) {
+        section.style.display = 'none';
+        list.innerHTML = '';
+        return;
+    }
+
+    section.style.display = 'block';
+    list.innerHTML = '';
+    await renderNextLibraryPage();
+}
+
+async function renderNextLibraryPage() {
+    const list = document.getElementById('library-games-list');
+    const btn = document.getElementById('library-load-more-btn');
+    if (!list) return;
+
+    const nextIDs = libraryGameIDs.slice(libraryPageOffset, libraryPageOffset + libraryPageSize);
+    if (nextIDs.length === 0) {
+        if (btn) btn.style.display = 'none';
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Loading...';
+    }
+
+    const rows = await Promise.all(nextIDs.map(async (id) => {
+        try {
+            const response = await fetch(`/api/games/${id}`);
+            const game = await response.json();
+            if (!response.ok) throw new Error(game.error || 'Game unavailable');
+            return renderLibraryGame(game);
+        } catch {
+            return renderLibraryGame({ id, title: `Imported game #${id}`, platform: 'Steam', price_inr: 0 });
+        }
+    }));
+
+    list.insertAdjacentHTML('beforeend', rows.join(''));
+    libraryPageOffset += nextIDs.length;
+
+    if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Load More';
+        btn.style.display = libraryPageOffset < libraryGameIDs.length ? 'inline-flex' : 'none';
+    }
+}
+
+function renderLibraryGame(game) {
+    return `
+        <a class="library-game-item" href="game.html?id=${game.id}">
+            <img src="${getProxiedImageUrl(game.cover_url) || '/images/game-placeholder.svg'}" alt="${game.title} cover" onerror="this.src='/images/game-placeholder.svg'">
+            <div>
+                <div class="library-game-title">${game.title}</div>
+                <div class="library-game-meta">${game.platform || 'Steam'}${game.price_inr ? ` · ₹${game.price_inr}` : ''}</div>
+            </div>
+        </a>
+    `;
+}
+
+function getProxiedImageUrl(originalUrl) {
+    if (!originalUrl) return '';
+    let nextUrl = originalUrl.replace('/header.jpg', '/library_600x900.jpg').replace('/capsule_231x87.jpg', '/library_600x900.jpg');
+    if (nextUrl.includes('shared.cloudflare.steamstatic.com') || nextUrl.includes('shared.fastly.steamstatic.com')) {
+        return nextUrl
+            .replace('https://shared.cloudflare.steamstatic.com/', '/img/steam/')
+            .replace('https://shared.fastly.steamstatic.com/', '/img/steam/');
+    }
+    if (nextUrl.includes('images.gog-statics.com')) {
+        return nextUrl.replace('https://images.gog-statics.com/', '/img/gog/');
+    }
+    if (nextUrl.includes('cdn2.unrealengine.com')) {
+        return nextUrl.replace('https://cdn2.unrealengine.com/', '/img/epic/');
+    }
+    return nextUrl;
 }
 
 function showImportResult(title, message) {
@@ -154,8 +267,10 @@ function showImportResult(title, message) {
     const form = document.getElementById('import-form');
 
     if (resultDiv) {
-        document.getElementById('result-title').textContent = title;
-        document.getElementById('result-message').textContent = message;
+        const titleEl = resultDiv.querySelector('h3');
+        const messageEl = resultDiv.querySelector('p');
+        if (titleEl) titleEl.textContent = title;
+        if (messageEl) messageEl.textContent = message;
         resultDiv.style.display = 'block';
     }
 
@@ -174,8 +289,8 @@ function showImportError(title, message) {
     const form = document.getElementById('import-form');
 
     if (errorDiv) {
-        document.getElementById('error-title').textContent = title;
-        document.getElementById('error-message').textContent = message;
+        const icon = errorDiv.querySelector('i[data-lucide]');
+        errorDiv.innerHTML = `${icon ? icon.outerHTML : ''}<span><strong>${title}</strong> — ${message}</span>`;
         errorDiv.style.display = 'block';
     }
 

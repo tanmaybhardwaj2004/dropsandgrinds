@@ -33,7 +33,8 @@ type APIError struct {
 }
 
 type LibraryImportRequest struct {
-	SteamID string `json:"steam_id" binding:"required" example:"76561198000000000"`
+	SteamID          string `json:"steam_id" binding:"required" example:"76561198000000000"`
+	ConsentAnalytics bool   `json:"consent_analytics" example:"true"`
 }
 
 type LibraryListResponse struct {

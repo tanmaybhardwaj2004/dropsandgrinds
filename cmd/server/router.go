@@ -3,7 +3,6 @@ package main
 import (
 	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/redis/go-redis/v9"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
@@ -33,7 +32,7 @@ func newHTTPHandler(logger *slog.Logger, cfg config.Config, redisClient *redis.C
 	mux.HandleFunc("/api/games/search", handlers.SearchGamesHandler)
 	mux.Handle("/api/games/", middleware.OptionalAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.GameSubrouter)))
 	mux.HandleFunc("/api/deals", handlers.DealsListHandler)
-	mux.Handle("/api/deals/for-you", middleware.RequireAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.DealsForYouHandler)))
+	mux.Handle("/api/deals/for-you", middleware.OptionalAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.DealsForYouHandler)))
 	mux.HandleFunc("/api/prices/", handlers.PriceSubrouter)
 	mux.Handle("/api/wishlist", middleware.RequireAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.WishlistCollectionHandler)))
 	mux.Handle("/api/wishlist/", middleware.RequireAuth([]byte(cfg.JWTSecret), http.HandlerFunc(handlers.WishlistItemHandler)))
@@ -56,9 +55,6 @@ func newHTTPHandler(logger *slog.Logger, cfg config.Config, redisClient *redis.C
 	))
 
 	var handler http.Handler = mux
-	if redisClient != nil {
-		handler = middleware.RateLimit(redisClient, 60, time.Minute)(handler)
-	}
 	handler = middleware.Metrics(handler)
 	handler = middleware.Logging(logger, handler)
 	handler = middleware.Sentry(handler)

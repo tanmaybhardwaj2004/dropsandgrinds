@@ -119,6 +119,34 @@
     cursor: not-allowed;
 }
 
+#results-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
+    gap: 14px !important;
+}
+
+.deal-card.cheapest-card {
+    border-color: rgba(34, 197, 94, 0.55);
+    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.18);
+}
+
+.cheapest-offer {
+    display: inline-flex;
+    width: fit-content;
+    margin-bottom: 8px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    color: var(--color-accent-success);
+    background: rgba(34, 197, 94, 0.14);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.result-open-btn {
+    width: 100%;
+    margin-top: 12px;
+}
+
 @media (max-width: 768px) {
     .search-page {
         grid-template-columns: 1fr;

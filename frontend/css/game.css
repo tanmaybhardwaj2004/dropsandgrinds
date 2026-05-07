@@ -357,6 +357,11 @@
     border-color: var(--color-accent-primary);
 }
 
+.best-offer-row {
+    border-color: rgba(34, 197, 94, 0.55);
+    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.16);
+}
+
 .source-name {
     font-weight: 600;
     color: var(--color-text-primary);
@@ -365,6 +370,8 @@
 .source-score {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
     gap: 12px;
 }
 
@@ -406,5 +413,10 @@
     
     .aggregate-label {
         text-align: center;
+    }
+
+    .source-item {
+        align-items: flex-start;
+        flex-direction: column;
     }
 }

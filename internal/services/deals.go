@@ -100,8 +100,10 @@ func (s *DealEvaluationService) GetDealsForYou(ctx context.Context, userID int64
 }
 
 func (s *DealEvaluationService) ListDeals(ctx context.Context, limit, offset int) ([]models.Deal, int, error) {
-	refreshCtx, cancel := context.WithTimeout(ctx, 6*time.Second)
-	_, _ = s.repo.SyncCheapSharkDeals(refreshCtx, limit)
+	// Keep the deal grid "live" by syncing a large slice frequently.
+	// The repository has its own Redis sync gate to keep this fast.
+	refreshCtx, cancel := context.WithTimeout(ctx, 12*time.Second)
+	_, _ = s.repo.SyncCheapSharkDeals(refreshCtx, 0)
 	cancel()
 
 	deals, total, err := s.repo.ListDeals(ctx, limit, offset)

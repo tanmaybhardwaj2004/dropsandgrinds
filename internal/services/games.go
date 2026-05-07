@@ -4,6 +4,7 @@ import (
 	"context"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/models"
 )
@@ -35,6 +36,16 @@ func NewGamesService(repo CatalogStore) *GamesService {
 }
 
 func (s *GamesService) ListGames(ctx context.Context, filter GameFilter) (models.GameListResponse, error) {
+	// Best-effort live ingest to avoid "only 97 games" issue.
+	// Repo is gated by Redis key, so this is cheap on hot paths.
+	if repo, ok := s.repo.(interface {
+		SyncCheapSharkDeals(ctx context.Context, pageSize int) (int, error)
+	}); ok {
+		refreshCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
+		_, _ = repo.SyncCheapSharkDeals(refreshCtx, 0)
+		cancel()
+	}
+
 	limit := filter.Limit
 	if limit <= 0 {
 		limit = 20
@@ -166,6 +177,25 @@ func (s *GamesService) GetIndiaArbitrage(ctx context.Context, gameID int64) (mod
 }
 
 func (s *GamesService) SearchGames(ctx context.Context, query string, platform string, minPrice, maxPrice float64, minDiscount, maxDiscount int, minReviewScore, maxReviewScore float64, paymentMethod string, limit, offset int) ([]models.Game, int, error) {
+	// Best-effort live ingest to keep search fresh and broad.
+	if repo, ok := s.repo.(interface {
+		SyncCheapSharkDeals(ctx context.Context, pageSize int) (int, error)
+	}); ok {
+		refreshCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
+		_, _ = repo.SyncCheapSharkDeals(refreshCtx, 0)
+		cancel()
+	}
+	// Query-focused ingest ensures we can discover games not yet present in DB.
+	if strings.TrimSpace(query) != "" {
+		if repo, ok := s.repo.(interface {
+			SyncCheapSharkDealsByQuery(ctx context.Context, query string, pageSize, pages int) (int, error)
+		}); ok {
+			refreshCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
+			_, _ = repo.SyncCheapSharkDealsByQuery(refreshCtx, query, 60, 3)
+			cancel()
+		}
+	}
+
 	if limit <= 0 {
 		limit = 30
 	}

@@ -9,18 +9,26 @@ let currentGame = null;
 // Transform external image URLs to use local proxy (bypasses hotlink protection)
 function getProxiedImageUrl(originalUrl) {
     if (!originalUrl) return '';
-    
-    if (originalUrl.includes('shared.cloudflare.steamstatic.com')) {
-        return originalUrl.replace('https://shared.cloudflare.steamstatic.com/', '/img/steam/');
-    }
-    if (originalUrl.includes('images.gog-statics.com')) {
-        return originalUrl.replace('https://images.gog-statics.com/', '/img/gog/');
-    }
-    if (originalUrl.includes('cdn2.unrealengine.com')) {
-        return originalUrl.replace('https://cdn2.unrealengine.com/', '/img/epic/');
+    let nextUrl = originalUrl;
+    if (nextUrl.includes('shared.cloudflare.steamstatic.com') || nextUrl.includes('shared.fastly.steamstatic.com')) {
+        return nextUrl
+            .replace('https://shared.cloudflare.steamstatic.com/', '/img/steam/')
+            .replace('https://shared.fastly.steamstatic.com/', '/img/steam/');
     }
     
-    return originalUrl;
+    if (nextUrl.includes('images.gog-statics.com')) {
+        return nextUrl.replace('https://images.gog-statics.com/', '/img/gog/');
+    }
+    if (nextUrl.includes('cdn2.unrealengine.com')) {
+        return nextUrl.replace('https://cdn2.unrealengine.com/', '/img/epic/');
+    }
+    
+    return nextUrl;
+}
+
+function getCardImageUrl(originalUrl) {
+    if (!originalUrl) return '';
+    return getProxiedImageUrl(originalUrl.replace('/header.jpg', '/library_600x900.jpg').replace('/capsule_231x87.jpg', '/library_600x900.jpg'));
 }
 
 async function initGamePage() {
@@ -156,9 +164,9 @@ function renderReviewScores(data) {
     if (!data.score || data.score === 0) {
         scoreRing.className = 'score-ring gray';
         scoreEl.textContent = '--';
-        labelEl.textContent = 'No reviews yet';
+        labelEl.textContent = 'No reviews available yet';
         countEl.textContent = '';
-        sourcesContainer.innerHTML = '';
+        sourcesContainer.innerHTML = '<div class="source-item"><span class="source-name">No reviews available yet</span></div>';
         return;
     }
 
@@ -218,7 +226,7 @@ async function loadGameDetails(gameID) {
 
         document.getElementById('game-title').textContent = game.title;
         document.title = `${game.title} - DropsAndGrinds`;
-        document.getElementById('game-cover').src = getProxiedImageUrl(game.cover_url) || '';
+        document.getElementById('game-cover').src = getProxiedImageUrl(game.banner_url || game.cover_url) || '';
         document.getElementById('game-cover').alt = `${game.title} cover`;
         document.getElementById('game-cover').onerror = () => {
             document.getElementById('game-cover').src = '/images/game-placeholder.svg';
@@ -268,14 +276,16 @@ function renderGenreBadges(game) {
 function renderLiveIntelligence(game) {
     const comparisonHost = document.getElementById('price-comparison-list');
     if (comparisonHost) {
-        const rows = game.price_comparisons || [];
-        comparisonHost.innerHTML = rows.length ? rows.map(row => `
-            <div class="source-item">
+        const rows = [...(game.price_comparisons || [])].sort((a, b) => (a.price_inr || 0) - (b.price_inr || 0));
+        comparisonHost.innerHTML = rows.length ? rows.map((row, index) => `
+            <div class="source-item ${index === 0 ? 'best-offer-row' : ''}">
                 <span class="source-name">${row.store} (${row.region || 'India'})</span>
                 <div class="source-score">
+                    ${index === 0 ? '<span class="badge badge-success">Cheapest</span>' : ''}
                     <span class="source-value">${formatINR(row.price_inr)}</span>
                     <span class="badge badge-success">${row.discount_percent || 0}% off</span>
                     <span class="badge badge-primary">${row.gst_inclusive ? 'GST included' : 'GST extra'}</span>
+                    ${row.store_url ? `<a class="btn btn-secondary btn-sm" href="${row.store_url}" target="_blank" rel="noopener noreferrer">Open</a>` : ''}
                 </div>
             </div>
         `).join('') : '<div class="source-item"><span class="source-name">No comparison data yet</span></div>';
@@ -359,7 +369,13 @@ async function loadIndiaArbitrage(gameID) {
         }
     } catch (error) {
         const verdict = document.getElementById('arbitrage-verdict');
-        if (verdict) verdict.textContent = error.message;
+        if (verdict) verdict.textContent = 'Pricing data unavailable';
+        const rows = document.querySelectorAll('.receipt-row span:last-child');
+        rows.forEach((row) => {
+            row.textContent = 'Unavailable';
+        });
+        const arbitrage = document.getElementById('arbitrage-cost');
+        if (arbitrage) arbitrage.textContent = 'Unavailable';
     }
 }
 
@@ -394,36 +410,6 @@ async function loadBuyAdvice(gameID) {
     }
 }
 
-function getAccessToken() {
-    if (window.authState?.accessToken) {
-        return window.authState.accessToken;
-    }
-    return sessionStorage.getItem('dropsandgrinds_access_token');
-}
-
-function initAuthButton() {
-    const btn = document.getElementById('auth-btn');
-    if (!btn) return;
-
-    const token = getAccessToken();
-    if (!token) {
-        btn.textContent = 'Login';
-        btn.onclick = () => {
-            window.location.href = 'login.html';
-        };
-        return;
-    }
-
-    btn.textContent = 'Logout';
-    btn.onclick = () => {
-        sessionStorage.removeItem('dropsandgrinds_access_token');
-        sessionStorage.removeItem('dropsandgrinds_refresh_token');
-        sessionStorage.removeItem('dropsandgrinds_user_id');
-        sessionStorage.removeItem('dropsandgrinds_is_authenticated');
-        window.location.href = 'login.html';
-    };
-}
-
 function initWishlistButton(gameID) {
     const btn = document.getElementById('wishlist-btn');
     const targetInput = document.getElementById('target-price-input');
@@ -432,6 +418,7 @@ function initWishlistButton(gameID) {
     btn.addEventListener('click', async () => {
         const token = getAccessToken();
         if (!token) {
+            sessionStorage.setItem('dropsandgrinds_login_message', 'Sign in to add to wishlist');
             window.location.href = 'login.html';
             return;
         }
@@ -462,6 +449,7 @@ function initWishlistButton(gameID) {
             });
 
             if (response.status === 401) {
+                sessionStorage.setItem('dropsandgrinds_login_message', 'Sign in to add to wishlist');
                 window.location.href = 'login.html';
                 return;
             }

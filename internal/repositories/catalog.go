@@ -54,11 +54,20 @@ func (r *CatalogRepository) SearchGames(ctx context.Context, query string, platf
 	args := []interface{}{}
 	argIndex := 1
 
+	query = strings.TrimSpace(query)
 	if query != "" {
-		// Use ILIKE for case-insensitive search (will use GIN index with pg_trgm)
-		whereClause += fmt.Sprintf(" AND LOWER(g.title) LIKE LOWER($%d)", argIndex)
-		args = append(args, "%"+query+"%")
-		argIndex++
+		whereClause += fmt.Sprintf(" AND (LOWER(g.title) LIKE LOWER($%d) OR similarity(LOWER(g.title), LOWER($%d)) > 0.18", argIndex, argIndex+1)
+		args = append(args, "%"+query+"%", query)
+		argIndex += 2
+		for _, token := range strings.Fields(query) {
+			if len(token) < 3 {
+				continue
+			}
+			whereClause += fmt.Sprintf(" OR LOWER(g.title) LIKE LOWER($%d)", argIndex)
+			args = append(args, "%"+token+"%")
+			argIndex++
+		}
+		whereClause += ")"
 	}
 
 	if platform != "" {
@@ -146,6 +155,9 @@ func (r *CatalogRepository) SearchGames(ctx context.Context, query string, platf
 	}
 
 	// Data query
+	orderQueryIndex := argIndex
+	limitIndex := argIndex + 1
+	offsetIndex := argIndex + 2
 	dataQuery := `
 		SELECT
 			g.id,
@@ -185,10 +197,14 @@ func (r *CatalogRepository) SearchGames(ctx context.Context, query string, platf
 			WHERE r.game_id = g.id
 		) r ON TRUE
 		` + whereClause + `
-		ORDER BY COALESCE(d.discount_percent, 0) DESC, g.title ASC
-		LIMIT $` + fmt.Sprintf("%d", argIndex) + ` OFFSET $` + fmt.Sprintf("%d", argIndex+1)
+		ORDER BY
+			CASE WHEN $` + fmt.Sprintf("%d", orderQueryIndex) + ` = '' THEN 0 ELSE similarity(LOWER(g.title), LOWER($` + fmt.Sprintf("%d", orderQueryIndex) + `)) END DESC,
+			COALESCE(p.price_inr, 0) ASC,
+			COALESCE(d.discount_percent, 0) DESC,
+			g.title ASC
+		LIMIT $` + fmt.Sprintf("%d", limitIndex) + ` OFFSET $` + fmt.Sprintf("%d", offsetIndex)
 
-	args = append(args, limit, offset)
+	args = append(args, query, limit, offset)
 
 	rows, err := r.db.Query(ctx, dataQuery, args...)
 	if err != nil {
@@ -447,6 +463,18 @@ func (r *CatalogRepository) GetGameByID(ctx context.Context, id int64) (models.G
 		WHERE game_id = $1
 	`, id).Scan(&syncedAt)
 	enrichGameForIndia(&g, syncedAt)
+	if comparisons, err := r.priceComparisonsForTitle(ctx, g.Title); err == nil && len(comparisons) > 0 {
+		g.PriceComparisons = comparisons
+		if comparisons[0].PriceINR > 0 {
+			g.Platform = comparisons[0].Store
+			g.PriceINR = comparisons[0].PriceINR
+			g.OriginalINR = comparisons[0].OriginalINR
+			g.DiscountPercent = comparisons[0].DiscountPercent
+			g.StoreURL = comparisons[0].StoreURL
+			g.CheapestRegion = comparisons[0].Region
+			g.PaymentMethods = comparisons[0].PaymentMethods
+		}
+	}
 
 	// Cache the result if Redis is available
 	if r.redis != nil {
@@ -457,6 +485,62 @@ func (r *CatalogRepository) GetGameByID(ctx context.Context, id int64) (models.G
 	}
 
 	return g, true, nil
+}
+
+func (r *CatalogRepository) priceComparisonsForTitle(ctx context.Context, title string) ([]models.PriceComparison, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT
+			g.platform,
+			COALESCE(p.price_inr, 0) AS price_inr,
+			COALESCE(d.original_inr, 0) AS original_inr,
+			COALESCE(d.discount_percent, 0) AS discount_percent,
+			g.store_url
+		FROM games g
+		LEFT JOIN LATERAL (
+			SELECT price_inr
+			FROM prices p
+			WHERE p.game_id = g.id
+			ORDER BY p.fetched_at DESC
+			LIMIT 1
+		) p ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT original_inr, discount_percent
+			FROM deals d
+			WHERE d.game_id = g.id AND d.is_active = TRUE
+			ORDER BY d.discount_percent DESC
+			LIMIT 1
+		) d ON TRUE
+		WHERE LOWER(g.title) = LOWER($1)
+		ORDER BY COALESCE(p.price_inr, 0) ASC, COALESCE(d.discount_percent, 0) DESC, g.platform ASC
+	`, strings.TrimSpace(title))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var comparisons []models.PriceComparison
+	for rows.Next() {
+		var store, storeURL string
+		var price, original, discount int
+		if err := rows.Scan(&store, &price, &original, &discount, &storeURL); err != nil {
+			return nil, err
+		}
+		region := "India"
+		if strings.Contains(strings.ToLower(store), "cheapshark") {
+			region = "Global"
+		}
+		comparisons = append(comparisons, models.PriceComparison{
+			Store:           store,
+			Region:          region,
+			PriceINR:        price,
+			OriginalINR:     original,
+			DiscountPercent: discount,
+			StoreURL:        storeURL,
+			PaymentMethods:  paymentMethodsForStore(store),
+			GSTInclusive:    true,
+		})
+	}
+	return comparisons, rows.Err()
 }
 
 func (r *CatalogRepository) ListDeals(ctx context.Context, limit, offset int) ([]models.Deal, int, error) {
@@ -631,24 +715,46 @@ func (r *CatalogRepository) ListPersonalizedDeals(ctx context.Context, userID in
 }
 
 func (r *CatalogRepository) SyncCheapSharkDeals(ctx context.Context, pageSize int) (int, error) {
-	if pageSize <= 0 {
-		pageSize = 60
+	// Guard: avoid hammering CheapShark on every request. We keep the app "real-time"
+	// by syncing frequently, but not per-request.
+	const (
+		minSyncInterval = 2 * time.Minute
+		defaultPageSize = 60
+		defaultPages    = 6 // ~360 deals ingested per sync
+	)
+	if r.redis != nil {
+		if last, err := r.redis.Get(ctx, "cheapshark:last_sync").Int64(); err == nil && last > 0 {
+			if time.Since(time.Unix(last, 0)) < minSyncInterval {
+				return 0, nil
+			}
+		}
 	}
-	if pageSize > 100 {
-		pageSize = 100
-	}
+
+	// pageSize argument is treated as a hint; we ingest a healthy slice across pages
+	// to avoid the "same limited games" problem.
+	pageSize = defaultPageSize
 	client := cheapshark.NewClient()
-	deals, err := client.GetDeals(ctx, map[string]string{
-		"pageSize": strconv.Itoa(pageSize),
-		"sortBy":   "Deal Rating",
-	})
-	if err != nil {
-		return 0, err
+	allDeals := make([]cheapshark.Deal, 0, pageSize*defaultPages)
+	for page := 0; page < defaultPages; page++ {
+		deals, err := client.GetDeals(ctx, map[string]string{
+			"pageSize":   strconv.Itoa(pageSize),
+			"pageNumber": strconv.Itoa(page),
+			"sortBy":     "Deal Rating",
+			"onSale":     "1",
+		})
+		if err != nil {
+			// If upstream fails mid-sync, we still use whatever we got so far.
+			if len(allDeals) == 0 {
+				return 0, err
+			}
+			break
+		}
+		allDeals = append(allDeals, deals...)
 	}
 
 	rate := r.USDToINR(ctx)
 	updated := 0
-	for _, deal := range deals {
+	for _, deal := range allDeals {
 		priceINR := dollarsToINR(float64(deal.SalePrice), rate)
 		normalINR := dollarsToINR(float64(deal.NormalPrice), rate)
 		if strings.TrimSpace(deal.Title) == "" || priceINR <= 0 {
@@ -695,6 +801,112 @@ func (r *CatalogRepository) SyncCheapSharkDeals(ctx context.Context, pageSize in
 			_ = r.UpdateDeal(ctx, gameID, normalINR, discountPercent)
 		}
 		updated++
+	}
+	if r.redis != nil {
+		_ = r.redis.Set(ctx, "cheapshark:last_sync", strconv.FormatInt(time.Now().Unix(), 10), 24*time.Hour).Err()
+	}
+	r.clearDealCaches(ctx)
+	return updated, nil
+}
+
+// SyncCheapSharkDealsByQuery ingests discounted deals matching a title query directly
+// from CheapShark so search can surface games beyond the current DB snapshot.
+func (r *CatalogRepository) SyncCheapSharkDealsByQuery(ctx context.Context, query string, pageSize, pages int) (int, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return 0, nil
+	}
+	if pageSize <= 0 {
+		pageSize = 60
+	}
+	if pages <= 0 {
+		pages = 3
+	}
+
+	if r.redis != nil {
+		// Per-query guard to keep frequent typing from triggering repeated upstream pulls.
+		queryKey := "cheapshark:query_sync:" + strings.ToLower(query)
+		if last, err := r.redis.Get(ctx, queryKey).Int64(); err == nil && last > 0 {
+			if time.Since(time.Unix(last, 0)) < 60*time.Second {
+				return 0, nil
+			}
+		}
+	}
+
+	client := cheapshark.NewClient()
+	allDeals := make([]cheapshark.Deal, 0, pageSize*pages)
+	for page := 0; page < pages; page++ {
+		deals, err := client.GetDeals(ctx, map[string]string{
+			"title":      query,
+			"exact":      "0",
+			"pageSize":   strconv.Itoa(pageSize),
+			"pageNumber": strconv.Itoa(page),
+			"sortBy":     "Deal Rating",
+			"onSale":     "1",
+		})
+		if err != nil {
+			if len(allDeals) == 0 {
+				return 0, err
+			}
+			break
+		}
+		allDeals = append(allDeals, deals...)
+	}
+
+	rate := r.USDToINR(ctx)
+	updated := 0
+	for _, deal := range allDeals {
+		priceINR := dollarsToINR(float64(deal.SalePrice), rate)
+		normalINR := dollarsToINR(float64(deal.NormalPrice), rate)
+		if strings.TrimSpace(deal.Title) == "" || priceINR <= 0 {
+			continue
+		}
+		store := cheapSharkStoreName(deal.StoreID, deal.StoreName)
+		slug := liveDealSlug(deal.Title, store, deal.GameID)
+		storeURL := cheapSharkStoreURL(deal.DealID)
+		if storeURL == "" {
+			storeURL = "https://www.cheapshark.com/"
+		}
+
+		var gameID int64
+		err := r.db.QueryRow(ctx, `
+			INSERT INTO games (title, slug, platform, cover_url, store_url)
+			VALUES ($1, $2, $3, $4, $5)
+			ON CONFLICT (slug) DO UPDATE SET
+				title = EXCLUDED.title,
+				platform = EXCLUDED.platform,
+				cover_url = CASE WHEN EXCLUDED.cover_url <> '' THEN EXCLUDED.cover_url ELSE games.cover_url END,
+				store_url = EXCLUDED.store_url
+			RETURNING id
+		`, strings.TrimSpace(deal.Title), slug, store, strings.TrimSpace(deal.Thumb), storeURL).Scan(&gameID)
+		if err != nil {
+			continue
+		}
+
+		if _, err := r.db.Exec(ctx, `
+			INSERT INTO prices (game_id, price_inr, store, region, is_historical_low, fetched_at)
+			VALUES (
+				$1,
+				$2,
+				$3,
+				'global',
+				NOT EXISTS (SELECT 1 FROM prices WHERE game_id = $1 AND price_inr < $2),
+				NOW()
+			)
+		`, gameID, priceINR, "cheapshark:"+deal.StoreID); err != nil {
+			continue
+		}
+
+		discountPercent := int(math.Round(float64(deal.Savings)))
+		if normalINR > 0 && discountPercent > 0 {
+			_ = r.UpdateDeal(ctx, gameID, normalINR, discountPercent)
+		}
+		updated++
+	}
+
+	if r.redis != nil {
+		queryKey := "cheapshark:query_sync:" + strings.ToLower(query)
+		_ = r.redis.Set(ctx, queryKey, strconv.FormatInt(time.Now().Unix(), 10), 24*time.Hour).Err()
 	}
 	r.clearDealCaches(ctx)
 	return updated, nil

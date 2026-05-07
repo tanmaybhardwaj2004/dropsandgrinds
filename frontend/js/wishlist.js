@@ -8,17 +8,20 @@ document.addEventListener('DOMContentLoaded', () => {
 function getProxiedImageUrl(originalUrl) {
     if (!originalUrl) return '';
     
-    if (originalUrl.includes('shared.cloudflare.steamstatic.com')) {
-        return originalUrl.replace('https://shared.cloudflare.steamstatic.com/', '/img/steam/');
+    let nextUrl = originalUrl.replace('/header.jpg', '/library_600x900.jpg').replace('/capsule_231x87.jpg', '/library_600x900.jpg');
+    if (nextUrl.includes('shared.cloudflare.steamstatic.com') || nextUrl.includes('shared.fastly.steamstatic.com')) {
+        return nextUrl
+            .replace('https://shared.cloudflare.steamstatic.com/', '/img/steam/')
+            .replace('https://shared.fastly.steamstatic.com/', '/img/steam/');
     }
-    if (originalUrl.includes('images.gog-statics.com')) {
-        return originalUrl.replace('https://images.gog-statics.com/', '/img/gog/');
+    if (nextUrl.includes('images.gog-statics.com')) {
+        return nextUrl.replace('https://images.gog-statics.com/', '/img/gog/');
     }
-    if (originalUrl.includes('cdn2.unrealengine.com')) {
-        return originalUrl.replace('https://cdn2.unrealengine.com/', '/img/epic/');
+    if (nextUrl.includes('cdn2.unrealengine.com')) {
+        return nextUrl.replace('https://cdn2.unrealengine.com/', '/img/epic/');
     }
     
-    return originalUrl;
+    return nextUrl;
 }
 
 function checkAuthAndLoadWishlist() {
@@ -100,7 +103,12 @@ function renderWishlistRow(item) {
     const alertText = item.triggered ? 'Triggered' : 'Watching';
     return `
         <tr data-id="${item.id}">
-            <td><a href="game.html?id=${item.game_id}">${item.title}</a></td>
+            <td>
+                <a href="game.html?id=${item.game_id}" class="wishlist-game-link">
+                    <img src="${getProxiedImageUrl(item.cover_url) || '/images/game-placeholder.svg'}" alt="${item.title} cover" onerror="this.src='/images/game-placeholder.svg'">
+                    <span>${item.title}</span>
+                </a>
+            </td>
             <td>${item.platform}</td>
             <td>₹${item.current_price_inr}</td>
             <td><input type="number" class="threshold-input" min="1" value="${item.target_price_inr}" onchange="updateThreshold(${item.id}, this.value)"></td>

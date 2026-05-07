@@ -54,6 +54,13 @@ func LibraryImportHandler(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, models.APIError{Error: "SteamID is required"})
 		return
 	}
+	if !req.ConsentAnalytics {
+		writeJSON(w, http.StatusBadRequest, models.APIError{Error: "Consent is required to import a Steam library"})
+		return
+	}
+	if clicksRepo != nil {
+		_ = clicksRepo.SetUserConsentAnalytics(r.Context(), userID, true)
+	}
 
 	result, err := libraryService.ImportLibrary(r.Context(), userID, req.SteamID)
 	if err != nil {
