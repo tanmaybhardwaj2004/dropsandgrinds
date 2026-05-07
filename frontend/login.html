@@ -102,6 +102,27 @@
         }
         
         document.addEventListener('DOMContentLoaded', async () => {
+            // Handle OAuth callback — if we have tokens in the URL, store them and redirect
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('oauth') === 'success' && params.get('access_token')) {
+                const accessToken = params.get('access_token');
+                const refreshToken = params.get('refresh_token');
+                const userId = params.get('user_id');
+
+                // Store tokens using the auth.js function
+                setAuthTokens(accessToken, refreshToken, userId);
+
+                // Clean the URL and redirect to home
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // If already authenticated, redirect to home
+            if (sessionStorage.getItem('dropsandgrinds_is_authenticated') === 'true') {
+                window.location.href = 'index.html';
+                return;
+            }
+
             await initNavbar();
         });
     </script>

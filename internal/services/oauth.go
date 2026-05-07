@@ -76,3 +76,8 @@ func (s *OAuthService) GenerateState() (string, error) {
 	}
 	return base64.URLEncoding.EncodeToString(b), nil
 }
+
+// Auth returns the underlying AuthService for OAuth login flows.
+func (s *OAuthService) Auth() *AuthService {
+	return s.authService
+}

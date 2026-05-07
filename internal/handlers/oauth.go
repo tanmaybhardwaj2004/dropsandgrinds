@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/models"
 	"github.com/tanmaybhardwaj2004/dropsandgrinds/internal/services"
@@ -100,16 +103,21 @@ func GoogleCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		Secure:   isSecure,
 	})
 
-	// Exchange code for token
-	token, err := oauthService.ExchangeGoogleToken(r.Context(), code)
+	// Exchange code for token — use a dedicated context with generous timeout
+	// because the request context may be too short for the Google roundtrip
+	exchangeCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	token, err := oauthService.ExchangeGoogleToken(exchangeCtx, code)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, models.APIError{Error: "Failed to exchange token"})
+		log.Printf("ERROR: Google OAuth token exchange failed: %v", err)
+		writeJSON(w, http.StatusInternalServerError, models.APIError{Error: "Failed to exchange token: " + err.Error()})
 		return
 	}
 
 	// Get user info from Google
-	userInfo, err := oauthService.GetGoogleUserInfo(r.Context(), token)
+	userInfo, err := oauthService.GetGoogleUserInfo(exchangeCtx, token)
 	if err != nil {
+		log.Printf("ERROR: Google user info fetch failed: %v", err)
 		writeJSON(w, http.StatusInternalServerError, models.APIError{Error: "Failed to get user info"})
 		return
 	}
@@ -123,9 +131,20 @@ func GoogleCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Create or update user in database and generate JWT
-	// For now, redirect to frontend with user info as query params
-	redirectURL := fmt.Sprintf("http://localhost/login.html?oauth=success&email=%s&name=%s", email, name)
+	// Find or create user and issue JWT tokens
+	tokenResp, err := oauthService.Auth().OAuthLogin(r.Context(), email, name)
+	if err != nil {
+		log.Printf("ERROR: OAuth login failed for %s: %v", email, err)
+		writeServiceError(w, err, "Failed to complete OAuth login")
+		return
+	}
+
+	// Redirect to frontend with tokens so auth.js can pick them up
+	redirectURL := fmt.Sprintf("http://localhost/login.html?oauth=success&access_token=%s&refresh_token=%s&user_id=%d",
+		url.QueryEscape(tokenResp.AccessToken),
+		url.QueryEscape(tokenResp.RefreshToken),
+		tokenResp.UserID,
+	)
 	http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 }
 

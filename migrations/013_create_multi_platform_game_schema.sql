@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS game_metadata (
     id BIGSERIAL PRIMARY KEY,
     game_id BIGINT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
     key VARCHAR(100) NOT NULL,
-    value TEXTB,
+    value TEXT,
     data_type VARCHAR(50) DEFAULT 'text', -- text, json, array, etc.
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(game_id, key)

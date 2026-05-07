@@ -7,8 +7,8 @@ CREATE INDEX IF NOT EXISTS idx_games_title_lower ON games(LOWER(title));
 -- Composite index for games filtering by platform and title
 CREATE INDEX IF NOT EXISTS idx_games_platform_title ON games(platform, LOWER(title));
 
--- Index for deals filtering by is_active and expires_at
-CREATE INDEX IF NOT EXISTS idx_deals_active_expires ON deals(is_active, expires_at);
+-- Index for deals filtering by is_active
+CREATE INDEX IF NOT EXISTS idx_deals_active ON deals(is_active);
 
 -- Index for wishlist user filtering with game_id
 CREATE INDEX IF NOT EXISTS idx_wishlist_user_game_target ON wishlists(user_id, target_price_inr);

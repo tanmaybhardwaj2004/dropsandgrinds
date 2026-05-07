@@ -227,3 +227,61 @@ func hashToken(token string) string {
 	sum := sha256.Sum256([]byte(token))
 	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
+
+// OAuthLogin finds or creates a user by email (for Google/Steam OAuth) and issues tokens.
+// If the user doesn't exist, one is created with the Google profile name as username.
+func (s *AuthService) OAuthLogin(ctx context.Context, email, name string) (models.TokenResponse, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+	if email == "" {
+		return models.TokenResponse{}, &ServiceError{StatusCode: http.StatusBadRequest, Message: "Email is required"}
+	}
+
+	// Try to find existing user by email
+	var userID int64
+	err := s.db.QueryRow(ctx, `SELECT id FROM users WHERE email = $1`, email).Scan(&userID)
+	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return models.TokenResponse{}, &ServiceError{StatusCode: http.StatusInternalServerError, Message: "Database error"}
+		}
+
+		// User doesn't exist — create one
+		username := strings.TrimSpace(name)
+		if username == "" {
+			// Derive username from email prefix
+			username = strings.Split(email, "@")[0]
+		}
+		// Replace spaces with underscores for username
+		username = strings.ReplaceAll(username, " ", "_")
+
+		// Generate a random password hash — OAuth users never use password login
+		randomBytes := make([]byte, 32)
+		_, _ = rand.Read(randomBytes)
+		oauthPlaceholderHash, _ := bcrypt.GenerateFromPassword(randomBytes, bcryptCost)
+
+		err = s.db.QueryRow(ctx, `
+			INSERT INTO users (username, email, password_hash)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (email) DO UPDATE SET updated_at = CURRENT_TIMESTAMP
+			RETURNING id
+		`, username, email, string(oauthPlaceholderHash)).Scan(&userID)
+		if err != nil {
+			// If username conflicts, try with a random suffix
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+				suffix := base64.RawURLEncoding.EncodeToString(randomBytes[:4])
+				username = username + "_" + suffix
+				err = s.db.QueryRow(ctx, `
+					INSERT INTO users (username, email, password_hash)
+					VALUES ($1, $2, $3)
+					ON CONFLICT (email) DO UPDATE SET updated_at = CURRENT_TIMESTAMP
+					RETURNING id
+				`, username, email, string(oauthPlaceholderHash)).Scan(&userID)
+			}
+			if err != nil {
+				return models.TokenResponse{}, &ServiceError{StatusCode: http.StatusInternalServerError, Message: "Failed to create user"}
+			}
+		}
+	}
+
+	return s.issueTokenPair(ctx, userID)
+}
