@@ -58,7 +58,7 @@ func GoogleLoginHandler(w http.ResponseWriter, r *http.Request) {
 // @Tags         auth
 // @Param        code   query  string  true  "Authorization code"
 // @Param        state  query  string  true  "State parameter"
-// @Success      200    {object}  models.AuthResponse
+// @Success      200    {object}  models.TokenResponse
 // @Failure      400    {object}  models.APIError
 // @Failure      500    {object}  models.APIError
 // @Router       /auth/google/callback [get]
@@ -132,7 +132,7 @@ func SteamLoginHandler(w http.ResponseWriter, r *http.Request) {
 // @Summary      Steam callback
 // @Description  Handles OpenID callback from Steam and issues JWT tokens
 // @Tags         auth
-// @Success      200  {object}  models.AuthResponse
+// @Success      200  {object}  models.TokenResponse
 // @Failure      400  {object}  models.APIError
 // @Failure      500  {object}  models.APIError
 // @Router       /auth/steam/callback [get]
