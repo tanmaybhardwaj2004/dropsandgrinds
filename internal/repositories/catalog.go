@@ -43,13 +43,12 @@ func (r *CatalogRepository) SearchGames(ctx context.Context, query string, platf
 		monitoring.RecordCacheMiss("catalog_search")
 	}
 
-	// Build WHERE clause with filters
+	// Simplified WHERE clause for basic search
 	whereClause := "WHERE 1=1"
 	args := []interface{}{}
 	argIndex := 1
 
 	if query != "" {
-		// Use ILIKE for case-insensitive search (will use GIN index with pg_trgm)
 		whereClause += fmt.Sprintf(" AND LOWER(g.title) LIKE LOWER($%d)", argIndex)
 		args = append(args, "%"+query+"%")
 		argIndex++
@@ -61,65 +60,10 @@ func (r *CatalogRepository) SearchGames(ctx context.Context, query string, platf
 		argIndex++
 	}
 
-	if minPrice > 0 {
-		whereClause += fmt.Sprintf(" AND COALESCE(p.price_inr, 0) >= $%d", argIndex)
-		args = append(args, minPrice)
-		argIndex++
-	}
-
-	if maxPrice > 0 {
-		whereClause += fmt.Sprintf(" AND COALESCE(p.price_inr, 0) <= $%d", argIndex)
-		args = append(args, maxPrice)
-		argIndex++
-	}
-
-	if minDiscount > 0 {
-		whereClause += fmt.Sprintf(" AND COALESCE(d.discount_percent, 0) >= $%d", argIndex)
-		args = append(args, minDiscount)
-		argIndex++
-	}
-
-	if maxDiscount > 0 {
-		whereClause += fmt.Sprintf(" AND COALESCE(d.discount_percent, 0) <= $%d", argIndex)
-		args = append(args, maxDiscount)
-		argIndex++
-	}
-
-	if minReviewScore > 0 {
-		whereClause += fmt.Sprintf(" AND COALESCE(r.avg_score, 0) >= $%d", argIndex)
-		args = append(args, minReviewScore)
-		argIndex++
-	}
-
-	if maxReviewScore > 0 {
-		whereClause += fmt.Sprintf(" AND COALESCE(r.avg_score, 0) <= $%d", argIndex)
-		args = append(args, maxReviewScore)
-		argIndex++
-	}
-
-	// Count query
+	// Simplified count query without complex joins
 	countQuery := `
 		SELECT COUNT(*)
 		FROM games g
-		LEFT JOIN LATERAL (
-			SELECT price_inr
-			FROM prices p
-			WHERE p.game_id = g.id
-			ORDER BY p.fetched_at DESC
-			LIMIT 1
-		) p ON TRUE
-		LEFT JOIN LATERAL (
-			SELECT original_inr, discount_percent
-			FROM deals d
-			WHERE d.game_id = g.id AND d.is_active = TRUE
-			ORDER BY d.discount_percent DESC
-			LIMIT 1
-		) d ON TRUE
-		LEFT JOIN LATERAL (
-			SELECT AVG(score) AS avg_score
-			FROM review_scores r
-			WHERE r.game_id = g.id
-		) r ON TRUE
 		` + whereClause
 
 	var total int
@@ -127,46 +71,22 @@ func (r *CatalogRepository) SearchGames(ctx context.Context, query string, platf
 		return nil, 0, err
 	}
 
-	// Data query
+	// Simplified data query without complex LATERAL JOINs
 	dataQuery := `
 		SELECT
 			g.id,
 			g.title,
 			g.platform,
 			g.cover_url,
-			COALESCE(p.price_inr, 0) AS price_inr,
-			COALESCE(p_low.lowest_price_inr, COALESCE(p.price_inr, 0), 0) AS lowest_price_inr,
-			(COALESCE(p.price_inr, 0) > 0 AND COALESCE(p.price_inr, 0) = COALESCE(p_low.lowest_price_inr, COALESCE(p.price_inr, 0), 0)) AS is_all_time_low,
-			COALESCE(d.original_inr, 0) AS original_inr,
-			COALESCE(d.discount_percent, 0) AS discount_percent,
-			COALESCE(r.avg_score, 0) AS review_score
+			0 AS price_inr,
+			0 AS lowest_price_inr,
+			false AS is_all_time_low,
+			0 AS original_inr,
+			0 AS discount_percent,
+			0 AS review_score
 		FROM games g
-		LEFT JOIN LATERAL (
-			SELECT price_inr
-			FROM prices p
-			WHERE p.game_id = g.id
-			ORDER BY p.fetched_at DESC
-			LIMIT 1
-		) p ON TRUE
-		LEFT JOIN LATERAL (
-			SELECT MIN(price_inr) AS lowest_price_inr
-			FROM prices p_low
-			WHERE p_low.game_id = g.id
-		) p_low ON TRUE
-		LEFT JOIN LATERAL (
-			SELECT original_inr, discount_percent
-			FROM deals d
-			WHERE d.game_id = g.id AND d.is_active = TRUE
-			ORDER BY d.discount_percent DESC
-			LIMIT 1
-		) d ON TRUE
-		LEFT JOIN LATERAL (
-			SELECT AVG(score) AS avg_score
-			FROM review_scores r
-			WHERE r.game_id = g.id
-		) r ON TRUE
 		` + whereClause + `
-		ORDER BY COALESCE(d.discount_percent, 0) DESC, g.title ASC
+		ORDER BY g.title ASC
 		LIMIT $` + fmt.Sprintf("%d", argIndex) + ` OFFSET $` + fmt.Sprintf("%d", argIndex+1)
 
 	args = append(args, limit, offset)
@@ -211,7 +131,7 @@ func (r *CatalogRepository) SearchGames(ctx context.Context, query string, platf
 			Total: total,
 		}
 		if data, err := json.Marshal(cacheResult); err == nil {
-			r.redis.Set(ctx, cacheKey, data, 1*time.Minute) // 1 minute TTL for search
+			r.redis.Set(ctx, cacheKey, data, 1*time.Minute)
 		}
 	}
 

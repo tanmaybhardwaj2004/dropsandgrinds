@@ -135,7 +135,7 @@ Unsubscribe: https://dropsandgrinds.com/unsubscribe?alert=%d
 			From:    e.fromEmail,
 			To:      []string{userEmail},
 			Subject: subject,
-			HTML:    htmlContent,
+			Html:    htmlContent,
 			Text:    textContent,
 		}
 
@@ -255,7 +255,7 @@ Manage preferences: https://dropsandgrinds.com/preferences
 			From:    e.fromEmail,
 			To:      []string{userEmail},
 			Subject: subject,
-			HTML:    htmlContent,
+			Html:    htmlContent,
 			Text:    textContent,
 		}
 
