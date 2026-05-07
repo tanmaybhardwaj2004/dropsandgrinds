@@ -40,12 +40,13 @@ func GoogleLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	// In production, store state in Redis/Session with expiration
 	// For now, we'll use a simple cookie
+	isSecure := r.URL.Scheme == "https"
 	http.SetCookie(w, &http.Cookie{
 		Name:     "oauth_state",
 		Value:    state,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   isSecure,
 		SameSite: http.SameSiteLaxMode,
 	})
 
@@ -89,13 +90,14 @@ func GoogleCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Clear state cookie
+	isSecure := r.URL.Scheme == "https"
 	http.SetCookie(w, &http.Cookie{
 		Name:     "oauth_state",
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   isSecure,
 	})
 
 	// Exchange code for token
@@ -121,14 +123,10 @@ func GoogleCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create or update user (this would require user repository - for now return user info)
-	response := map[string]interface{}{
-		"email": email,
-		"name":  name,
-		"token": token.AccessToken,
-	}
-
-	writeJSON(w, http.StatusOK, response)
+	// TODO: Create or update user in database and generate JWT
+	// For now, redirect to frontend with user info as query params
+	redirectURL := fmt.Sprintf("http://localhost/login.html?oauth=success&email=%s&name=%s", email, name)
+	http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 }
 
 // SteamLoginHandler initiates Steam OpenID login flow.
