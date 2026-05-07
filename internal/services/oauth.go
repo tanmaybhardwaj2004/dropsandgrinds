@@ -4,6 +4,11 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"time"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -12,6 +17,7 @@ import (
 type OAuthService struct {
 	googleConfig *oauth2.Config
 	authService  *AuthService
+	client       *http.Client
 }
 
 func NewOAuthService(googleClientID, googleClientSecret, redirectURL string, authService *AuthService) *OAuthService {
@@ -26,6 +32,7 @@ func NewOAuthService(googleClientID, googleClientSecret, redirectURL string, aut
 	return &OAuthService{
 		googleConfig: googleConfig,
 		authService:  authService,
+		client:       &http.Client{Timeout: 10 * time.Second},
 	}
 }
 
@@ -38,18 +45,28 @@ func (s *OAuthService) ExchangeGoogleToken(ctx context.Context, code string) (*o
 }
 
 func (s *OAuthService) GetGoogleUserInfo(ctx context.Context, token *oauth2.Token) (map[string]interface{}, error) {
-	// In a real implementation, you would use the token to fetch user info from Google's API
-	// For now, we'll create a placeholder implementation
-	// This would typically involve making an HTTP request to https://www.googleapis.com/oauth2/v3/userinfo
+	// Fetch user info from Google's userinfo endpoint
+	resp, err := s.client.Get("https://www.googleapis.com/oauth2/v3/userinfo?access_token=" + token.AccessToken)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch user info: %w", err)
+	}
+	defer resp.Body.Close()
 
-	// Placeholder - in production, fetch actual user data from Google
-	user := map[string]interface{}{
-		"email":      "user@example.com",
-		"name":       "Google User",
-		"avatar_url": "https://example.com/avatar.png",
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code from Google: %d", resp.StatusCode)
 	}
 
-	return user, nil
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	var userInfo map[string]interface{}
+	if err := json.Unmarshal(body, &userInfo); err != nil {
+		return nil, fmt.Errorf("failed to parse user info: %w", err)
+	}
+
+	return userInfo, nil
 }
 
 func (s *OAuthService) GenerateState() (string, error) {
