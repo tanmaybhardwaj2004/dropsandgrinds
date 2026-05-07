@@ -38,7 +38,7 @@ type LibraryImportRequest struct {
 }
 
 type LibraryListResponse struct {
-	GameIDs []int64 `json:"game_ids" example:"[1,2,3,4,5]"`
+	GameIDs []int64 `json:"game_ids"`
 	Count   int     `json:"count" example:"5"`
 }
 
